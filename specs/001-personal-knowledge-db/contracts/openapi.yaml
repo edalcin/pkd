@@ -1,0 +1,691 @@
+openapi: 3.0.3
+info:
+  title: Personal Knowledge Database (PKD) API
+  version: 0.1.0
+  description: |
+    HTTP contract for the PKD single-user personal knowledge base. The API is served by
+    the same Go binary that hosts the embedded SPA. All endpoints under `/api/*` require
+    an authenticated session (cookie) and a valid CSRF token for state-changing verbs,
+    EXCEPT the public share endpoint under `/public/*` which is intentionally unauthenticated.
+
+    Security headers (CSP, HSTS, X-Frame-Options: DENY, X-Content-Type-Options: nosniff,
+    Referrer-Policy: no-referrer) are applied to every response regardless of endpoint.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://pkd.example.lan
+    description: Production (behind reverse proxy providing TLS)
+
+tags:
+  - name: auth
+  - name: documents
+  - name: tags
+  - name: search
+  - name: calendar
+  - name: attachments
+  - name: share
+  - name: admin
+  - name: public
+
+paths:
+  # ─────────────────────────── AUTH ───────────────────────────
+  /api/login:
+    post:
+      tags: [auth]
+      summary: Exchange the master password for a session cookie
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '204':
+          description: Login successful. Session and CSRF cookies set.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: Two cookies — `pkd_session` (HttpOnly, Secure, SameSite=Strict) and `pkd_csrf` (SameSite=Strict).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+
+  /api/logout:
+    post:
+      tags: [auth]
+      summary: Invalidate the current session
+      responses:
+        '204':
+          description: Session cleared.
+
+  # ────────────────────── DOCUMENTS & TREE ──────────────────────
+  /api/tree:
+    get:
+      tags: [documents]
+      summary: Fetch the full document tree (active documents only)
+      parameters:
+        - in: query
+          name: tag
+          description: Optional tag filter. Multiple `tag` params combine as AND.
+          required: false
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DocumentTreeNode' }
+
+  /api/documents:
+    post:
+      tags: [documents]
+      summary: Create a new document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DocumentCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /api/documents/{id}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      tags: [documents]
+      summary: Fetch a single document (active or trashed)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [documents]
+      summary: Save document edits (optimistic concurrency)
+      description: |
+        The request MUST include the `version` the editor loaded. If the stored version
+        is newer than the one provided, the save is rejected with **409 Conflict** and the
+        response body contains the server's current state so the client can present the
+        overwrite-or-reload dialog (FR-010a).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DocumentUpdate' }
+      responses:
+        '200':
+          description: Saved. New `version` is in the response.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: Version conflict — stored version is newer.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VersionConflict' }
+    delete:
+      tags: [documents]
+      summary: Move the document (and its subtree) to Trash
+      responses:
+        '204': { description: Moved to Trash }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/documents/{id}/move:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      summary: Move a document to a new parent
+      description: Rejected with 409 if the target parent is in the document's own subtree (circular move).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [parent_id, position]
+              properties:
+                parent_id:
+                  type: integer
+                  nullable: true
+                  description: null = move to root
+                position: { type: integer }
+      responses:
+        '200':
+          description: Moved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+        '409':
+          description: Circular move rejected.
+
+  /api/documents/{id}/restore:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [documents]
+      summary: Restore a trashed document to its original parent
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+
+  # ─────────────────────────── TAGS ───────────────────────────
+  /api/tags:
+    get:
+      tags: [tags]
+      summary: List all tags with usage counts
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TagWithCount' }
+
+  /api/documents/{id}/tags:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    put:
+      tags: [tags]
+      summary: Replace the set of tags on a document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tags]
+              properties:
+                tags:
+                  type: array
+                  items: { type: string }
+                  example: ["work", "ideas"]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+
+  # ─────────────────────────── SEARCH ───────────────────────────
+  /api/search:
+    get:
+      tags: [search]
+      summary: Universal substring search across title, body, and tags
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SearchHit' }
+
+  # ────────────────────────── CALENDAR ──────────────────────────
+  /api/calendar/{year}/{month}:
+    parameters:
+      - in: path
+        name: year
+        required: true
+        schema: { type: integer, minimum: 1970, maximum: 2999 }
+      - in: path
+        name: month
+        required: true
+        schema: { type: integer, minimum: 1, maximum: 12 }
+    get:
+      tags: [calendar]
+      summary: List documents created within the requested month
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  days:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items: { $ref: '#/components/schemas/DocumentSummary' }
+                    example:
+                      "2026-04-14":
+                        - { id: 42, title: "Meeting notes", icon: "lucide/book" }
+
+  # ──────────────────────── ATTACHMENTS ────────────────────────
+  /api/documents/{id}/attachments:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [attachments]
+      summary: Upload a file as an attachment to a document
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Uploaded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attachment' }
+        '413':
+          description: Payload too large (exceeds `PKD_MAX_ATTACHMENT_MB`)
+        '507':
+          description: Host attachments volume is unwritable or full
+
+  /api/attachments/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [attachments]
+      summary: Download an attachment
+      responses:
+        '200':
+          description: File stream
+          content:
+            application/octet-stream: {}
+    delete:
+      tags: [attachments]
+      summary: Remove an attachment from its document
+      responses:
+        '204': { description: Deleted }
+
+  # ────────────────────── SHARE LINKS (OWNER) ──────────────────────
+  /api/documents/{id}/shares:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      tags: [share]
+      summary: Generate a public share link
+      responses:
+        '201':
+          description: Link created. **The plaintext token is returned exactly once.**
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, revoke_id]
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                    example: https://pkd.example.lan/public/0UYW2rfW0BI1wZ...
+                  revoke_id:
+                    type: integer
+                    description: Internal DB id to use for revocation. Never the plaintext token.
+
+  /api/documents/{id}/shares/{share_id}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+      - in: path
+        name: share_id
+        required: true
+        schema: { type: integer, format: int64 }
+    delete:
+      tags: [share]
+      summary: Revoke a share link
+      responses:
+        '204': { description: Revoked }
+
+  # ───────────────────── PUBLIC SHARE VIEW ─────────────────────
+  /public/{token}:
+    parameters:
+      - in: path
+        name: token
+        required: true
+        schema: { type: string, minLength: 30, maxLength: 64 }
+    get:
+      tags: [public]
+      summary: Public read-only view of a shared document
+      security: []
+      description: |
+        Unauthenticated. Served with a stricter CSP (`script-src 'none'`) and the
+        `share-view` sanitizer policy. Attachments are NOT downloadable through this
+        endpoint (see assumption in spec: public view excludes attachments in v1).
+      responses:
+        '200':
+          description: Rendered HTML of the shared document
+          content:
+            text/html:
+              schema: { type: string }
+        '404':
+          description: Token unknown, revoked, or document trashed/deleted.
+
+  # ─────────────────────── ADMINISTRATION ───────────────────────
+  /api/admin/backup:
+    post:
+      tags: [admin]
+      summary: Produce a consistent backup of the database and stream it to the caller
+      responses:
+        '200':
+          description: SQLite backup file
+          content:
+            application/octet-stream: {}
+
+  /api/admin/restore:
+    post:
+      tags: [admin]
+      summary: Restore the database from an uploaded backup file (destructive)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, confirm]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                confirm:
+                  type: string
+                  enum: [REPLACE]
+                  description: Must equal the literal string `REPLACE` to authorize the destructive operation.
+      responses:
+        '204': { description: Restore committed; clients should reload }
+        '400': { description: File is not a valid SQLite database, or confirmation missing }
+
+  /api/admin/cleanup:
+    post:
+      tags: [admin]
+      summary: Remove orphaned attachment files and compact the database
+      responses:
+        '200':
+          description: Report of what was removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orphan_files_removed: { type: integer }
+                  bytes_reclaimed: { type: integer }
+
+  /api/admin/tags/rename:
+    post:
+      tags: [admin]
+      summary: Rename or merge a hashtag across all documents that use it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from, to]
+              properties:
+                from: { type: string, example: "draft" }
+                to:   { type: string, example: "wip" }
+      responses:
+        '200':
+          description: Rename/merge completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents_updated: { type: integer }
+                  merged:            { type: boolean }
+
+  /api/admin/trash:
+    get:
+      tags: [admin]
+      summary: List documents currently in Trash
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DocumentSummary' }
+
+  /api/admin/trash/empty:
+    post:
+      tags: [admin]
+      summary: Permanently delete every trashed document (and its attachments). Confirmed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm:
+                  type: string
+                  enum: [EMPTY]
+      responses:
+        '200':
+          description: Empty-trash report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents_purged: { type: integer }
+                  files_removed:    { type: integer }
+
+  /api/admin/trash/{id}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    delete:
+      tags: [admin]
+      summary: Permanently delete a single trashed document
+      responses:
+        '204': { description: Purged }
+
+  # ─────────────────────────── PWA ───────────────────────────
+  /manifest.webmanifest:
+    get:
+      tags: [public]
+      summary: PWA manifest
+      security: []
+      responses:
+        '200':
+          description: Web app manifest
+          content:
+            application/manifest+json: {}
+
+  /sw.js:
+    get:
+      tags: [public]
+      summary: Service worker script
+      security: []
+      responses:
+        '200':
+          description: Service worker source
+          content:
+            application/javascript: {}
+
+  /healthz:
+    get:
+      tags: [public]
+      summary: Liveness probe for Docker healthcheck
+      security: []
+      responses:
+        '200': { description: Alive }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: pkd_session
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+
+  security:
+    - sessionCookie: []
+      csrfHeader: []
+
+  parameters:
+    DocumentId:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer, format: int64 }
+
+  responses:
+    Unauthorized:
+      description: Not authenticated, session expired, or password incorrect.
+    TooManyAttempts:
+      description: |
+        Failed-authentication lockout in effect for this source IP. Per FR-002,
+        5 consecutive failures trigger a 30-minute lockout.
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds until the lockout expires.
+    NotFound:
+      description: Resource not found.
+    BadRequest:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, format: password }
+
+    Document:
+      type: object
+      required: [id, title, body_html, version, created_at, updated_at]
+      properties:
+        id:         { type: integer, format: int64 }
+        parent_id:  { type: integer, format: int64, nullable: true }
+        title:      { type: string, minLength: 1, maxLength: 500 }
+        body_html:  { type: string }
+        icon:       { type: string, nullable: true, example: "lucide/book" }
+        position:   { type: integer }
+        version:    { type: integer, description: "Optimistic-concurrency token. Send back on update." }
+        tags:
+          type: array
+          items: { type: string }
+        attachment_ids:
+          type: array
+          items: { type: integer, format: int64 }
+        trashed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    DocumentCreate:
+      type: object
+      required: [title]
+      properties:
+        parent_id: { type: integer, format: int64, nullable: true }
+        title:     { type: string, minLength: 1, maxLength: 500 }
+        icon:      { type: string, nullable: true }
+
+    DocumentUpdate:
+      type: object
+      required: [version]
+      properties:
+        title:     { type: string, minLength: 1, maxLength: 500 }
+        body_html: { type: string }
+        icon:      { type: string, nullable: true }
+        version:
+          type: integer
+          description: The version the editor loaded. Required for conflict detection.
+
+    DocumentSummary:
+      type: object
+      required: [id, title]
+      properties:
+        id:    { type: integer, format: int64 }
+        title: { type: string }
+        icon:  { type: string, nullable: true }
+
+    DocumentTreeNode:
+      allOf:
+        - $ref: '#/components/schemas/DocumentSummary'
+        - type: object
+          properties:
+            children:
+              type: array
+              items: { $ref: '#/components/schemas/DocumentTreeNode' }
+
+    VersionConflict:
+      type: object
+      required: [error, stored_version, stored]
+      properties:
+        error:           { type: string, example: "version_conflict" }
+        stored_version:  { type: integer }
+        stored:          { $ref: '#/components/schemas/Document' }
+
+    TagWithCount:
+      type: object
+      required: [name, count]
+      properties:
+        name:  { type: string }
+        count: { type: integer }
+
+    SearchHit:
+      type: object
+      required: [document_id, title, snippet, match_location]
+      properties:
+        document_id:    { type: integer, format: int64 }
+        title:          { type: string }
+        snippet:        { type: string, description: "Plain-text snippet around the match" }
+        match_location:
+          type: string
+          enum: [title, body, tag]
+
+    Attachment:
+      type: object
+      required: [id, document_id, original_filename, size_bytes, mime_type, created_at]
+      properties:
+        id:                 { type: integer, format: int64 }
+        document_id:        { type: integer, format: int64 }
+        original_filename:  { type: string }
+        size_bytes:         { type: integer, format: int64 }
+        mime_type:          { type: string }
+        created_at:         { type: string, format: date-time }
+
+security:
+  - sessionCookie: []
+    csrfHeader: []

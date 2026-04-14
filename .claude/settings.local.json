@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pwsh:*)",
+      "Bash(SPECIFY_FEATURE=001-personal-knowledge-db pwsh:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
