@@ -1,36 +1,51 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PKD</title>
   <link rel="stylesheet" href="/css/app.css">
   <link rel="manifest" href="/manifest.webmanifest">
+  <!--
+    CKEditor 5 carregado ESTATICAMENTE antes do app.js.
+    Script inline é bloqueado pelo CSP; arquivo externo é permitido por 'script-src self'.
+    Carregamento estático garante que window.ClassicEditor está definido
+    antes de qualquer código ES-module rodar.
+  -->
+  <script src="/vendor/ckeditor5/ckeditor.js"></script>
 </head>
 <body>
   <header id="topbar">
-    <button id="menu-toggle" aria-label="Toggle menu" class="icon-btn">☰</button>
-    <input id="search-input" type="search" placeholder="Search…" autocomplete="off">
-    <button id="theme-toggle" aria-label="Toggle theme" class="icon-btn">◐</button>
-    <button id="logout-btn" class="icon-btn" title="Lock">⏻</button>
+    <button id="menu-toggle" aria-label="Abrir menu" class="icon-btn" title="Menu">☰</button>
+    <input id="search-input" type="search" placeholder="Buscar…" autocomplete="off">
+    <button id="new-doc-btn" class="icon-btn" title="Novo documento raiz">＋</button>
+    <button id="theme-toggle" aria-label="Alternar tema" class="icon-btn" title="Tema">◐</button>
+    <button id="logout-btn" class="icon-btn" title="Sair">⏻</button>
   </header>
 
   <div id="app-layout">
     <aside id="sidebar">
-      <nav id="tree" aria-label="Document tree"></nav>
+      <nav id="tree" aria-label="Árvore de documentos"></nav>
     </aside>
 
     <main id="editor-pane">
       <div id="editor-container">
-        <input id="doc-title" type="text" placeholder="Title" autocomplete="off">
+        <div id="editor-toolbar-row">
+          <input id="doc-title" type="text" placeholder="Título do documento" autocomplete="off">
+          <button id="doc-icon-btn" class="icon-btn" title="Escolher ícone">📄</button>
+        </div>
+        <div id="editor-loading" class="hidden" style="padding:1rem;color:var(--text-muted);font-size:.875rem">
+          Carregando editor…
+        </div>
+        <div id="editor-error" class="hidden" style="padding:1rem;color:var(--danger);font-size:.875rem"></div>
         <div id="editor"></div>
         <div id="conflict-dialog" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
           <div class="modal-content">
-            <h2 id="conflict-title">Document Changed</h2>
-            <p>Someone else saved this document while you were editing. What would you like to do?</p>
+            <h2 id="conflict-title">Documento alterado</h2>
+            <p>Este documento foi salvo por outra aba enquanto você editava. O que deseja fazer?</p>
             <div class="modal-actions">
-              <button id="conflict-overwrite">Overwrite with my version</button>
-              <button id="conflict-reload">Discard my changes and reload</button>
+              <button id="conflict-overwrite">Sobrescrever com minha versão</button>
+              <button id="conflict-reload">Descartar e recarregar</button>
             </div>
           </div>
         </div>
@@ -39,6 +54,7 @@
     </main>
   </div>
 
+  <!-- app.js como módulo ES — permitido pelo CSP ('script-src self') -->
   <script src="/js/app.js" type="module"></script>
 </body>
 </html>

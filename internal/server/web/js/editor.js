@@ -1,114 +1,120 @@
 /**
  * editor.js — PKD rich document editor (CKEditor 5)
  *
- * Features:
- * - Loads ClassicEditor from /vendor/ckeditor5/ckeditor.js
- * - Auto-save with 2-second idle debounce
- * - Optimistic-concurrency save: sends current version, handles 409
- * - Conflict dialog with overwrite / reload choices (FR-010a)
- * - Inline image upload via SimpleUploadAdapter → POST /api/documents/{id}/attachments
- * - Offline detection: disables editor + shows banner (clarification Q1)
+ * Requer que window.ClassicEditor já esteja definido (carregado estaticamente
+ * via <script src="/vendor/ckeditor5/ckeditor.js"> no index.html).
  */
 
 import { apiFetch } from './app.js';
 
-// Available icon keys (must match internal/security/icons.go whitelist)
-const ICONS = ['document','folder','star','bookmark','tag','image','link','code','book','idea','note','calendar','task','archive','heart','flag'];
-let currentIcon = '';
+const ICONS = ['document','folder','star','bookmark','tag','image','link',
+               'code','book','idea','note','calendar','task','archive','heart','flag'];
 
-let editor = null;
-let currentDocId = null;
+let editor        = null;
+let currentDocId  = null;
 let currentVersion = null;
-let saveTimer = null;
-let offline = false;
+let currentIcon   = '';
+let saveTimer     = null;
+let offline       = false;
 
-/* ── Init ────────────────────────────────────────────────── */
+/* ── Init ─────────────────────────────────────────────────── */
 export function initEditor() {
   document.addEventListener('pkd:offline', () => {
     offline = true;
-    if (editor) {
-      editor.enableReadOnlyMode('offline');
-      const banner = document.getElementById('offline-banner');
-      if (banner) banner.classList.remove('hidden');
-    }
+    if (editor) editor.enableReadOnlyMode('offline');
+    document.getElementById('offline-banner')?.classList.remove('hidden');
   });
 
-  // Conflict dialog buttons
   document.getElementById('conflict-overwrite')?.addEventListener('click', forceOverwrite);
   document.getElementById('conflict-reload')?.addEventListener('click', reloadStored);
+  document.getElementById('doc-icon-btn')?.addEventListener('click', openIconPicker);
 
   document.addEventListener('pkd:docDeselected', () => {
     currentDocId = null;
     currentVersion = null;
     if (editor) editor.setData('');
-    const titleEl = document.getElementById('doc-title');
-    if (titleEl) titleEl.value = '';
+    const t = document.getElementById('doc-title');
+    if (t) t.value = '';
   });
 }
 
-/* ── Open a document ─────────────────────────────────────── */
+/* ── Abrir documento ──────────────────────────────────────── */
 export async function openDocument(id) {
   clearSaveTimer();
   const res = await apiFetch(`/api/documents/${id}`);
   if (!res.ok) return;
   const doc = await res.json();
 
-  currentDocId = doc.id;
+  currentDocId  = doc.id;
   currentVersion = doc.version;
-  currentIcon = doc.icon || '';
+  currentIcon   = doc.icon || '';
 
   const titleEl = document.getElementById('doc-title');
   if (titleEl) {
     titleEl.value = doc.title;
     titleEl.onchange = () => scheduleSave();
+    titleEl.oninput  = () => scheduleSave();
   }
+
+  const iconBtn = document.getElementById('doc-icon-btn');
+  if (iconBtn) iconBtn.textContent = currentIcon || '📄';
 
   await mountEditor(doc.body_html);
 }
 
-/* ── CKEditor mount ──────────────────────────────────────── */
+/* ── Montar CKEditor ─────────────────────────────────────── */
 async function mountEditor(initialData) {
-  const container = document.getElementById('editor');
+  const container   = document.getElementById('editor');
+  const loadingEl   = document.getElementById('editor-loading');
+  const errorEl     = document.getElementById('editor-error');
+
   if (!container) return;
 
+  // Limpar estado anterior
   if (editor) {
-    editor.destroy();
+    try { await editor.destroy(); } catch (_) {}
     editor = null;
   }
+  if (errorEl) { errorEl.textContent = ''; errorEl.classList.add('hidden'); }
 
-  // ClassicEditor is loaded as a global by the vendor bundle
-  const CKEditor = window.ClassicEditor;
-  if (!CKEditor) {
-    // Lazy-load the vendor script on first use
-    await loadScript('/vendor/ckeditor5/ckeditor.js');
+  // Verificar se CKEditor está disponível (deve ter sido carregado estaticamente)
+  if (typeof window.ClassicEditor === 'undefined') {
+    showEditorError('CKEditor não está disponível. Recarregue a página.');
+    return;
   }
 
-  editor = await window.ClassicEditor.create(container, {
-    initialData: initialData || '',
-    simpleUpload: {
-      uploadUrl: () => `/api/documents/${currentDocId}/attachments`,
-      withCredentials: true,
-      headers: { 'X-CSRF-Token': getCsrfToken() },
-    },
-  });
+  if (loadingEl) loadingEl.classList.remove('hidden');
 
-  editor.model.document.on('change:data', () => {
-    if (!offline) scheduleSave();
-  });
+  try {
+    editor = await window.ClassicEditor.create(container, {
+      initialData: initialData || '',
+      simpleUpload: {
+        // uploadUrl como string — avaliada no momento da montagem (currentDocId já definido)
+        uploadUrl: `/api/documents/${currentDocId}/attachments`,
+        withCredentials: true,
+        headers: { 'X-CSRF-Token': getCsrfToken() },
+      },
+      // Desabilitar plugins que causam problemas sem configuração adicional
+      removePlugins: ['MediaEmbed'],
+    });
 
-  if (offline) {
-    editor.enableReadOnlyMode('offline');
+    editor.model.document.on('change:data', () => {
+      if (!offline) scheduleSave();
+    });
+
+    if (offline) editor.enableReadOnlyMode('offline');
+
+  } catch (err) {
+    console.error('CKEditor mount error:', err);
+    showEditorError(`Erro ao carregar editor: ${err.message}`);
+  } finally {
+    if (loadingEl) loadingEl.classList.add('hidden');
   }
 }
 
-async function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = src;
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
+function showEditorError(msg) {
+  const el = document.getElementById('editor-error');
+  if (el) { el.textContent = msg; el.classList.remove('hidden'); }
 }
 
 /* ── Auto-save ───────────────────────────────────────────── */
@@ -122,12 +128,11 @@ function clearSaveTimer() {
 }
 
 async function save(forceVersion = null) {
-  if (!currentDocId || offline) return;
+  if (!currentDocId || offline || !editor) return;
   const titleEl = document.getElementById('doc-title');
-  const title = titleEl?.value.trim() || 'Untitled';
-  const bodyHTML = editor?.getData() || '';
-  // body_text is derived server-side via sanitizer
-  const version = forceVersion ?? currentVersion;
+  const title   = titleEl?.value.trim() || 'Sem título';
+  const bodyHTML = editor.getData() || '';
+  const version  = forceVersion ?? currentVersion;
 
   const res = await apiFetch(`/api/documents/${currentDocId}`, {
     method: 'PUT',
@@ -146,7 +151,7 @@ async function save(forceVersion = null) {
   }
 }
 
-/* ── Conflict dialog ─────────────────────────────────────── */
+/* ── Diálogo de conflito ─────────────────────────────────── */
 let pendingConflict = null;
 
 function showConflictDialog(conflict) {
@@ -178,10 +183,10 @@ async function reloadStored() {
 /* ── Helpers ─────────────────────────────────────────────── */
 function getCsrfToken() {
   const m = document.cookie.split(';').find(c => c.trim().startsWith('pkd_csrf='));
-  return m ? m.split('=')[1].trim() : '';
+  return m ? m.slice(m.indexOf('=') + 1).trim() : '';
 }
 
-/* ── Icon picker (T101) ──────────────────────────────────────────────────── */
+/* ── Seletor de ícone ────────────────────────────────────── */
 export function openIconPicker() {
   document.getElementById('icon-picker-modal')?.remove();
   const modal = document.createElement('div');
@@ -191,18 +196,17 @@ export function openIconPicker() {
   const card = document.createElement('div');
   card.style.cssText = 'background:var(--bg-card);border-radius:8px;padding:1rem;width:min(360px,90vw);box-shadow:0 8px 32px rgba(0,0,0,.2)';
 
-  const title = document.createElement('div');
-  title.textContent = 'Choose Icon';
-  title.style.cssText = 'font-weight:600;margin-bottom:.75rem;font-size:.875rem';
-  card.appendChild(title);
+  const heading = document.createElement('div');
+  heading.textContent = 'Escolher ícone';
+  heading.style.cssText = 'font-weight:600;margin-bottom:.75rem;font-size:.875rem;color:var(--text)';
+  card.appendChild(heading);
 
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem';
 
-  // "None" option
   const none = document.createElement('button');
   none.textContent = '✕';
-  none.title = 'No icon';
+  none.title = 'Sem ícone';
   none.style.cssText = 'padding:.5rem;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg);color:var(--text)';
   none.onclick = () => { selectIcon(''); modal.remove(); };
   grid.appendChild(none);
@@ -210,9 +214,8 @@ export function openIconPicker() {
   for (const key of ICONS) {
     const btn = document.createElement('button');
     btn.title = key;
-    btn.style.cssText = 'padding:.5rem;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:' + (currentIcon === key ? 'var(--bg-active)' : 'var(--bg)') + ';color:var(--text);font-size:.75rem';
-    btn.textContent = key.charAt(0).toUpperCase();
-    // Load the actual SVG icon
+    btn.style.cssText = `padding:.5rem;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:${currentIcon === key ? 'var(--bg-active)' : 'var(--bg)'};color:var(--text);font-size:.75rem`;
+    btn.textContent = key.slice(0, 2);
     fetch('/icons/' + key + '.svg').then(r => r.text()).then(svg => { btn.innerHTML = svg; });
     btn.onclick = () => { selectIcon(key); modal.remove(); };
     grid.appendChild(btn);

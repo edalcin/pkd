@@ -97,6 +97,20 @@ body {
   overflow-y: auto;
 }
 
+/* Linha título + botão de ícone */
+#editor-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .75rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: .75rem;
+}
+#editor-toolbar-row #doc-icon-btn {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
 /* ── Topbar controls ─────────────────────────────────────── */
 .icon-btn {
   background: none;
@@ -158,7 +172,7 @@ body {
 
 /* ── Editor ──────────────────────────────────────────────── */
 #doc-title {
-  width: 100%;
+  flex: 1;
   font-size: 1.5rem;
   font-weight: 600;
   border: none;
@@ -170,10 +184,25 @@ body {
   outline: none;
 }
 
+/* Área editável do CKEditor — garantir contraste em dark mode */
 .ck-editor__editable {
   min-height: 400px;
   background: var(--bg) !important;
   color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-top: none !important;
+}
+
+/* Toolbar do CKEditor — fundo claro mesmo em dark mode para manter ícones visíveis */
+.ck.ck-toolbar {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+}
+.ck.ck-toolbar .ck-button {
+  color: var(--text) !important;
+}
+.ck.ck-toolbar .ck-button:hover {
+  background: var(--bg-hover) !important;
 }
 
 /* ── Modal (conflict dialog) ─────────────────────────────── */
