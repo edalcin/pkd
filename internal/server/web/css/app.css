@@ -184,26 +184,84 @@ body {
   outline: none;
 }
 
-/* Área editável do CKEditor — garantir contraste em dark mode */
-.ck-editor__editable {
-  min-height: 400px;
-  background: var(--bg) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-  border-top: none !important;
+/* ── TipTap — toolbar ────────────────────────────────────── */
+#tiptap-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+  padding: .375rem .5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px 6px 0 0;
+}
+.toolbar-btn {
+  padding: .25rem .5rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: .8125rem;
+  line-height: 1.4;
+  min-width: 26px;
+  text-align: center;
+}
+.toolbar-btn:hover { background: var(--bg-hover); border-color: var(--border); }
+.toolbar-btn.is-active { background: var(--bg-active); color: var(--accent); }
+.toolbar-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 .125rem;
+  flex-shrink: 0;
 }
 
-/* Toolbar do CKEditor — fundo claro mesmo em dark mode para manter ícones visíveis */
-.ck.ck-toolbar {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
+/* ── TipTap — área editável ──────────────────────────────── */
+.ProseMirror {
+  min-height: 400px;
+  padding: 1rem;
+  outline: none;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
 }
-.ck.ck-toolbar .ck-button {
-  color: var(--text) !important;
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }
-.ck.ck-toolbar .ck-button:hover {
-  background: var(--bg-hover) !important;
+.ProseMirror > * + * { margin-top: .75em; }
+.ProseMirror ul, .ProseMirror ol { padding-left: 1.5rem; }
+.ProseMirror pre {
+  background: var(--bg-hover);
+  border-radius: 4px;
+  padding: .75rem 1rem;
+  font-family: monospace;
 }
+.ProseMirror blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1rem;
+  color: var(--text-muted);
+}
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+.ProseMirror table td, .ProseMirror table th {
+  border: 1px solid var(--border);
+  padding: .5rem .75rem;
+  min-width: 60px;
+}
+.ProseMirror table th { background: var(--bg-hover); font-weight: 600; }
+.ProseMirror img { max-width: 100%; height: auto; border-radius: 4px; display: block; }
+.ProseMirror a { color: var(--accent); text-decoration: underline; }
 
 /* ── Modal (conflict dialog) ─────────────────────────────── */
 .modal {

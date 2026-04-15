@@ -3,8 +3,8 @@
 //   App shell assets → cache-first with network fallback (pre-cached on install)
 //   GET /api/documents/:id → stale-while-revalidate (LRU of last 100)
 //   Mutating requests (POST/PUT/DELETE/PATCH) → network-first; offline → 503 + x-pkd-offline header
-const SHELL_CACHE = 'pkd-shell-v3';
-const DOC_CACHE   = 'pkd-docs-v3';
+const SHELL_CACHE = 'pkd-shell-v4';
+const DOC_CACHE   = 'pkd-docs-v4';
 const DOC_MAX     = 100;
 
 const SHELL_ASSETS = [
@@ -19,7 +19,7 @@ const SHELL_ASSETS = [
   '/js/calendar.js',
   '/js/admin.js',
   '/js/share-view.js',
-  '/vendor/ckeditor5/ckeditor.js',
+  '/vendor/tiptap/tiptap.min.js',
   '/manifest.webmanifest',
 ];
 

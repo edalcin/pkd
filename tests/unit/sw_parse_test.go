@@ -22,7 +22,7 @@ func TestServiceWorker_ReferencesAppShellAssets(t *testing.T) {
 		"/js/tree.js",
 		"/js/editor.js",
 		"/js/search.js",
-		"/vendor/ckeditor5/ckeditor.js",
+		"/vendor/tiptap/tiptap.min.js",
 		"/manifest.webmanifest",
 		"x-pkd-offline",
 		"read-only",
