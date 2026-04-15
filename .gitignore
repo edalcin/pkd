@@ -31,5 +31,6 @@ coverage.html
 .DS_Store
 Thumbs.db
 
-# Go vendor (we use go mod, not vendor)
-vendor/
+# Go vendor (we use go mod, not vendor) — âncora em /vendor/ para NÃO
+# ignorar internal/server/web/vendor/ que contém o bundle do CKEditor
+/vendor/
