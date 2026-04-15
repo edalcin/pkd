@@ -73,6 +73,11 @@ Clique em **Add another Path, Port, Variable, Label or Device** → **Path**.
 | Host Path | `/mnt/user/appdata/pkd/db` |
 | Access Mode | `Read/Write` |
 
+> ⚠️ **O caminho do host deve começar com `/`** (barra inicial obrigatória).  
+> Exemplo correto: `/mnt/user/appdata/pkd/db`  
+> Exemplo errado: `mnt/user/appdata/pkd/db`  
+> Sem a barra inicial, o Docker interpreta o valor como nome de volume interno e falha com erro de caracteres inválidos.
+
 ---
 
 ## Passo 6 — Adicionar volume de anexos
@@ -200,6 +205,7 @@ Os dados ficam em dois lugares fora do container:
 | Página de login abre mas o login falha | Senha incorreta ou com espaços extras | Verifique o valor da variável `PKD_PASSWORD`; sem espaços antes ou depois |
 | Erro 502 vindo do SWAG | Porta errada na configuração do SWAG | Certifique-se de que o SWAG aponta para `pkd:8080`, não `localhost:8080` |
 | Imagem não carrega no editor | Arquivo muito grande | Verifique o valor de `PKD_MAX_IMAGE_MB` (padrão: 10 MB) |
+| `invalid characters for a local volume name` | Caminho do host sem `/` inicial | O campo **Host Path** deve começar com `/`, ex: `/mnt/user/appdata/pkd/db` |
 
 ---
 
