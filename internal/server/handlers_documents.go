@@ -76,6 +76,11 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 			return
 		}
 
+		// Validate icon key against whitelist (T100)
+		if !security.ValidateIcon(req.Icon) {
+			http.Error(w, "invalid icon", http.StatusBadRequest)
+			return
+		}
 		// Sanitize HTML before storing (FR-042 — XSS prevention)
 		safeHTML := security.SanitizeEditorHTML(req.BodyHTML)
 		// Derive plain text for FTS5 indexing from the sanitized HTML

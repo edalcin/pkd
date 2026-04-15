@@ -12,6 +12,10 @@
 
 import { apiFetch } from './app.js';
 
+// Available icon keys (must match internal/security/icons.go whitelist)
+const ICONS = ['document','folder','star','bookmark','tag','image','link','code','book','idea','note','calendar','task','archive','heart','flag'];
+let currentIcon = '';
+
 let editor = null;
 let currentDocId = null;
 let currentVersion = null;
@@ -51,6 +55,7 @@ export async function openDocument(id) {
 
   currentDocId = doc.id;
   currentVersion = doc.version;
+  currentIcon = doc.icon || '';
 
   const titleEl = document.getElementById('doc-title');
   if (titleEl) {
@@ -126,7 +131,7 @@ async function save(forceVersion = null) {
 
   const res = await apiFetch(`/api/documents/${currentDocId}`, {
     method: 'PUT',
-    body: JSON.stringify({ version, title, body_html: bodyHTML, body_text: '', icon: '' }),
+    body: JSON.stringify({ version, title, body_html: bodyHTML, body_text: '', icon: currentIcon }),
   });
 
   if (res.ok) {
@@ -174,4 +179,54 @@ async function reloadStored() {
 function getCsrfToken() {
   const m = document.cookie.split(';').find(c => c.trim().startsWith('pkd_csrf='));
   return m ? m.split('=')[1].trim() : '';
+}
+
+/* ── Icon picker (T101) ──────────────────────────────────────────────────── */
+export function openIconPicker() {
+  document.getElementById('icon-picker-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'icon-picker-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:300';
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:var(--bg-card);border-radius:8px;padding:1rem;width:min(360px,90vw);box-shadow:0 8px 32px rgba(0,0,0,.2)';
+
+  const title = document.createElement('div');
+  title.textContent = 'Choose Icon';
+  title.style.cssText = 'font-weight:600;margin-bottom:.75rem;font-size:.875rem';
+  card.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem';
+
+  // "None" option
+  const none = document.createElement('button');
+  none.textContent = '✕';
+  none.title = 'No icon';
+  none.style.cssText = 'padding:.5rem;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg);color:var(--text)';
+  none.onclick = () => { selectIcon(''); modal.remove(); };
+  grid.appendChild(none);
+
+  for (const key of ICONS) {
+    const btn = document.createElement('button');
+    btn.title = key;
+    btn.style.cssText = 'padding:.5rem;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:' + (currentIcon === key ? 'var(--bg-active)' : 'var(--bg)') + ';color:var(--text);font-size:.75rem';
+    btn.textContent = key.charAt(0).toUpperCase();
+    // Load the actual SVG icon
+    fetch('/icons/' + key + '.svg').then(r => r.text()).then(svg => { btn.innerHTML = svg; });
+    btn.onclick = () => { selectIcon(key); modal.remove(); };
+    grid.appendChild(btn);
+  }
+
+  card.appendChild(grid);
+  modal.appendChild(card);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+function selectIcon(key) {
+  currentIcon = key;
+  const iconBtn = document.getElementById('doc-icon-btn');
+  if (iconBtn) iconBtn.textContent = key || '📄';
+  scheduleSave();
 }
