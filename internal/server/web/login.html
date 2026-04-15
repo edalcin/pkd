@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PKD — Unlock</title>
+  <title>PKD — Entrar</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -43,47 +43,27 @@
       cursor: pointer;
     }
     button[type=submit]:hover { background: #4338ca; }
-    #error-msg { color: #dc2626; font-size: .875rem; margin-top: .75rem; text-align: center; }
+    #error-msg { color: #dc2626; font-size: .875rem; margin-top: .75rem; text-align: center; min-height: 1.25rem; }
   </style>
 </head>
 <body>
   <div class="login-card">
     <h1>🔒 PKD</h1>
-    <form id="login-form">
-      <label for="password">Master password</label>
-      <input id="password" type="password" name="password" autofocus autocomplete="current-password" required>
-      <button type="submit">Unlock</button>
-      <p id="error-msg" aria-live="polite"></p>
+    <!--
+      method="post" garante que, mesmo se o JS falhar, a senha não apareça
+      na URL (GET exporia a senha no histórico do browser e em logs de servidor).
+      O script login.js intercepta o submit via fetch (JSON + CSRF token).
+    -->
+    <form id="login-form" method="post" action="/api/login">
+      <label for="password">Senha mestra</label>
+      <input id="password" type="password" name="password"
+             autofocus autocomplete="current-password" required>
+      <button type="submit">Entrar</button>
+      <p id="error-msg" role="alert" aria-live="polite"></p>
     </form>
   </div>
-  <script>
-    const form = document.getElementById('login-form');
-    const errMsg = document.getElementById('error-msg');
-    const csrfCookie = document.cookie.split(';')
-      .map(c => c.trim())
-      .find(c => c.startsWith('pkd_csrf='));
-    const csrfToken = csrfCookie ? csrfCookie.split('=')[1] : '';
-
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-      errMsg.textContent = '';
-      const password = document.getElementById('password').value;
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken,
-        },
-        body: JSON.stringify({ password }),
-      });
-      if (res.ok) {
-        window.location.replace('/');
-      } else if (res.status === 429) {
-        errMsg.textContent = 'Too many failed attempts. Please wait 30 minutes.';
-      } else {
-        errMsg.textContent = 'Incorrect password.';
-      }
-    });
-  </script>
+  <!-- Arquivo externo — permitido pelo CSP (script-src 'self').
+       Scripts inline são bloqueados pelo CSP sem 'unsafe-inline'. -->
+  <script src="/js/login.js"></script>
 </body>
 </html>
