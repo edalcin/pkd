@@ -1,6 +1,6 @@
-# Build output
-pkd
-pkd.exe
+# Build output — anchored to repo root so cmd/pkd/ is not ignored
+/pkd
+/pkd.exe
 *.out
 
 # Test artifacts

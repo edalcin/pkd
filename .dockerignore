@@ -9,9 +9,9 @@ specs/
 .specify/
 .claude/
 
-# Build artifacts
-pkd
-pkd.exe
+# Build artifacts — anchored to repo root so cmd/pkd/ is not excluded
+/pkd
+/pkd.exe
 *.out
 *.test
 
