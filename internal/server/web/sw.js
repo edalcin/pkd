@@ -3,8 +3,8 @@
 //   App shell assets → cache-first with network fallback (pre-cached on install)
 //   GET /api/documents/:id → stale-while-revalidate (LRU of last 100)
 //   Mutating requests (POST/PUT/DELETE/PATCH) → network-first; offline → 503 + x-pkd-offline header
-const SHELL_CACHE = 'pkd-shell-v1';
-const DOC_CACHE   = 'pkd-docs-v1';
+const SHELL_CACHE = 'pkd-shell-v3';
+const DOC_CACHE   = 'pkd-docs-v3';
 const DOC_MAX     = 100;
 
 const SHELL_ASSETS = [
