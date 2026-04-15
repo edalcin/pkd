@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PKD</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+  <header id="topbar">
+    <button id="menu-toggle" aria-label="Toggle menu" class="icon-btn">☰</button>
+    <input id="search-input" type="search" placeholder="Search…" autocomplete="off">
+    <button id="theme-toggle" aria-label="Toggle theme" class="icon-btn">◐</button>
+    <button id="logout-btn" class="icon-btn" title="Lock">⏻</button>
+  </header>
+
+  <div id="app-layout">
+    <aside id="sidebar">
+      <nav id="tree" aria-label="Document tree"></nav>
+    </aside>
+
+    <main id="editor-pane">
+      <div id="editor-container">
+        <input id="doc-title" type="text" placeholder="Title" autocomplete="off">
+        <div id="editor"></div>
+        <div id="conflict-dialog" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
+          <div class="modal-content">
+            <h2 id="conflict-title">Document Changed</h2>
+            <p>Someone else saved this document while you were editing. What would you like to do?</p>
+            <div class="modal-actions">
+              <button id="conflict-overwrite">Overwrite with my version</button>
+              <button id="conflict-reload">Discard my changes and reload</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="attachments-pane" class="hidden"></div>
+    </main>
+  </div>
+
+  <script src="/js/app.js" type="module"></script>
+</body>
+</html>

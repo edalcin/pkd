@@ -1,0 +1,35 @@
+# Source control
+.git/
+.github/
+
+# Tests and docs (not needed in the image)
+tests/
+docs/
+specs/
+.specify/
+.claude/
+
+# Build artifacts
+pkd
+pkd.exe
+*.out
+*.test
+
+# Data / secrets
+/data/
+.env
+.env.*
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Ignore files
+.gitignore
+.dockerignore
+.editorconfig

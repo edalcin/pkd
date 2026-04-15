@@ -34,14 +34,14 @@ Paths below are all relative to the repository root (`D:\git\pkd\`). Structure p
 
 **Purpose**: Bootstrap the Go module, dependency set, and repository hygiene files so every subsequent task has a consistent scaffold.
 
-- [ ] T001 Create the directory skeleton listed in `plan.md` (`cmd/pkd/`, `internal/{config,server,store,model,security,sessions}/`, `web/{css,js,icons,vendor/ckeditor5}/`, `tests/{unit,integration,contract}/`, `docs/`, `.github/workflows/`) with empty `.gitkeep` placeholders so the tree is committable
-- [ ] T002 Initialize the Go module in `go.mod` with `module github.com/edalcin/pkd` and `go 1.23`; run `go mod tidy` after the first dependency is added
-- [ ] T003 [P] Add runtime dependencies to `go.mod`: `github.com/go-chi/chi/v5`, `modernc.org/sqlite`, `github.com/microcosm-cc/bluemonday`, `golang.org/x/crypto` (for `argon2` + `subtle`)
-- [ ] T004 [P] Create `.gitignore` covering `pkd`, `pkd.exe`, `/data/`, `/tmp/`, `*.sqlite`, `*.sqlite-wal`, `*.sqlite-shm`, `.env`, and the IDE folders (`.vscode/`, `.idea/`)
-- [ ] T005 [P] Create `.dockerignore` that mirrors `.gitignore` plus `tests/`, `docs/`, `specs/`, `.git/`, `.github/`
-- [ ] T006 [P] Create `.editorconfig` with Go tab indentation (tabs, width 4), LF line endings, UTF-8, trim trailing whitespace
-- [ ] T007 [P] Create `LICENSE` (MIT — the public-share feature implies permissive reuse) and a minimal `README.md` that points at `specs/001-personal-knowledge-db/quickstart.md`
-- [ ] T008 Vendor the CKEditor 5 custom build into `web/vendor/ckeditor5/` per `research.md §4` (plugins: Image, ImageResize, ImageUpload, Table, Link, List, CodeBlock, Heading, PasteFromOffice); commit the pre-built bundle so no Node.js is needed at Docker build time
+- [X] T001 Create the directory skeleton listed in `plan.md` (`cmd/pkd/`, `internal/{config,server,store,model,security,sessions}/`, `web/{css,js,icons,vendor/ckeditor5}/`, `tests/{unit,integration,contract}/`, `docs/`, `.github/workflows/`) with empty `.gitkeep` placeholders so the tree is committable
+- [X] T002 Initialize the Go module in `go.mod` with `module github.com/edalcin/pkd` and `go 1.23`; run `go mod tidy` after the first dependency is added
+- [X] T003 [P] Add runtime dependencies to `go.mod`: `github.com/go-chi/chi/v5`, `modernc.org/sqlite`, `github.com/microcosm-cc/bluemonday`, `golang.org/x/crypto` (for `argon2` + `subtle`)
+- [X] T004 [P] Create `.gitignore` covering `pkd`, `pkd.exe`, `/data/`, `/tmp/`, `*.sqlite`, `*.sqlite-wal`, `*.sqlite-shm`, `.env`, and the IDE folders (`.vscode/`, `.idea/`)
+- [X] T005 [P] Create `.dockerignore` that mirrors `.gitignore` plus `tests/`, `docs/`, `specs/`, `.git/`, `.github/`
+- [X] T006 [P] Create `.editorconfig` with Go tab indentation (tabs, width 4), LF line endings, UTF-8, trim trailing whitespace
+- [X] T007 [P] Create `LICENSE` (MIT — the public-share feature implies permissive reuse) and a minimal `README.md` that points at `specs/001-personal-knowledge-db/quickstart.md`
+- [X] T008 Vendor the CKEditor 5 custom build into `web/vendor/ckeditor5/` per `research.md §4` (plugins: Image, ImageResize, ImageUpload, Table, Link, List, CodeBlock, Heading, PasteFromOffice); commit the pre-built bundle so no Node.js is needed at Docker build time
 
 **Checkpoint**: `go build ./...` succeeds on an empty module; repository layout matches `plan.md`.
 
@@ -55,27 +55,27 @@ Paths below are all relative to the repository root (`D:\git\pkd\`). Structure p
 
 ### Configuration & entry point
 
-- [ ] T009 Implement `internal/config/config.go` with a `Load()` function that reads `PKD_PASSWORD` (required, error on empty), `PKD_DB_PATH` (required), `PKD_ATTACHMENTS_PATH` (required), `PKD_LISTEN_ADDR` (default `:8080`), `PKD_SESSION_IDLE_MINUTES` (default `60`), `PKD_MAX_IMAGE_MB` (default `10`), `PKD_MAX_ATTACHMENT_MB` (default `100`), `PKD_TRUST_PROXY_HEADERS` (default `0`), returning a typed `Config` struct; fail loudly with non-zero exit if any required var is missing
-- [ ] T010 Implement `cmd/pkd/main.go` with the boot sequence: load config → open DB → run migrations → build server → `ListenAndServe` with graceful shutdown on `SIGINT`/`SIGTERM`; also implement the `-healthcheck` flag (used by the Dockerfile `HEALTHCHECK`) which opens the DB read-only, verifies `SELECT 1`, and exits 0/1
+- [X] T009 Implement `internal/config/config.go` with a `Load()` function that reads `PKD_PASSWORD` (required, error on empty), `PKD_DB_PATH` (required), `PKD_ATTACHMENTS_PATH` (required), `PKD_LISTEN_ADDR` (default `:8080`), `PKD_SESSION_IDLE_MINUTES` (default `60`), `PKD_MAX_IMAGE_MB` (default `10`), `PKD_MAX_ATTACHMENT_MB` (default `100`), `PKD_TRUST_PROXY_HEADERS` (default `0`), returning a typed `Config` struct; fail loudly with non-zero exit if any required var is missing
+- [X] T010 Implement `cmd/pkd/main.go` with the boot sequence: load config → open DB → run migrations → build server → `ListenAndServe` with graceful shutdown on `SIGINT`/`SIGTERM`; also implement the `-healthcheck` flag (used by the Dockerfile `HEALTHCHECK`) which opens the DB read-only, verifies `SELECT 1`, and exits 0/1
 
 ### Storage layer — base
 
-- [ ] T011 Create `internal/store/schema.sql` with the full DDL from `data-model.md`: `documents`, `documents_fts` (FTS5, contentless, unicode61 remove_diacritics=2), `tags`, `document_tags`, `attachments`, `share_links`, plus indexes on `documents(parent_id)`, `documents(trashed_at)`, `documents(updated_at)`, `attachments(document_id)`, `share_links(document_id)`, `share_links(token_hash)`
-- [ ] T012 Implement `internal/store/migrate.go` with `//go:embed schema.sql` and an `Open(dbPath string)` function that opens via `modernc.org/sqlite`, sets `PRAGMA foreign_keys=ON`, `PRAGMA journal_mode=WAL`, `PRAGMA synchronous=NORMAL`, `PRAGMA busy_timeout=5000`, then applies `schema.sql` inside a transaction (idempotent via `CREATE TABLE IF NOT EXISTS`)
-- [ ] T013 [P] Implement `internal/store/tx.go` with a `WithTx(db *sql.DB, fn func(*sql.Tx) error) error` helper that begins, commits on nil, rolls back on error — used by every write path
+- [X] T011 Create `internal/store/schema.sql` with the full DDL from `data-model.md`: `documents`, `documents_fts` (FTS5, contentless, unicode61 remove_diacritics=2), `tags`, `document_tags`, `attachments`, `share_links`, plus indexes on `documents(parent_id)`, `documents(trashed_at)`, `documents(updated_at)`, `attachments(document_id)`, `share_links(document_id)`, `share_links(token_hash)`
+- [X] T012 Implement `internal/store/migrate.go` with `//go:embed schema.sql` and an `Open(dbPath string)` function that opens via `modernc.org/sqlite`, sets `PRAGMA foreign_keys=ON`, `PRAGMA journal_mode=WAL`, `PRAGMA synchronous=NORMAL`, `PRAGMA busy_timeout=5000`, then applies `schema.sql` inside a transaction (idempotent via `CREATE TABLE IF NOT EXISTS`)
+- [X] T013 [P] Implement `internal/store/tx.go` with a `WithTx(db *sql.DB, fn func(*sql.Tx) error) error` helper that begins, commits on nil, rolls back on error — used by every write path
 
 ### HTTP server — base
 
-- [ ] T014 Implement `internal/server/server.go` which takes `*Config`, `*sql.DB`, and a `*sessions.Store`, builds a `chi.Mux`, wires the middleware chain (request ID → real IP → recovery → security headers → CSRF → auth → handlers), and exposes `Handler() http.Handler` + `Close()` for graceful shutdown
-- [ ] T015 [P] Implement `internal/server/middleware_security.go` with middleware that sets `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy: interest-cohort=()`, and two distinct CSPs: authenticated (`script-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'`) vs public share (`script-src 'none'; img-src 'self' data:; style-src 'self'; frame-ancestors 'none'`) — selected per route group
-- [ ] T016 [P] Implement `internal/server/middleware_csrf.go` with the double-submit cookie pattern: on GET, if no `pkd_csrf` cookie exists, set one with a 32-byte base64url random value; on mutating methods (POST/PUT/DELETE/PATCH), reject if `X-CSRF-Token` header doesn't match the cookie, returning 403
-- [ ] T017 [P] Implement `internal/security/csrf.go` with helpers `NewToken() string` (32 random bytes base64url) and `ConstantTimeEqual(a, b string) bool` wrapping `crypto/subtle.ConstantTimeCompare`
-- [ ] T018 [P] Implement `internal/server/handlers_pwa.go` which serves `GET /manifest.webmanifest` and `GET /sw.js` from the embedded `web/` filesystem with `Content-Type` and `Cache-Control: no-cache, must-revalidate` headers
-- [ ] T019 Implement `GET /healthz` in `internal/server/handlers_health.go` that does `SELECT 1` and returns 200 `{"status":"ok"}` or 503; also embed the root `web/` asset filesystem via `//go:embed all:web` in `internal/server/assets.go`
+- [X] T014 Implement `internal/server/server.go` which takes `*Config`, `*sql.DB`, and a `*sessions.Store`, builds a `chi.Mux`, wires the middleware chain (request ID → real IP → recovery → security headers → CSRF → auth → handlers), and exposes `Handler() http.Handler` + `Close()` for graceful shutdown
+- [X] T015 [P] Implement `internal/server/middleware_security.go` with middleware that sets `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy: interest-cohort=()`, and two distinct CSPs: authenticated (`script-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'`) vs public share (`script-src 'none'; img-src 'self' data:; style-src 'self'; frame-ancestors 'none'`) — selected per route group
+- [X] T016 [P] Implement `internal/server/middleware_csrf.go` with the double-submit cookie pattern: on GET, if no `pkd_csrf` cookie exists, set one with a 32-byte base64url random value; on mutating methods (POST/PUT/DELETE/PATCH), reject if `X-CSRF-Token` header doesn't match the cookie, returning 403
+- [X] T017 [P] Implement `internal/security/csrf.go` with helpers `NewToken() string` (32 random bytes base64url) and `ConstantTimeEqual(a, b string) bool` wrapping `crypto/subtle.ConstantTimeCompare`
+- [X] T018 [P] Implement `internal/server/handlers_pwa.go` which serves `GET /manifest.webmanifest` and `GET /sw.js` from the embedded `web/` filesystem with `Content-Type` and `Cache-Control: no-cache, must-revalidate` headers
+- [X] T019 Implement `GET /healthz` in `internal/server/handlers_health.go` that does `SELECT 1` and returns 200 `{"status":"ok"}` or 503; also embed the root `web/` asset filesystem via `//go:embed all:web` in `internal/server/assets.go`
 
 ### Test harness — base
 
-- [ ] T020 Implement `tests/contract/openapi_test.go` that loads `specs/001-personal-knowledge-db/contracts/openapi.yaml` with `github.com/getkin/kin-openapi` (add to `go.mod`), boots the server against an in-memory SQLite (`:memory:` with `cache=shared`), and provides a `TestMain` helper + a `validateRequestResponse(t, req, res)` helper that downstream contract tests reuse
+- [X] T020 Implement `tests/contract/openapi_test.go` that loads `specs/001-personal-knowledge-db/contracts/openapi.yaml` with `github.com/getkin/kin-openapi` (add to `go.mod`), boots the server against an in-memory SQLite (`:memory:` with `cache=shared`), and provides a `TestMain` helper + a `validateRequestResponse(t, req, res)` helper that downstream contract tests reuse
 
 **Checkpoint**: `go test ./tests/contract/...` runs green against an empty schema, `curl http://localhost:8080/healthz` returns 200, and `curl -I http://localhost:8080/` carries the full security header set.
 

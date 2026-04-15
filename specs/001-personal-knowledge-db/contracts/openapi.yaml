@@ -420,7 +420,7 @@ paths:
                   description: Must equal the literal string `REPLACE` to authorize the destructive operation.
       responses:
         '204': { description: Restore committed; clients should reload }
-        '400': { description: File is not a valid SQLite database, or confirmation missing }
+        '400': { description: "File is not a valid SQLite database, or confirmation missing" }
 
   /api/admin/cleanup:
     post:
@@ -551,10 +551,6 @@ components:
       type: apiKey
       in: header
       name: X-CSRF-Token
-
-  security:
-    - sessionCookie: []
-      csrfHeader: []
 
   parameters:
     DocumentId:

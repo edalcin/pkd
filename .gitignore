@@ -1,0 +1,35 @@
+# Build output
+pkd
+pkd.exe
+*.out
+
+# Test artifacts
+*.test
+*.cover
+coverage.html
+
+# Data volumes (never commit real data)
+/data/
+/tmp/
+
+# SQLite files
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Environment / secrets
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go vendor (we use go mod, not vendor)
+vendor/

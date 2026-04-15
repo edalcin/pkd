@@ -3,7 +3,31 @@
     "allow": [
       "Bash(pwsh:*)",
       "Bash(SPECIFY_FEATURE=001-personal-knowledge-db pwsh:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(go mod:*)",
+      "Bash(go get:*)",
+      "Bash(npm --version)",
+      "Bash(mkdir -p /tmp/ckeditor-build)",
+      "Read(//tmp/**)",
+      "Bash(npm pack:*)",
+      "Bash(ls *.tgz)",
+      "Bash(tar xzf:*)",
+      "Bash(mkdir -p internal/server/web/css internal/server/web/js internal/server/web/icons/pwa internal/server/web/vendor/ckeditor5)",
+      "Bash(mv web/index.html web/login.html web/share.html web/manifest.webmanifest web/sw.js internal/server/web/)",
+      "Bash(cp -r web/css/. internal/server/web/css/)",
+      "Bash(cp -r web/js/. internal/server/web/js/)",
+      "Bash(cp -r web/icons/. internal/server/web/icons/)",
+      "Bash(go build:*)",
+      "Bash(go vet:*)",
+      "Bash(go test:*)",
+      "Bash(sed -i 's/- \\\\[ \\\\] T00[0-9]/- [X] T00X/g' specs/001-personal-knowledge-db/tasks.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] T01[0-9]/- [X] T01X/g' specs/001-personal-knowledge-db/tasks.md)",
+      "Bash(sed -i 's/- \\\\[ \\\\] T020/- [X] T020/g' specs/001-personal-knowledge-db/tasks.md)",
+      "Bash(node -e ':*)"
     ]
   }
 }
