@@ -1,77 +1,121 @@
 # PKD — Personal Knowledge Database
 
-A self-hosted, single-user knowledge base delivered as one small Docker image (~20 MB).
+Base de conhecimento pessoal, auto-hospedada, entregue como uma única imagem Docker pequena (~20 MB).
 
-**Image**: `ghcr.io/edalcin/pkd:latest`
-
----
-
-## Features
-
-- **Hierarchical documents** — unlimited nesting, drag-and-drop reorder
-- **Rich text editor** — CKEditor 5 with inline resizable images, tables, code blocks
-- **Hashtag tagging** — assign `#tags`, filter tree by one or more tags
-- **Full-text search** — substring search across title, body, and tags (FTS5)
-- **Calendar view** — browse documents by creation date
-- **File attachments** — attached files live on a host-mounted volume, survive container rebuilds
-- **Public share links** — revocable per-document links, read-only, stricter CSP
-- **Administration** — manual backup/restore, orphan cleanup, tag rename/merge, trash management
-- **Light/dark theme** — persists in `localStorage`
-- **Mobile-friendly** — responsive layout, 44px touch targets
-- **PWA support** — installable, read-only offline mode
+**Imagem:** `ghcr.io/edalcin/pkd:latest`
 
 ---
 
-## Quick start
+## Funcionalidades
+
+| | |
+|---|---|
+| 📁 **Hierarquia ilimitada** | Documentos dentro de documentos, arrastar e soltar para reorganizar |
+| ✏️ **Editor rico** | CKEditor 5 com imagens inline redimensionáveis, tabelas, blocos de código |
+| 🏷️ **Hashtags** | Marque documentos com `#tags` e filtre a árvore por uma ou mais tags |
+| 🔍 **Super-busca** | Busca por substring em título, corpo e tags (SQLite FTS5) |
+| 📅 **Calendário** | Navegue pelos documentos pela data de criação |
+| 📎 **Anexos** | Arquivos ficam em um volume externo ao container, sobrevivem a atualizações |
+| 🔗 **Links de compartilhamento** | Links públicos revogáveis, somente leitura, sem navegação |
+| 🛡️ **Administração** | Backup/restore manual, limpeza, renomear/mesclar tags, lixeira |
+| 🌙 **Tema claro/escuro** | Alternância persistida no `localStorage` |
+| 📱 **Mobile-friendly** | Layout responsivo, alvos de toque ≥ 44 px |
+| 📲 **PWA** | Instalável como app; modo offline somente leitura |
+
+---
+
+## Início rápido
 
 ```bash
 docker run -d \
   --name pkd \
   --restart unless-stopped \
   -p 8080:8080 \
-  -v /path/to/pkd/db:/data/db \
-  -v /path/to/pkd/attachments:/data/attachments \
-  -e PKD_PASSWORD='REPLACE_WITH_A_STRONG_PASSWORD' \
+  -v /caminho/para/pkd/db:/data/db \
+  -v /caminho/para/pkd/attachments:/data/attachments \
+  -e PKD_PASSWORD='SUBSTITUA_POR_UMA_SENHA_FORTE' \
   -e PKD_DB_PATH=/data/db/pkd.sqlite \
   -e PKD_ATTACHMENTS_PATH=/data/attachments \
   ghcr.io/edalcin/pkd:latest
 ```
 
-Open `http://localhost:8080`, enter the master password.
-
-**Full installation guide**: [`specs/001-personal-knowledge-db/quickstart.md`](specs/001-personal-knowledge-db/quickstart.md)
-
-**UNRAID GUI walkthrough**: [`docs/unraid-install.md`](docs/unraid-install.md)
+Acesse `http://localhost:8080` e digite a senha mestra.
 
 ---
 
-## Environment variables
+## Instalação no UNRAID
 
-| Variable | Required | Default | Description |
+Veja o guia completo em português: **[UNRAID.md](UNRAID.md)**
+
+Instalação via interface gráfica (Docker → Add Container), sem necessidade de terminal.
+
+---
+
+## docker compose
+
+```yaml
+services:
+  pkd:
+    image: ghcr.io/edalcin/pkd:latest
+    container_name: pkd
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PKD_PASSWORD: ${PKD_PASSWORD:?PKD_PASSWORD is required}
+      PKD_DB_PATH: /data/db/pkd.sqlite
+      PKD_ATTACHMENTS_PATH: /data/attachments
+    volumes:
+      - ./data/db:/data/db
+      - ./data/attachments:/data/attachments
+    healthcheck:
+      test: ["/pkd", "-healthcheck"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+```
+
+```bash
+export PKD_PASSWORD='SUBSTITUA_POR_UMA_SENHA_FORTE'
+docker compose up -d
+```
+
+---
+
+## Variáveis de ambiente
+
+| Variável | Obrigatória | Padrão | Descrição |
 |---|---|---|---|
-| `PKD_PASSWORD` | **yes** | — | Master password (runtime only, never stored) |
-| `PKD_DB_PATH` | **yes** | — | Path to SQLite file inside container |
-| `PKD_ATTACHMENTS_PATH` | **yes** | — | Path to attachments directory inside container |
-| `PKD_LISTEN_ADDR` | no | `:8080` | HTTP listen address |
-| `PKD_SESSION_IDLE_MINUTES` | no | `60` | Idle session timeout |
-| `PKD_MAX_IMAGE_MB` | no | `10` | Max inline image upload size |
-| `PKD_MAX_ATTACHMENT_MB` | no | `100` | Max file attachment size |
-| `PKD_TRUST_PROXY_HEADERS` | no | `0` | Set to `1` only when behind a trusted reverse proxy |
+| `PKD_PASSWORD` | **sim** | — | Senha mestra (apenas em runtime, nunca armazenada) |
+| `PKD_DB_PATH` | **sim** | — | Caminho do arquivo SQLite dentro do container |
+| `PKD_ATTACHMENTS_PATH` | **sim** | — | Caminho do diretório de anexos dentro do container |
+| `PKD_LISTEN_ADDR` | não | `:8080` | Endereço de escuta HTTP |
+| `PKD_SESSION_IDLE_MINUTES` | não | `60` | Minutos de inatividade até expirar a sessão |
+| `PKD_MAX_IMAGE_MB` | não | `10` | Tamanho máximo de imagem inline (MB) |
+| `PKD_MAX_ATTACHMENT_MB` | não | `100` | Tamanho máximo de arquivo anexado (MB) |
+| `PKD_TRUST_PROXY_HEADERS` | não | `0` | Defina como `1` apenas atrás de um proxy reverso confiável |
 
 ---
 
-## Documentation
+## Proxy reverso (HTTPS)
 
-- [Quickstart & UNRAID install](specs/001-personal-knowledge-db/quickstart.md)
-- [UNRAID GUI walkthrough](docs/unraid-install.md)
-- [Security reference](docs/security.md)
-- [Operations guide](docs/operations.md)
+O PKD não gerencia certificados TLS — encerre o TLS em um proxy reverso (Caddy, Traefik, UNRAID SWAG).
+
+Exemplo mínimo com **Caddy**:
+
+```caddy
+pkd.exemplo.lan {
+    reverse_proxy localhost:8080
+}
+```
+
+Ao usar proxy reverso, adicione `PKD_TRUST_PROXY_HEADERS=1` para que o bloqueio por tentativas de login use o IP real do cliente.
 
 ---
 
-## Building from source
+## Compilar a partir do código-fonte
 
-Requires Go 1.23+. No CGO, no Node.js.
+Requer Go 1.25+. Sem CGO, sem Node.js.
 
 ```bash
 git clone https://github.com/edalcin/pkd.git
@@ -85,6 +129,15 @@ go run ./cmd/pkd
 
 ---
 
-## License
+## Documentação
+
+- [Guia de instalação UNRAID (PT-BR)](UNRAID.md)
+- [Quickstart completo (EN)](specs/001-personal-knowledge-db/quickstart.md)
+- [Referência de segurança (EN)](docs/security.md)
+- [Guia de operações (EN)](docs/operations.md)
+
+---
+
+## Licença
 
 MIT © 2026 Eduardo Dalcin
