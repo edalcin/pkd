@@ -18,11 +18,11 @@ RUN CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags='-s -w' -o /out/pkd ./cmd/pkd
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
-FROM gcr.io/distroless/static-debian12:nonroot
+# Using the root variant of distroless for compatibility with UNRAID and other
+# home-server setups where host directories are owned by root.
+FROM gcr.io/distroless/static-debian12
 
 COPY --from=build /out/pkd /pkd
-
-USER nonroot:nonroot
 
 EXPOSE 8080
 
