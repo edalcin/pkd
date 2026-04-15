@@ -13,24 +13,27 @@ import (
 	"github.com/edalcin/pkd/internal/store"
 )
 
+
 // Server wraps the HTTP router and all its dependencies.
 type Server struct {
-	cfg      *config.Config
-	db       *sql.DB
-	sessions *sessions.Store
-	docs     *store.DocumentStore
-	throttle *Throttle
-	handler  http.Handler
+	cfg         *config.Config
+	db          *sql.DB
+	sessions    *sessions.Store
+	docs        *store.DocumentStore
+	attachments *store.AttachmentStore
+	throttle    *Throttle
+	handler     http.Handler
 }
 
 // New builds the chi router with all middleware and routes wired up.
 func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 	s := &Server{
-		cfg:      cfg,
-		db:       db,
-		sessions: sess,
-		docs:     store.NewDocumentStore(db),
-		throttle: NewThrottle(cfg.TrustProxyHeaders),
+		cfg:         cfg,
+		db:          db,
+		sessions:    sess,
+		docs:        store.NewDocumentStore(db),
+		attachments: store.NewAttachmentStore(db, cfg.AttachmentsPath),
+		throttle:    NewThrottle(cfg.TrustProxyHeaders),
 	}
 	s.handler = s.buildRouter()
 	return s

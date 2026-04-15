@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/edalcin/pkd/internal/model"
+	"github.com/edalcin/pkd/internal/security"
 	"github.com/edalcin/pkd/internal/store"
 )
 
@@ -74,13 +75,18 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		doc, err := s.docs.Update(id, req.Version, req.Title, req.BodyHTML, req.BodyText, req.Icon)
+
+		// Sanitize HTML before storing (FR-042 — XSS prevention)
+		safeHTML := security.SanitizeEditorHTML(req.BodyHTML)
+		// Derive plain text for FTS5 indexing from the sanitized HTML
+		plainText := security.ExtractPlainText(safeHTML)
+
+		doc, err := s.docs.Update(id, req.Version, req.Title, safeHTML, plainText, req.Icon)
 		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		if errors.Is(err, store.ErrVersionConflict) {
-			// Return the stored document so the client can show the conflict dialog
 			stored, _ := s.docs.GetByID(id)
 			writeJSON(w, http.StatusConflict, model.VersionConflict{
 				StoredVersion: stored.Version,
