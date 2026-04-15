@@ -15,15 +15,26 @@ func (s *Server) handleLogin() http.HandlerFunc {
 		Password string `json:"password"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Throttle check — 5 failures → 30-minute lockout (FR-002, clarification Q5→C)
+		if !s.throttle.Allow(r) {
+			ThrottleHeader(w, s.throttle.RetryAfter(r))
+			return
+		}
+
 		var req request
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
+
 		if !security.VerifyMaster(req.Password, s.cfg.Password) {
+			s.throttle.RecordFailure(r)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
+
+		s.throttle.RecordSuccess(r)
+
 		ip := r.RemoteAddr
 		sess := s.sessions.Create(ip)
 		http.SetCookie(w, &http.Cookie{
@@ -31,7 +42,7 @@ func (s *Server) handleLogin() http.HandlerFunc {
 			Value:    sess.ID,
 			Path:     "/",
 			HttpOnly: true,
-			Secure:   false, // enforced by reverse proxy in prod
+			Secure:   false, // enforced by reverse proxy in production
 			SameSite: http.SameSiteStrictMode,
 			Expires:  time.Now().Add(sessionCookieMaxAge * time.Second),
 			MaxAge:   sessionCookieMaxAge,

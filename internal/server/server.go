@@ -10,13 +10,16 @@ import (
 
 	"github.com/edalcin/pkd/internal/config"
 	"github.com/edalcin/pkd/internal/sessions"
+	"github.com/edalcin/pkd/internal/store"
 )
 
-// Server wraps the HTTP router and its dependencies.
+// Server wraps the HTTP router and all its dependencies.
 type Server struct {
 	cfg      *config.Config
 	db       *sql.DB
 	sessions *sessions.Store
+	docs     *store.DocumentStore
+	throttle *Throttle
 	handler  http.Handler
 }
 
@@ -26,6 +29,8 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 		cfg:      cfg,
 		db:       db,
 		sessions: sess,
+		docs:     store.NewDocumentStore(db),
+		throttle: NewThrottle(cfg.TrustProxyHeaders),
 	}
 	s.handler = s.buildRouter()
 	return s
@@ -35,6 +40,9 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 func (s *Server) Handler() http.Handler {
 	return s.handler
 }
+
+// ExportThrottle returns the throttle for use in integration tests.
+func (s *Server) ExportThrottle() *Throttle { return s.throttle }
 
 func (s *Server) buildRouter() http.Handler {
 	r := chi.NewRouter()
