@@ -1,0 +1,126 @@
+package store
+
+import (
+	"database/sql"
+	"fmt"
+	"strings"
+)
+
+// SearchHit is one result from GET /api/search.
+type SearchHit struct {
+	ID      int64  `json:"id"`
+	Title   string `json:"title"`
+	Snippet string `json:"snippet"`
+}
+
+// SearchStore manages the FTS5 index and provides the search interface.
+type SearchStore struct {
+	db *sql.DB
+}
+
+// NewSearchStore wraps db.
+func NewSearchStore(db *sql.DB) *SearchStore {
+	return &SearchStore{db: db}
+}
+
+// Index inserts or replaces an entry in documents_fts.
+// Call after every Create or Update of a document.
+func (s *SearchStore) Index(tx *sql.Tx, docID int64, title, bodyText string, tagNames []string) error {
+	tags := strings.Join(tagNames, " ")
+	// FTS5 contentless tables use INSERT (there is no UPSERT for FTS5).
+	// We deindex first to avoid duplicates.
+	if err := s.deindex(tx, docID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(`INSERT INTO documents_fts(rowid, title, body_text, tags) VALUES (?, ?, ?, ?)`,
+		docID, title, bodyText, tags)
+	return err
+}
+
+// Deindex removes the FTS5 entry for docID (used on soft-delete).
+func (s *SearchStore) Deindex(tx *sql.Tx, docID int64) error {
+	return s.deindex(tx, docID)
+}
+
+func (s *SearchStore) deindex(tx *sql.Tx, docID int64) error {
+	_, err := tx.Exec(`INSERT INTO documents_fts(documents_fts, rowid, title, body_text, tags) VALUES ('delete', ?, '', '', '')`,
+		docID)
+	// Ignore "no such rowid" — it means the doc was never indexed
+	return ignoreNoSuchRowid(err)
+}
+
+// Search performs a full-text search for q across title, body_text, and tags.
+// Primary path: FTS5 MATCH with quoted phrase. Fallback: LIKE on short or
+// special queries. Returns at most limit results.
+func (s *SearchStore) Search(q string, limit int) ([]SearchHit, error) {
+	q = strings.TrimSpace(q)
+	if q == "" || limit <= 0 {
+		return nil, nil
+	}
+
+	// Try FTS5 first
+	hits, err := s.ftsSearch(q, limit)
+	if err == nil && len(hits) > 0 {
+		return hits, nil
+	}
+
+	// Fallback to LIKE (covers short queries, accented chars, operator conflicts)
+	return s.likeSearch(q, limit)
+}
+
+func (s *SearchStore) ftsSearch(q string, limit int) ([]SearchHit, error) {
+	// Wrap in quotes for FTS5 phrase search; escape internal quotes
+	safe := `"` + strings.ReplaceAll(q, `"`, `""`) + `"`
+	rows, err := s.db.Query(fmt.Sprintf(`
+		SELECT rowid,
+		       highlight(documents_fts, 0, '<mark>', '</mark>') AS title_hl,
+		       snippet(documents_fts, 1, '<mark>', '</mark>', '…', 32) AS snippet
+		FROM documents_fts
+		WHERE documents_fts MATCH ?
+		ORDER BY rank
+		LIMIT %d`, limit), safe)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanHits(rows)
+}
+
+func (s *SearchStore) likeSearch(q string, limit int) ([]SearchHit, error) {
+	pattern := "%" + q + "%"
+	rows, err := s.db.Query(`
+		SELECT d.id, d.title, substr(d.body_text, 1, 200) AS snippet
+		FROM documents d
+		WHERE (d.title LIKE ? OR d.body_text LIKE ?)
+		  AND d.trashed_at IS NULL
+		ORDER BY d.updated_at DESC
+		LIMIT ?`, pattern, pattern, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanHits(rows)
+}
+
+func scanHits(rows *sql.Rows) ([]SearchHit, error) {
+	var hits []SearchHit
+	for rows.Next() {
+		var h SearchHit
+		if err := rows.Scan(&h.ID, &h.Title, &h.Snippet); err != nil {
+			return nil, err
+		}
+		hits = append(hits, h)
+	}
+	return hits, rows.Err()
+}
+
+// ignoreNoSuchRowid swallows the "no such rowid" error from FTS5 delete.
+func ignoreNoSuchRowid(err error) error {
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), "no such rowid") {
+		return nil
+	}
+	return err
+}

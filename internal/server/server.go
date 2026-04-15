@@ -13,7 +13,6 @@ import (
 	"github.com/edalcin/pkd/internal/store"
 )
 
-
 // Server wraps the HTTP router and all its dependencies.
 type Server struct {
 	cfg         *config.Config
@@ -21,6 +20,10 @@ type Server struct {
 	sessions    *sessions.Store
 	docs        *store.DocumentStore
 	attachments *store.AttachmentStore
+	tags        *store.TagStore
+	search      *store.SearchStore
+	shares      *store.ShareStore
+	backup      *store.BackupStore
 	throttle    *Throttle
 	handler     http.Handler
 }
@@ -33,6 +36,10 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 		sessions:    sess,
 		docs:        store.NewDocumentStore(db),
 		attachments: store.NewAttachmentStore(db, cfg.AttachmentsPath),
+		tags:        store.NewTagStore(db),
+		search:      store.NewSearchStore(db),
+		shares:      store.NewShareStore(db),
+		backup:      store.NewBackupStore(db, cfg.DBPath),
 		throttle:    NewThrottle(cfg.TrustProxyHeaders),
 	}
 	s.handler = s.buildRouter()

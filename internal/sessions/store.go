@@ -72,6 +72,15 @@ func (s *Store) Delete(id string) {
 	s.mu.Unlock()
 }
 
+// Reset clears all sessions and returns a fresh Store with the same idle timeout.
+// Used after a database restore to force all users to re-authenticate.
+func (s *Store) Reset() *Store {
+	s.mu.Lock()
+	idleTimeout := s.idleTimeout
+	s.mu.Unlock()
+	return New(int(idleTimeout.Minutes()))
+}
+
 // sweepLoop evicts idle sessions every minute.
 func (s *Store) sweepLoop() {
 	ticker := time.NewTicker(time.Minute)
