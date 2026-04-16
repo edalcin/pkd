@@ -48,7 +48,7 @@ jobs:
 
       - name: Run govulncheck
         run: govulncheck ./...
-        continue-on-error: true  # non-blocking for now; harden later
+        continue-on-error: true
 
   build-and-push:
     name: Build & Push Image
@@ -59,9 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up QEMU (for multi-arch)
-        uses: docker/setup-qemu-action@v3
-
+      # Buildx without QEMU — single platform (amd64 only, UNRAID target)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -85,7 +83,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -97,5 +95,5 @@ jobs:
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           format: table
-          exit-code: 0  # report only; don't fail the build
+          exit-code: 0
           severity: HIGH,CRITICAL
