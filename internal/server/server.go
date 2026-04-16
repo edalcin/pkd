@@ -73,6 +73,12 @@ func (s *Server) buildRouter() http.Handler {
 	r.Post("/api/login", s.handleLogin())
 	registerPWAHandlers(r, root)
 
+	// SPA shell — served publicly so unauthenticated users see the login page.
+	// The Svelte app (App.svelte) checks the session internally and renders
+	// LoginPage when not authenticated. /login is kept as a backward-compat alias.
+	r.Get("/", serveFile(root, "index.html"))
+	r.Get("/login", serveFile(root, "index.html"))
+
 	// Public share view (unauthenticated but stricter CSP)
 	r.With(PublicShareCSP).Get("/public/{token}", s.handlePublicShare())
 
@@ -89,9 +95,6 @@ func (s *Server) buildRouter() http.Handler {
 	// Authenticated routes
 	r.Group(func(r chi.Router) {
 		r.Use(AuthRequired(s.sessions))
-
-		// SPA entry point — Svelte app (hash-based routing, server only serves /)
-		r.Get("/", serveFile(root, "index.html"))
 
 		// Auth
 		r.Post("/api/logout", s.handleLogout())
