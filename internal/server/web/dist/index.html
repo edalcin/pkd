@@ -3,28 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PKD — Build necessário</title>
-  <style>
-    body { font-family: system-ui, sans-serif; display:flex; align-items:center;
-           justify-content:center; min-height:100dvh; margin:0; background:#f8f8f8; }
-    .card { background:#fff; border-radius:10px; padding:2rem; max-width:500px;
-            text-align:center; box-shadow:0 2px 16px rgba(0,0,0,.12); }
-    h1 { font-size:1.5rem; margin-bottom:.75rem; }
-    code { background:#f0f0f0; padding:.2rem .5rem; border-radius:4px; font-size:.9rem; }
-    p { color:#6b7280; line-height:1.6; }
-  </style>
+  <meta name="description" content="PKD — Personal Knowledge Database" />
+  <title>PKD</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/pwa/icon-192.png" />
+  <meta name="theme-color" content="#4f46e5" />
+  <!-- Apple PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="PKD" />
+  <script type="module" crossorigin src="/assets/index-M0MAGLLC.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/tiptap-DdMpE5fu.js">
+  <link rel="modulepreload" crossorigin href="/assets/d3-uVjiOlM7.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-Ddajk_fP.css">
 </head>
 <body>
-  <div class="card">
-    <h1>🔨 Frontend não compilado</h1>
-    <p>
-      O frontend Svelte ainda não foi compilado.<br>
-      Execute o seguinte comando na raiz do projeto:
-    </p>
-    <pre><code>cd frontend && npm install && npm run build</code></pre>
-    <p style="margin-top:1rem;font-size:.875rem">
-      Após o build, reinicie o servidor Go.
-    </p>
-  </div>
+  <div id="app"></div>
 </body>
 </html>
