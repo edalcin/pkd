@@ -3,6 +3,8 @@
 Este guia mostra como instalar o PKD no UNRAID usando a interface gráfica **Docker → Add Container**. Nenhum terminal é necessário.
 
 > **Imagem Docker:** `ghcr.io/edalcin/pkd:latest`
+> **Versão atual:** v2 (PKM Refactor — 003-pkm-refactor)  
+> Novidades: links bidirecionais (`[[documento]]`), Graph View (D3.js), captura de conteúdo externo, interface Svelte reescrita, suporte a PWA share target mobile.
 
 ---
 
@@ -154,6 +156,7 @@ Você pode adicionar estas variáveis para personalizar o comportamento:
 | `PKD_MAX_IMAGE_MB` | `10` | Tamanho máximo de imagem inline (MB) |
 | `PKD_MAX_ATTACHMENT_MB` | `100` | Tamanho máximo de arquivo anexado (MB) |
 | `PKD_TRUST_PROXY_HEADERS` | `0` | Defina como `1` apenas quando há um proxy reverso confiável na frente |
+| `PKD_BASE_URL` | *(host da req.)* | URL pública base para links de compartilhamento (ex: `https://pkd.dalc.in/`). Essencial atrás de proxy reverso. |
 
 ---
 

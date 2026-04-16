@@ -1,124 +1,148 @@
 # PKD Operations Guide
 
-Day-to-day maintenance, backup/restore, and upgrade procedures.
+Manutenção do dia a dia, backup/restore e procedimentos de atualização.
 
 ---
 
 ## Backup
 
-PKD does **not** take automatic backups. You must initiate them manually.
+O PKD **não faz backups automáticos**. Você deve iniciá-los manualmente.
 
-### In-app backup (recommended)
+### Backup pelo app (recomendado)
 
-1. Log in to PKD.
-2. Navigate to **Administration** (top bar or sidebar).
-3. Click **Download backup**. Your browser downloads `pkd-backup.sqlite`.
+1. Faça login no PKD.
+2. Vá em **Administração → Backup**.
+3. Clique em **Download backup**. O browser baixa `pkd-backup-YYYY-MM-DD.sqlite`.
 
-This uses SQLite `VACUUM INTO`, which produces a live-consistent, defragmented snapshot even while writes are in flight (WAL mode). The downloaded file is a complete, valid SQLite database.
+Usa SQLite `VACUUM INTO`, que gera um snapshot consistente e defragmentado mesmo com escrita em progresso (modo WAL). O arquivo baixado é um banco SQLite válido e completo.
 
-**Store the file somewhere safe** — external drive, cloud storage, a second machine. PKD does not email or upload backups anywhere.
+**Guarde o arquivo em local seguro** — HD externo, cloud storage, segundo servidor. O PKD não envia backups a lugar algum.
 
-### Host-level backup (alternative)
-
-You can also copy the database file directly from the host:
+### Backup no nível do host (alternativa)
 
 ```bash
 cp /mnt/user/appdata/pkd/db/pkd.sqlite /mnt/user/backups/pkd-$(date +%Y%m%d).sqlite
-```
-
-This works safely with WAL mode but is slightly less consistent than the in-app backup. Back up the attachments directory too if you care about attached files:
-
-```bash
 rsync -a /mnt/user/appdata/pkd/attachments/ /mnt/user/backups/pkd-attachments/
 ```
 
-### Backup schedule suggestion
+Funciona com WAL mas é ligeiramente menos consistente que o backup pelo app. Sempre inclua o diretório de anexos.
 
-- Daily backup → keep for 7 days.
-- Weekly backup → keep for 4 weeks.
-- Monthly backup → keep indefinitely.
+### Frequência sugerida
+
+- Diário → manter 7 dias.
+- Semanal → manter 4 semanas.
+- Mensal → manter indefinidamente.
 
 ---
 
 ## Restore
 
-### In-app restore
+### Pelo app
 
-1. Log in.
-2. **Administration → Choose backup file…** → select your `.sqlite` file.
-3. Type `REPLACE` in the confirmation field.
-4. Click **Restore**. The server swaps the database file in place and prompts you to log in again.
+1. Faça login.
+2. **Administração → Restaurar** → selecione o arquivo `.sqlite`.
+3. Confirme com `REPLACE`.
+4. Clique em **Restaurar**. O servidor troca o arquivo e solicita novo login.
 
-### Manual restore (host-level)
+### Manual (nível do host)
 
-1. Stop the container: `docker stop pkd`.
-2. Replace the database file: `cp /path/to/backup.sqlite /mnt/user/appdata/pkd/db/pkd.sqlite`.
-3. Start the container: `docker start pkd`.
-
----
-
-## Orphan cleanup
-
-Over time, deleted documents may leave orphaned attachment files on disk (files no longer referenced by any document row). To remove them:
-
-**Administration → Run cleanup**
-
-This:
-1. Walks the attachments directory.
-2. Deletes any files with no matching row in the `attachments` table.
-3. Runs `VACUUM` on the database to reclaim freed space.
-
-Safe to run at any time. Reports how many files were removed.
+1. Pare o container: `docker stop pkd`.
+2. Substitua o arquivo: `cp /path/to/backup.sqlite /mnt/user/appdata/pkd/db/pkd.sqlite`.
+3. Inicie o container: `docker start pkd`.
 
 ---
 
-## Hashtag maintenance
+## Limpeza de órfãos
 
-### Rename a tag
+Com o tempo, documentos excluídos podem deixar arquivos de anexo órfãos no disco (arquivos sem linha correspondente na tabela `attachments`). Para removê-los:
 
-**Administration → Rename/Merge Tag** → fill in the existing tag name and the new name → **Rename**.
+**Administração → Limpeza → Iniciar limpeza**
 
-- If the new name does not exist yet: the tag is renamed in place. Every document that had the old tag now shows the new tag.
-- If the new name already exists: the two tags are **merged**. Every document from the old tag is reassigned to the existing tag. The old tag row is deleted.
+Isso:
+1. Percorre o diretório de anexos.
+2. Exclui arquivos sem linha na tabela `attachments`.
+3. Executa `VACUUM` no banco para liberar espaço.
 
----
-
-## Trash management
-
-Deleted documents go to Trash and stay there **indefinitely** until you empty them.
-
-- **View trash**: Administration → Trash section. Lists every trashed document with its original location.
-- **Restore one**: click **Restore** next to the document. It reappears under its original parent (or at root if the parent was also deleted).
-- **Delete permanently**: click **Delete** next to the document. Irreversible.
-- **Empty all**: click **Empty Trash**. Permanently deletes every document in the trash. Irreversible.
+Seguro de executar a qualquer momento. Exibe quantos arquivos foram removidos.
 
 ---
 
-## PWA cache invalidation
+## Gerenciamento de hashtags
 
-The service worker (`sw.js`) caches the app shell indefinitely. After a PKD upgrade, the browser may serve the old shell.
+### Renomear ou mesclar uma tag
 
-To force a cache refresh:
+**Administração → Tags → Renomear**
 
-1. Open the browser's developer tools → Application → Service Workers.
-2. Click **Unregister**.
-3. Reload the page. The browser fetches the new `sw.js` and re-caches the app shell.
-
-Alternatively, increment the cache name version in `sw.js` before building the image (e.g., `pkd-shell-v2`). The activate handler already purges old cache names on install.
+- Preencha a tag atual e o novo nome → clique em **Renomear**.
+- Se o novo nome **não existe**: a tag é renomeada. Todos os documentos com a tag antiga passam a ter o novo nome.
+- Se o novo nome **já existe**: as duas tags são **mescladas**. Todos os documentos da tag antiga são reassignados para a tag existente. A tag antiga é excluída.
 
 ---
 
-## Upgrades
+## Gestão da lixeira
 
-### Docker (docker run or compose)
+Documentos excluídos vão para a Lixeira e ficam lá **indefinidamente** até você os remover.
+
+- **Ver lixeira**: Administração → Lixeira.
+- **Restaurar um**: clique em **Restaurar**. O documento retorna ao pai original (ou raiz se o pai também foi excluído).
+- **Excluir permanentemente**: clique em **Excluir**. Irreversível.
+- **Esvaziar tudo**: clique em **Esvaziar Tudo**. Irreversível.
+
+---
+
+## Links bidirecionais — manutenção
+
+Links bidirecionais são sincronizados automaticamente com o corpo do documento a cada save. Não é necessária manutenção manual.
+
+- **Links para documentos excluídos (trash)**: aparecem marcados como "quebrados" na UI. Os links permanecem no banco de dados.
+- **Links para documentos permanentemente excluídos**: removidos automaticamente pelo `ON DELETE CASCADE`.
+- **Documentos sem links**: não aparecem no Graph View por padrão (toggle "Mostrar todos" para incluí-los).
+
+---
+
+## Graph View
+
+O grafo é renderizado client-side com D3.js. Para grandes bases de dados (500+ documentos conectados), pode levar 1-2 segundos para a simulação force-directed convergir. Não há cache server-side do grafo — ele é recalculado a cada abertura.
+
+---
+
+## Invalidação de cache PWA
+
+O service worker (`sw.js`) versiona o cache do app shell. Na versão v2:
+- Cache shell: `pkd-shell-v5`
+- Cache de documentos: `pkd-docs-v5`
+
+Após uma atualização do PKD, o handler `activate` do SW remove automaticamente caches com outros nomes. Se o navegador continuar servindo a versão antiga:
+
+1. Abra DevTools → Application → Service Workers.
+2. Clique em **Unregister**.
+3. Recarregue a página.
+
+---
+
+## Links públicos de compartilhamento
+
+Links públicos são gerados com base em `PKD_BASE_URL`. Configure esta variável para o domínio público onde o PKD está disponível:
+
+```
+PKD_BASE_URL=https://pkd.dalc.in/
+```
+
+Se `PKD_BASE_URL` não estiver definida, o servidor usa o host da requisição HTTP (funciona para acesso direto, mas pode falhar atrás de proxy reverso que altera o Host header).
+
+---
+
+## Atualizações
+
+### Docker run / compose
 
 ```bash
 docker pull ghcr.io/edalcin/pkd:latest
 docker stop pkd && docker rm pkd
-# Re-run the original docker run command (all data is on volumes)
+# Re-execute o comando docker run original (dados ficam nos volumes)
 ```
 
-Or with docker compose:
+Ou com docker compose:
 
 ```bash
 docker compose pull
@@ -127,30 +151,30 @@ docker compose up -d
 
 ### UNRAID
 
-1. Docker tab → click the PKD container icon → **Force Update**.
-2. UNRAID pulls the latest image and restarts the container.
-3. Your data on `/mnt/user/appdata/pkd/` is untouched.
+1. Docker tab → clique no ícone do container `pkd` → **Force Update**.
+2. O UNRAID baixa a nova imagem e reinicia o container.
+3. Seus dados em `/mnt/user/appdata/pkd/` ficam intocados.
 
-### Schema migrations
+### Migrações de schema
 
-PKD runs its full schema DDL (`CREATE TABLE IF NOT EXISTS`) on every start. It is safe to upgrade — the schema is always applied idempotently. There are no versioned migration files to manage.
+O PKD executa todo o DDL (`CREATE TABLE IF NOT EXISTS`) a cada inicialização. É seguro atualizar — o schema é sempre aplicado de forma idempotente. Não há arquivos de migração versionados para gerenciar. Novas tabelas (como `document_links` em v2) são criadas automaticamente no primeiro start após a atualização.
 
 ---
 
 ## Logs
 
-- **Docker**: `docker logs pkd` — shows startup messages and any runtime errors.
-- **UNRAID**: Docker tab → click the container icon → **Logs**.
-- PKD logs to stdout/stderr only; it does not write to files.
+- **Docker**: `docker logs pkd` ou `docker logs pkd --follow`.
+- **UNRAID**: Docker tab → clique no container → **Logs**.
+- O PKD escreve apenas em stdout/stderr.
 
 ---
 
-## Monitoring
+## Monitoramento
 
-PKD exposes a health endpoint:
+Endpoint de healthcheck:
 
 ```
 GET /healthz
 ```
 
-Returns `200 {"status":"ok"}` when the database is reachable, `503` otherwise. Use this with your monitoring tool of choice (e.g., Uptime Kuma, Healthchecks.io).
+Retorna `200 {"status":"ok"}` quando o banco está acessível, `503` caso contrário. Use com Uptime Kuma, Healthchecks.io, etc.

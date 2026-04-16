@@ -31,9 +31,20 @@ func (s *Server) handleCreateShare() http.HandlerFunc {
 			return
 		}
 
-		// Build the share URL. In production this is the external URL; in
-		// development it is the server's own address.
-		shareURL := fmt.Sprintf("/public/%s", plaintext)
+		// Build the fully-qualified share URL.
+		// Prefer PKD_BASE_URL (e.g. "https://pkd.dalc.in/") so links are correct
+		// behind a reverse proxy. Fall back to deriving the base from the request.
+		var base string
+		if s.cfg.BaseURL != "" {
+			base = s.cfg.BaseURL
+		} else {
+			scheme := "http"
+			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+				scheme = "https"
+			}
+			base = scheme + "://" + r.Host + "/"
+		}
+		shareURL := base + "public/" + plaintext
 
 		writeJSON(w, http.StatusCreated, model.ShareCreateResponse{
 			Token:    plaintext,
@@ -93,21 +104,44 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 		// Sanitize with the stricter public-share policy before rendering
 		safeBody := security.SanitizePublicHTML(doc.BodyHTML)
 
-		// Render share.html with the document content injected server-side.
-		// We reuse the embedded share.html as a template placeholder.
+		// Render a minimal read-only HTML page. No JS runs (CSP: script-src 'none').
+		// Styles are inlined to avoid an extra round-trip and stay self-contained.
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>%s — PKD</title>
-  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8f8f8;
+           color: #1a1a1a; line-height: 1.7; padding: 2rem 1rem }
+    article { max-width: 720px; margin: 0 auto; background: #fff;
+              border-radius: 10px; padding: 2rem 2.5rem;
+              box-shadow: 0 1px 4px rgba(0,0,0,.08) }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 1.25rem;
+         border-bottom: 1px solid #e5e5e5; padding-bottom: .75rem }
+    h2 { font-size: 1.3rem; margin-top: 1.5rem } h3 { font-size: 1.1rem; margin-top: 1.25rem }
+    p { margin-top: .75rem } ul, ol { padding-left: 1.5rem; margin-top: .75rem }
+    code { background: #f0f0f0; padding: .1em .3em; border-radius: 3px; font-size: .875em }
+    pre { background: #f0f0f0; padding: .75em; border-radius: 6px; overflow-x: auto; margin-top: .75rem }
+    pre code { background: none; padding: 0 }
+    img { max-width: 100%%; border-radius: 6px; margin-top: .75rem }
+    blockquote { border-left: 3px solid #4f46e5; padding-left: 1em;
+                 color: #6b7280; margin-top: .75rem }
+    a { color: #4f46e5 }
+    table { border-collapse: collapse; width: 100%%; margin-top: .75rem }
+    th, td { border: 1px solid #e5e5e5; padding: .4rem .75rem; text-align: left }
+    th { background: #f8f8f8 }
+    .pkd-badge { margin-top: 2rem; font-size: .8rem; color: #9ca3af; text-align: center }
+  </style>
 </head>
-<body class="share-view">
-  <article id="share-content">
-    <h1 id="share-title">%s</h1>
-    <div id="share-body" class="ck-content">%s</div>
+<body>
+  <article>
+    <h1>%s</h1>
+    <div>%s</div>
+    <p class="pkd-badge">Compartilhado via <strong>PKD</strong></p>
   </article>
 </body>
 </html>`, htmlEscape(doc.Title), htmlEscape(doc.Title), safeBody)

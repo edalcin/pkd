@@ -89,6 +89,14 @@ func (s *DocumentStore) GetByID(id int64) (*model.Document, error) {
 // Update saves title, body_html, body_text, icon, and version-checks.
 // If the stored version differs from clientVersion, returns ErrVersionConflict.
 func (s *DocumentStore) Update(id int64, clientVersion int64, title, bodyHTML, bodyText, icon string) (*model.Document, error) {
+	return s.UpdateAndSync(id, clientVersion, title, bodyHTML, bodyText, icon, nil)
+}
+
+// UpdateAndSync is like Update but additionally runs syncFn inside the same
+// transaction after the document row is saved. syncFn receives the open *sql.Tx
+// so it can atomically update derived data (e.g. document_links). If syncFn is
+// nil the behaviour is identical to Update.
+func (s *DocumentStore) UpdateAndSync(id int64, clientVersion int64, title, bodyHTML, bodyText, icon string, syncFn func(*sql.Tx) error) (*model.Document, error) {
 	var doc model.Document
 	err := WithTx(s.db, func(tx *sql.Tx) error {
 		var storedVersion int64
@@ -110,7 +118,13 @@ func (s *DocumentStore) Update(id int64, clientVersion int64, title, bodyHTML, b
 		if err != nil {
 			return fmt.Errorf("update: %w", err)
 		}
-		return scanDocFromTx(tx, id, &doc)
+		if err := scanDocFromTx(tx, id, &doc); err != nil {
+			return err
+		}
+		if syncFn != nil {
+			return syncFn(tx)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

@@ -24,6 +24,7 @@ type Server struct {
 	search      *store.SearchStore
 	shares      *store.ShareStore
 	backup      *store.BackupStore
+	links       *store.LinkStore
 	throttle    *Throttle
 	handler     http.Handler
 }
@@ -40,6 +41,7 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 		search:      store.NewSearchStore(db),
 		shares:      store.NewShareStore(db),
 		backup:      store.NewBackupStore(db, cfg.DBPath),
+		links:       store.NewLinkStore(db),
 		throttle:    NewThrottle(cfg.TrustProxyHeaders),
 	}
 	s.handler = s.buildRouter()
@@ -68,25 +70,27 @@ func (s *Server) buildRouter() http.Handler {
 
 	// Public unauthenticated routes
 	r.Get("/healthz", (&healthHandler{db: s.db}).ServeHTTP)
-	r.Get("/login", serveFile(root, "login.html"))
 	r.Post("/api/login", s.handleLogin())
 	registerPWAHandlers(r, root)
 
 	// Public share view (unauthenticated but stricter CSP)
 	r.With(PublicShareCSP).Get("/public/{token}", s.handlePublicShare())
 
-	// Static assets (unauthenticated — CSS, JS, vendor, icons)
+	// Static assets (unauthenticated).
+	// Svelte build outputs to /assets/ with hashed filenames; legacy paths kept.
 	sf := staticFileServer()
+	r.Get("/assets/*", sf.ServeHTTP)
+	r.Get("/icons/*", sf.ServeHTTP)
+	// Legacy vanilla JS paths (still served if dist/ not yet built)
 	r.Get("/css/*", sf.ServeHTTP)
 	r.Get("/js/*", sf.ServeHTTP)
 	r.Get("/vendor/*", sf.ServeHTTP)
-	r.Get("/icons/*", sf.ServeHTTP)
 
 	// Authenticated routes
 	r.Group(func(r chi.Router) {
 		r.Use(AuthRequired(s.sessions))
 
-		// SPA shell
+		// SPA entry point — Svelte app (hash-based routing, server only serves /)
 		r.Get("/", serveFile(root, "index.html"))
 
 		// Auth
@@ -101,11 +105,22 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/documents/{id}/restore", s.handleRestoreDocument())
 
 		// Tree
-		r.Get("/api/tree", s.handleTree())
+			r.Get("/api/tree", s.handleTree())
 
-		// Tags
-		r.Get("/api/tags", s.handleListTags())
-		r.Put("/api/documents/{id}/tags", s.handleSetDocumentTags())
+			// Bidirectional links (NEW — 003-pkm-refactor)
+			r.Get("/api/documents/{id}/links", s.handleListLinks())
+			r.Post("/api/documents/{id}/links", s.handleCreateLink())
+			r.Delete("/api/documents/{id}/links/{linkId}", s.handleDeleteLink())
+
+			// Graph view (NEW — 003-pkm-refactor)
+			r.Get("/api/graph", s.handleGraph())
+
+			// External content capture (NEW — 003-pkm-refactor)
+			r.Post("/api/capture", s.handleCapture())
+
+			// Tags
+			r.Get("/api/tags", s.handleListTags())
+			r.Put("/api/documents/{id}/tags", s.handleSetDocumentTags())
 
 		// Search
 		r.Get("/api/search", s.handleSearch())

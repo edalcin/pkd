@@ -71,6 +71,21 @@ CREATE TABLE IF NOT EXISTS attachments (
 CREATE INDEX IF NOT EXISTS idx_attachments_document_id ON attachments(document_id);
 
 -- ---------------------------------------------------------------------------
+-- document_links (bidirectional links between documents)
+-- Simple directed edges: source → target. Backlinks derived via reverse query.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS document_links (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id   INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    target_id   INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    created_at  TEXT    NOT NULL,
+    UNIQUE(source_id, target_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_links_source ON document_links(source_id);
+CREATE INDEX IF NOT EXISTS idx_document_links_target ON document_links(target_id);
+
+-- ---------------------------------------------------------------------------
 -- share_links
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS share_links (

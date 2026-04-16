@@ -21,6 +21,11 @@ type Config struct {
 	MaxImageMB          int64
 	MaxAttachmentMB     int64
 	TrustProxyHeaders   bool
+
+	// BaseURL is the public-facing base URL used when generating share links
+	// (e.g. "https://pkd.dalc.in/"). If empty, the server derives it from the
+	// incoming request's Host header, which may be incorrect behind a proxy.
+	BaseURL string
 }
 
 // Load reads configuration from environment variables. It returns an error
@@ -87,6 +92,11 @@ func Load() (*Config, error) {
 
 	if v := os.Getenv("PKD_TRUST_PROXY_HEADERS"); v == "1" || v == "true" || v == "yes" {
 		cfg.TrustProxyHeaders = true
+	}
+
+	if v := os.Getenv("PKD_BASE_URL"); v != "" {
+		// Ensure it ends with a trailing slash for consistent URL construction
+		cfg.BaseURL = strings.TrimRight(v, "/") + "/"
 	}
 
 	return cfg, nil

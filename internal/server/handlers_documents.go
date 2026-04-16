@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -86,7 +87,13 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 		// Derive plain text for FTS5 indexing from the sanitized HTML
 		plainText := security.ExtractPlainText(safeHTML)
 
-		doc, err := s.docs.Update(id, req.Version, req.Title, safeHTML, plainText, req.Icon)
+		docID := id // capture for closure
+		docHTML := safeHTML
+		doc, err := s.docs.UpdateAndSync(id, req.Version, req.Title, safeHTML, plainText, req.Icon,
+			func(tx *sql.Tx) error {
+				return s.links.SyncLinksFromHTML(tx, docID, docHTML)
+			},
+		)
 		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
