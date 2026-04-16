@@ -15,7 +15,14 @@
   let tagInput = $state('')
   let docTags = $state([])
   let backlinks = $state([])
+  let outgoingLinks = $state([])
   let attachments = $state([])
+
+  // Link search state
+  let linkQuery = $state('')
+  let linkResults = $state([])
+  let linkSearchOpen = $state(false)
+  let linkSearchTimer = null
   let saving = $state(false)
   let saveError = $state('')
   let conflictData = $state(null)
@@ -53,18 +60,22 @@
       doc = await loadDoc(Number(docId))
       titleValue = doc.title
       docTags = doc.tags || []
-      await loadBacklinks()
+      await loadLinks()
       attachments = doc?.attachment_ids?.map(id => ({ id })) || []
     } finally {
       loading = false
     }
   }
 
-  async function loadBacklinks() {
+  async function loadLinks() {
     try {
       const resp = await apiGet(`/api/documents/${docId}/links`)
       backlinks = resp.incoming || []
-    } catch { backlinks = [] }
+      outgoingLinks = resp.outgoing || []
+    } catch {
+      backlinks = []
+      outgoingLinks = []
+    }
   }
 
   // Reload when docId prop changes
@@ -135,6 +146,47 @@
   async function removeTag(name) {
     docTags = docTags.filter(t => t !== name)
     await setDocumentTags(doc.id, docTags)
+  }
+
+  // ── Related notes (outgoing links) ────────────────────────────────────────
+
+  function onLinkInput() {
+    clearTimeout(linkSearchTimer)
+    if (linkQuery.trim().length < 1) { linkResults = []; linkSearchOpen = false; return }
+    linkSearchTimer = setTimeout(async () => {
+      try {
+        const hits = await apiGet(`/api/search?q=${encodeURIComponent(linkQuery)}`)
+        // Exclude self and already-linked docs
+        const linked = new Set(outgoingLinks.map(l => l.target_id))
+        linkResults = (hits || []).filter(h => h.id !== doc.id && !linked.has(h.id)).slice(0, 8)
+        linkSearchOpen = linkResults.length > 0
+      } catch { linkResults = [] }
+    }, 200)
+  }
+
+  async function addLink(targetId, targetTitle) {
+    try {
+      await apiFetch(`/api/documents/${doc.id}/links`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_id: targetId }),
+      })
+      outgoingLinks = [...outgoingLinks, { id: Date.now(), target_id: targetId, target_title: targetTitle }]
+    } catch {}
+    linkQuery = ''
+    linkResults = []
+    linkSearchOpen = false
+    await loadLinks()  // refresh with real IDs
+  }
+
+  async function removeLink(linkId) {
+    await apiDelete(`/api/documents/${doc.id}/links/${linkId}`)
+    outgoingLinks = outgoingLinks.filter(l => l.id !== linkId)
+  }
+
+  function closeLinkSearch() {
+    linkSearchOpen = false
+    linkResults = []
   }
 
   // File attachment upload
@@ -315,7 +367,56 @@
     <!-- TipTap editor -->
     <div class="tiptap-editor" use:mountEditor></div>
 
-    <!-- Backlinks -->
+    <!-- Related notes (outgoing links) -->
+    <div class="links-panel">
+      <h3>Notas relacionadas</h3>
+
+      <!-- Add relation search -->
+      <div class="link-search-wrap">
+        <input
+          class="link-search-input"
+          type="text"
+          bind:value={linkQuery}
+          oninput={onLinkInput}
+          onblur={() => setTimeout(closeLinkSearch, 150)}
+          placeholder="Relacionar nota…"
+          aria-label="Buscar nota para relacionar"
+          autocomplete="off"
+        />
+        {#if linkSearchOpen}
+          <div class="link-dropdown" role="listbox">
+            {#each linkResults as hit}
+              <div
+                class="link-option"
+                role="option"
+                aria-selected="false"
+                tabindex="0"
+                onmousedown={e => { e.preventDefault(); addLink(hit.id, hit.title) }}
+                onkeydown={e => e.key === 'Enter' && addLink(hit.id, hit.title)}
+              >
+                📄 {hit.title}
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+
+      <!-- Outgoing links list -->
+      {#each outgoingLinks as link}
+        <div class="link-item">
+          <span
+            class="link-title"
+            role="button"
+            tabindex="0"
+            onclick={() => window.location.hash = `/doc/${link.target_id}`}
+            onkeydown={e => e.key === 'Enter' && (window.location.hash = `/doc/${link.target_id}`)}
+          >→ {link.target_title}</span>
+          <button class="row-btn row-btn-del" onmousedown={e => { e.preventDefault(); removeLink(link.id) }} title="Remover relação">×</button>
+        </div>
+      {/each}
+    </div>
+
+    <!-- Backlinks (incoming) -->
     {#if backlinks.length > 0}
       <div class="backlinks-panel">
         <h3>Referenciado por ({backlinks.length})</h3>
@@ -478,6 +579,81 @@
     border-radius: 3px;
     margin-left: .25rem;
   }
+
+  /* ── Related notes / links ──────────────────────────── */
+  .links-panel {
+    margin-top: 1rem;
+    padding-top: .75rem;
+    border-top: 1px solid var(--border);
+    position: relative;
+  }
+
+  .link-search-wrap {
+    position: relative;
+    margin-bottom: .5rem;
+  }
+
+  .link-search-input {
+    width: 100%;
+    padding: .3rem .5rem;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: .85rem;
+    box-sizing: border-box;
+  }
+
+  .link-search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .link-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .link-option {
+    padding: .4rem .6rem;
+    font-size: .85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .link-option:hover {
+    background: var(--bg-hover);
+  }
+
+  .link-item {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .2rem 0;
+    font-size: .9rem;
+  }
+
+  .link-title {
+    flex: 1;
+    cursor: pointer;
+    color: var(--accent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .link-title:hover { text-decoration: underline; }
 
   .attachments-panel {
     margin-top: 1rem;
