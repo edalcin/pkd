@@ -265,42 +265,42 @@
     <div class="toolbar" role="toolbar" aria-label="Formatação">
         <!-- Headings -->
         <button class="tb-btn {isActive('heading', {level:1}) ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleHeading({level:1}))} title="Título 1" aria-pressed={isActive('heading',{level:1})}>H1</button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleHeading({level:1})) }} title="Título 1" aria-pressed={isActive('heading',{level:1})}>H1</button>
         <button class="tb-btn {isActive('heading', {level:2}) ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleHeading({level:2}))} title="Título 2" aria-pressed={isActive('heading',{level:2})}>H2</button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleHeading({level:2})) }} title="Título 2" aria-pressed={isActive('heading',{level:2})}>H2</button>
         <button class="tb-btn {isActive('heading', {level:3}) ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleHeading({level:3}))} title="Título 3" aria-pressed={isActive('heading',{level:3})}>H3</button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleHeading({level:3})) }} title="Título 3" aria-pressed={isActive('heading',{level:3})}>H3</button>
 
         <div class="tb-sep" role="separator"></div>
 
         <!-- Inline styles -->
         <button class="tb-btn {isActive('bold') ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleBold())} title="Negrito (Ctrl+B)" aria-pressed={isActive('bold')}><strong>B</strong></button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleBold()) }} title="Negrito (Ctrl+B)" aria-pressed={isActive('bold')}><strong>B</strong></button>
         <button class="tb-btn {isActive('italic') ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleItalic())} title="Itálico (Ctrl+I)" aria-pressed={isActive('italic')}><em>I</em></button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleItalic()) }} title="Itálico (Ctrl+I)" aria-pressed={isActive('italic')}><em>I</em></button>
         <button class="tb-btn {isActive('strike') ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleStrike())} title="Tachado" aria-pressed={isActive('strike')}><s>S</s></button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleStrike()) }} title="Tachado" aria-pressed={isActive('strike')}><s>S</s></button>
         <button class="tb-btn {isActive('code') ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleCode())} title="Código inline" aria-pressed={isActive('code')}><code>`</code></button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleCode()) }} title="Código inline" aria-pressed={isActive('code')}><code>`</code></button>
 
         <div class="tb-sep" role="separator"></div>
 
         <!-- Blocks -->
         <button class="tb-btn {isActive('bulletList') ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleBulletList())} title="Lista" aria-pressed={isActive('bulletList')}>☰</button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleBulletList()) }} title="Lista" aria-pressed={isActive('bulletList')}>☰</button>
         <button class="tb-btn {isActive('orderedList') ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleOrderedList())} title="Lista numerada" aria-pressed={isActive('orderedList')}>1.</button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleOrderedList()) }} title="Lista numerada" aria-pressed={isActive('orderedList')}>1.</button>
         <button class="tb-btn {isActive('blockquote') ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleBlockquote())} title="Citação" aria-pressed={isActive('blockquote')}>"</button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleBlockquote()) }} title="Citação" aria-pressed={isActive('blockquote')}>"</button>
         <button class="tb-btn {isActive('codeBlock') ? 'active' : ''}"
-          onclick={() => fmt(c => c.toggleCodeBlock())} title="Bloco de código" aria-pressed={isActive('codeBlock')}>&lt;/&gt;</button>
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleCodeBlock()) }} title="Bloco de código" aria-pressed={isActive('codeBlock')}>&lt;/&gt;</button>
 
         <div class="tb-sep" role="separator"></div>
 
         <!-- Utility -->
-        <button class="tb-btn" onclick={() => fmt(c => c.setHorizontalRule())} title="Linha horizontal">—</button>
-        <button class="tb-btn" onclick={() => fmt(c => c.undo())} title="Desfazer (Ctrl+Z)">↩</button>
-        <button class="tb-btn" onclick={() => fmt(c => c.redo())} title="Refazer (Ctrl+Y)">↪</button>
+        <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.setHorizontalRule()) }} title="Linha horizontal">—</button>
+        <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.undo()) }} title="Desfazer (Ctrl+Z)">↩</button>
+        <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.redo()) }} title="Refazer (Ctrl+Y)">↪</button>
 
         <div class="tb-spacer"></div>
 
