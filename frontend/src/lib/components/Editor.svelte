@@ -243,6 +243,7 @@
           <div
             class="backlink-item {link.target_trashed ? 'broken' : ''}"
             onclick={() => !link.target_trashed && (window.location.hash = `/doc/${link.source_id}`)}
+            onkeydown={e => e.key === 'Enter' && !link.target_trashed && (window.location.hash = `/doc/${link.source_id}`)}
             role="button"
             tabindex={link.target_trashed ? -1 : 0}
           >

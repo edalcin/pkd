@@ -41,7 +41,6 @@
         bind:value={password}
         placeholder="Digite sua senha"
         autocomplete="current-password"
-        autofocus
         required
         disabled={loading}
       />

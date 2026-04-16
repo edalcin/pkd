@@ -176,7 +176,7 @@
       </div>
       {#if renameMsg}<p class="rename-msg">{renameMsg}</p>{/if}
       <datalist id="tags-list">
-        {#each $tags as tag}<option value={tag.name}>{/each}
+        {#each $tags as tag}<option value={tag.name}></option>{/each}
       </datalist>
     </div>
     <div class="admin-section">
