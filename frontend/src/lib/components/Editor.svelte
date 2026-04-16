@@ -6,7 +6,7 @@
   import { DocLink } from '../editor/doclink-extension.js'
   import { saveDoc, loadDoc } from '../stores/documents.js'
   import { setDocumentTags } from '../stores/tags.js'
-  import { apiFetch, apiGet, apiDelete } from '../api.js'
+  import { apiFetch, apiGet, apiPost, apiDelete } from '../api.js'
 
   let { docId } = $props()
 
@@ -165,18 +165,17 @@
   }
 
   async function addLink(targetId, targetTitle) {
-    try {
-      await apiFetch(`/api/documents/${doc.id}/links`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_id: targetId }),
-      })
-      outgoingLinks = [...outgoingLinks, { id: Date.now(), target_id: targetId, target_title: targetTitle }]
-    } catch {}
     linkQuery = ''
     linkResults = []
     linkSearchOpen = false
-    await loadLinks()  // refresh with real IDs
+    try {
+      await apiPost(`/api/documents/${doc.id}/links`, { target_id: targetId })
+      await loadLinks()
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        saveError = 'Erro ao relacionar nota'
+      }
+    }
   }
 
   async function removeLink(linkId) {
@@ -304,6 +303,36 @@
           placeholder="+ tag"
           aria-label="Adicionar tag"
         />
+        <!-- Relate note search (inline with tags) -->
+        <div class="link-search-wrap">
+          <input
+            class="tag-input link-search-input"
+            type="text"
+            bind:value={linkQuery}
+            oninput={onLinkInput}
+            onblur={() => setTimeout(closeLinkSearch, 150)}
+            placeholder="+ relacionar"
+            aria-label="Relacionar nota"
+            autocomplete="off"
+          />
+          {#if linkSearchOpen}
+            <div class="link-dropdown" role="listbox">
+              {#each linkResults as hit}
+                <div
+                  class="link-option"
+                  role="option"
+                  aria-selected="false"
+                  tabindex="0"
+                  onmousedown={e => { e.preventDefault(); addLink(hit.id, hit.title) }}
+                  onkeydown={e => e.key === 'Enter' && addLink(hit.id, hit.title)}
+                >
+                  📄 {hit.title}
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
         <span class="save-status">
           {#if saving}⏳{:else if saveError}❌ {saveError}{:else}✓{/if}
         </span>
@@ -368,40 +397,9 @@
     <div class="tiptap-editor" use:mountEditor></div>
 
     <!-- Related notes (outgoing links) -->
+    {#if outgoingLinks.length > 0}
     <div class="links-panel">
-      <h3>Notas relacionadas</h3>
-
-      <!-- Add relation search -->
-      <div class="link-search-wrap">
-        <input
-          class="link-search-input"
-          type="text"
-          bind:value={linkQuery}
-          oninput={onLinkInput}
-          onblur={() => setTimeout(closeLinkSearch, 150)}
-          placeholder="Relacionar nota…"
-          aria-label="Buscar nota para relacionar"
-          autocomplete="off"
-        />
-        {#if linkSearchOpen}
-          <div class="link-dropdown" role="listbox">
-            {#each linkResults as hit}
-              <div
-                class="link-option"
-                role="option"
-                aria-selected="false"
-                tabindex="0"
-                onmousedown={e => { e.preventDefault(); addLink(hit.id, hit.title) }}
-                onkeydown={e => e.key === 'Enter' && addLink(hit.id, hit.title)}
-              >
-                📄 {hit.title}
-              </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
-
-      <!-- Outgoing links list -->
+      <h3>Notas relacionadas ({outgoingLinks.length})</h3>
       {#each outgoingLinks as link}
         <div class="link-item">
           <span
@@ -415,6 +413,7 @@
         </div>
       {/each}
     </div>
+    {/if}
 
     <!-- Backlinks (incoming) -->
     {#if backlinks.length > 0}
@@ -585,28 +584,12 @@
     margin-top: 1rem;
     padding-top: .75rem;
     border-top: 1px solid var(--border);
-    position: relative;
   }
 
+  /* Wrapper sits inline in the doc-meta row */
   .link-search-wrap {
     position: relative;
-    margin-bottom: .5rem;
-  }
-
-  .link-search-input {
-    width: 100%;
-    padding: .3rem .5rem;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--bg);
-    color: var(--text);
-    font-size: .85rem;
-    box-sizing: border-box;
-  }
-
-  .link-search-input:focus {
-    outline: none;
-    border-color: var(--accent);
+    display: inline-block;
   }
 
   .link-dropdown {
