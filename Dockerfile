@@ -1,18 +1,19 @@
 # ── Stage 1: Frontend build ───────────────────────────────────────────────────
-# Builds the Svelte 5 + Vite frontend and outputs to /app/frontend/dist/
+# Builds the Svelte 5 + Vite frontend.
+# vite.config.js uses outDir '../internal/server/web/dist', which resolves
+# to /app/internal/server/web/dist/ when run from /app/frontend/.
 FROM node:22-alpine AS frontend
 
 WORKDIR /app/frontend
 
-# Install dependencies first (layer-cached unless package*.json change)
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --prefer-offline
+# Install dependencies (no lockfile required — npm install generates one)
+COPY frontend/package.json ./
+RUN npm install
 
-# Build the Svelte app
+# Copy full frontend source and build
 COPY frontend/ .
 RUN npm run build
-# Output: /app/frontend/dist/ (→ ../internal/server/web/dist relative to vite.config)
-# But in Docker we copy from the absolute dist/ path
+# Output lands at: /app/internal/server/web/dist/
 
 
 # ── Stage 2: Go build ─────────────────────────────────────────────────────────
@@ -34,10 +35,10 @@ RUN go mod download
 # Copy source
 COPY . .
 
-# Copy compiled Svelte build into the Go embed directory
-# vite.config.js outputs to internal/server/web/dist when run locally,
-# but in Docker the frontend stage outputs to /app/frontend/dist.
-COPY --from=frontend /app/frontend/dist/ ./internal/server/web/dist/
+# Copy compiled Svelte build into the Go embed directory.
+# The Vite outDir '../internal/server/web/dist' relative to /app/frontend/
+# resolves to /app/internal/server/web/dist/ in the frontend stage.
+COPY --from=frontend /app/internal/server/web/dist/ ./internal/server/web/dist/
 
 # Build a static binary with debug symbols stripped
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
