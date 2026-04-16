@@ -258,11 +258,11 @@
       </div>
     </div>
 
-    <!-- Formatting toolbar -->
-    {#if editorReady}
-      <!-- editorTick drives re-evaluation of isActive() on every transaction -->
-      {#key editorTick}
-      <div class="toolbar" role="toolbar" aria-label="Formatação">
+    <!-- Formatting toolbar — always visible when a document is open.
+         {#key editorTick} forces re-evaluation of isActive() on every
+         TipTap transaction (selection change, content edit). -->
+    {#key editorTick}
+    <div class="toolbar" role="toolbar" aria-label="Formatação">
         <!-- Headings -->
         <button class="tb-btn {isActive('heading', {level:1}) ? 'active' : ''}"
           onclick={() => fmt(c => c.toggleHeading({level:1}))} title="Título 1" aria-pressed={isActive('heading',{level:1})}>H1</button>
@@ -310,8 +310,7 @@
           {saving ? '⏳' : '💾'} Salvar
         </button>
       </div>
-      {/key}
-    {/if}
+    {/key}
 
     <!-- TipTap editor -->
     <div class="tiptap-editor" use:mountEditor></div>
