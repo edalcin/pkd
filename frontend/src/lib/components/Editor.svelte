@@ -25,9 +25,9 @@
   let editorInstance = null
   let autoSaveTimer = null
 
-  // Incremented on every TipTap transaction to trigger toolbar re-renders.
-  // We can't make editorInstance itself reactive (TipTap manages it), so we
-  // use this counter as a Svelte-readable proxy for "editor state changed".
+  // editorReady signals that the editor has been mounted (triggers toolbar render).
+  // editorTick increments on each transaction to keep toolbar active-states fresh.
+  let editorReady = $state(false)
   let editorTick = $state(0)
 
   function isActive(type, attrs) {
@@ -206,14 +206,16 @@
         },
       },
       onUpdate: () => scheduleAutoSave(),
-      onTransaction: () => { editorTick++ },
+      onTransaction: () => { editorTick++; editorReady = true },
     })
+    editorReady = true
 
     return {
       destroy() {
         clearTimeout(autoSaveTimer)
         editorInstance?.destroy()
         editorInstance = null
+        editorReady = false
       },
     }
   }
@@ -257,7 +259,7 @@
     </div>
 
     <!-- Formatting toolbar -->
-    {#if editorInstance && !loading}
+    {#if editorReady}
       <!-- editorTick drives re-evaluation of isActive() on every transaction -->
       {#key editorTick}
       <div class="toolbar" role="toolbar" aria-label="Formatação">
