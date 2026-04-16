@@ -25,6 +25,21 @@
   let editorInstance = null
   let autoSaveTimer = null
 
+  // Incremented on every TipTap transaction to trigger toolbar re-renders.
+  // We can't make editorInstance itself reactive (TipTap manages it), so we
+  // use this counter as a Svelte-readable proxy for "editor state changed".
+  let editorTick = $state(0)
+
+  function isActive(type, attrs) {
+    return editorInstance?.isActive(type, attrs) ?? false
+  }
+
+  function fmt(cmd) {
+    // Execute a TipTap chain command and keep focus in the editor.
+    // Each toolbar action is a function that receives the chain builder.
+    cmd(editorInstance.chain().focus()).run()
+  }
+
   onMount(() => loadDocument())
 
   onDestroy(() => {
@@ -165,6 +180,14 @@
     return true
   }
 
+  // Ctrl+S saves the document from anywhere in the editor area
+  function handleKeydown(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault()
+      performSave()
+    }
+  }
+
   // Svelte action: mounts the TipTap editor on the DOM node
   function mountEditor(node) {
     editorInstance = new Editor({
@@ -183,6 +206,7 @@
         },
       },
       onUpdate: () => scheduleAutoSave(),
+      onTransaction: () => { editorTick++ },
     })
 
     return {
@@ -200,7 +224,7 @@
     <div class="empty-state"><div class="spinner"></div></div>
   </div>
 {:else if doc}
-  <div class="editor-area">
+  <div class="editor-area" onkeydown={handleKeydown} role="region" aria-label="Editor de documento">
     <!-- Title -->
     <div class="doc-header">
       <input
@@ -231,6 +255,61 @@
         </span>
       </div>
     </div>
+
+    <!-- Formatting toolbar -->
+    {#if editorInstance && !loading}
+      <!-- editorTick drives re-evaluation of isActive() on every transaction -->
+      {#key editorTick}
+      <div class="toolbar" role="toolbar" aria-label="Formatação">
+        <!-- Headings -->
+        <button class="tb-btn {isActive('heading', {level:1}) ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleHeading({level:1}))} title="Título 1" aria-pressed={isActive('heading',{level:1})}>H1</button>
+        <button class="tb-btn {isActive('heading', {level:2}) ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleHeading({level:2}))} title="Título 2" aria-pressed={isActive('heading',{level:2})}>H2</button>
+        <button class="tb-btn {isActive('heading', {level:3}) ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleHeading({level:3}))} title="Título 3" aria-pressed={isActive('heading',{level:3})}>H3</button>
+
+        <div class="tb-sep" role="separator"></div>
+
+        <!-- Inline styles -->
+        <button class="tb-btn {isActive('bold') ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleBold())} title="Negrito (Ctrl+B)" aria-pressed={isActive('bold')}><strong>B</strong></button>
+        <button class="tb-btn {isActive('italic') ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleItalic())} title="Itálico (Ctrl+I)" aria-pressed={isActive('italic')}><em>I</em></button>
+        <button class="tb-btn {isActive('strike') ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleStrike())} title="Tachado" aria-pressed={isActive('strike')}><s>S</s></button>
+        <button class="tb-btn {isActive('code') ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleCode())} title="Código inline" aria-pressed={isActive('code')}><code>`</code></button>
+
+        <div class="tb-sep" role="separator"></div>
+
+        <!-- Blocks -->
+        <button class="tb-btn {isActive('bulletList') ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleBulletList())} title="Lista" aria-pressed={isActive('bulletList')}>☰</button>
+        <button class="tb-btn {isActive('orderedList') ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleOrderedList())} title="Lista numerada" aria-pressed={isActive('orderedList')}>1.</button>
+        <button class="tb-btn {isActive('blockquote') ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleBlockquote())} title="Citação" aria-pressed={isActive('blockquote')}>"</button>
+        <button class="tb-btn {isActive('codeBlock') ? 'active' : ''}"
+          onclick={() => fmt(c => c.toggleCodeBlock())} title="Bloco de código" aria-pressed={isActive('codeBlock')}>&lt;/&gt;</button>
+
+        <div class="tb-sep" role="separator"></div>
+
+        <!-- Utility -->
+        <button class="tb-btn" onclick={() => fmt(c => c.setHorizontalRule())} title="Linha horizontal">—</button>
+        <button class="tb-btn" onclick={() => fmt(c => c.undo())} title="Desfazer (Ctrl+Z)">↩</button>
+        <button class="tb-btn" onclick={() => fmt(c => c.redo())} title="Refazer (Ctrl+Y)">↪</button>
+
+        <div class="tb-spacer"></div>
+
+        <!-- Save -->
+        <button class="tb-btn tb-save {saving ? 'saving' : ''}"
+          onclick={performSave} disabled={saving} title="Salvar (Ctrl+S)">
+          {saving ? '⏳' : '💾'} Salvar
+        </button>
+      </div>
+      {/key}
+    {/if}
 
     <!-- TipTap editor -->
     <div class="tiptap-editor" use:mountEditor></div>
@@ -299,6 +378,72 @@
 {/if}
 
 <style>
+  /* ── Formatting toolbar ─────────────────────────── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: .25rem .25rem;
+    margin-bottom: .5rem;
+    background: var(--bg-secondary, var(--bg-sidebar));
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  .tb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text);
+    font-size: .85rem;
+    cursor: pointer;
+    transition: background .12s;
+    white-space: nowrap;
+  }
+
+  .tb-btn:hover {
+    background: var(--bg-hover);
+  }
+
+  .tb-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .tb-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+
+  .tb-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 3px;
+    flex-shrink: 0;
+  }
+
+  .tb-spacer {
+    flex: 1;
+  }
+
+  .tb-save {
+    gap: 4px;
+    font-weight: 600;
+    padding: 0 10px;
+  }
+
+  .tb-save.saving {
+    opacity: .7;
+  }
+
   .doc-header { margin-bottom: .75rem; }
 
   .tag-input {
