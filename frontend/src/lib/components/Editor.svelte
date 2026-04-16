@@ -1,14 +1,12 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { createEditor, EditorContent } from 'svelte-tiptap'
+  import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
   import Image from '@tiptap/extension-image'
-  import Suggestion from '@tiptap/suggestion'
   import { DocLink } from '../editor/doclink-extension.js'
-  import { buildLinkSuggestion } from '../editor/link-suggestion.js'
   import { saveDoc, loadDoc } from '../stores/documents.js'
-  import { tags, setDocumentTags, loadTags } from '../stores/tags.js'
-  import { apiFetch, apiGet, apiPost, apiDelete } from '../api.js'
+  import { setDocumentTags } from '../stores/tags.js'
+  import { apiFetch, apiGet, apiDelete } from '../api.js'
 
   let { docId } = $props()
 
@@ -23,26 +21,15 @@
   let conflictData = $state(null)
   let loading = $state(true)
 
+  // TipTap Editor instance (not reactive — managed manually)
+  let editorInstance = null
   let autoSaveTimer = null
-  let editor = $state(null)
 
-  // Build link suggestion extension
-  const linkSuggestion = buildLinkSuggestion()
-
-  // Build DocLinkWithSuggestion
-  const DocLinkWithSuggestion = DocLink.extend({
-    addInputRules() { return [] },
-  })
-
-  const LinkExtension = Suggestion.configure ? DocLink : DocLink
-
-  onMount(async () => {
-    await loadDocument()
-  })
+  onMount(() => loadDocument())
 
   onDestroy(() => {
     clearTimeout(autoSaveTimer)
-    if (editor) get(editor)?.destroy()
+    editorInstance?.destroy()
   })
 
   async function loadDocument() {
@@ -52,7 +39,7 @@
       titleValue = doc.title
       docTags = doc.tags || []
       await loadBacklinks()
-      await loadAttachments()
+      attachments = doc?.attachment_ids?.map(id => ({ id })) || []
     } finally {
       loading = false
     }
@@ -65,29 +52,23 @@
     } catch { backlinks = [] }
   }
 
-  async function loadAttachments() {
-    // Attachment IDs are on doc.attachment_ids; fetch metadata from store
-    attachments = doc?.attachment_ids?.map(id => ({ id })) || []
-  }
-
   // Reload when docId prop changes
   $effect(() => {
-    if (docId) loadDocument()
+    if (docId) {
+      editorInstance?.destroy()
+      editorInstance = null
+      loadDocument()
+    }
   })
 
-  // Auto-save: triggered 2 seconds after the user stops typing
+  // Auto-save: 2 seconds after user stops typing
   function scheduleAutoSave() {
     clearTimeout(autoSaveTimer)
     autoSaveTimer = setTimeout(performSave, 2000)
   }
 
   async function performSave() {
-    if (!doc || !editor) return
-    const editorInstance = typeof editor === 'object' && 'subscribe' in editor
-      ? (() => { let v; editor.subscribe(e => v = e)(); return v })()
-      : editor
-    if (!editorInstance) return
-
+    if (!doc || !editorInstance) return
     const html = editorInstance.getHTML()
     const text = editorInstance.getText()
     saving = true
@@ -105,7 +86,7 @@
         return
       }
       doc = result
-    } catch (err) {
+    } catch {
       saveError = 'Erro ao salvar'
     } finally {
       saving = false
@@ -141,7 +122,7 @@
     await setDocumentTags(doc.id, docTags)
   }
 
-  // Attachments
+  // File attachment upload
   async function handleFileUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -163,7 +144,7 @@
     attachments = attachments.filter(a => a.id !== id)
   }
 
-  // Image paste handler
+  // Image paste from clipboard
   function handleImagePaste(view, event) {
     const items = [...(event.clipboardData?.items || [])]
     const imageItem = items.find(i => i.type.startsWith('image/'))
@@ -184,9 +165,9 @@
     return true
   }
 
-  function editorReady(node) {
-    // Create editor after the container is in the DOM
-    const e = createEditor({
+  // Svelte action: mounts the TipTap editor on the DOM node
+  function mountEditor(node) {
+    editorInstance = new Editor({
       element: node,
       extensions: [
         StarterKit,
@@ -203,12 +184,12 @@
       },
       onUpdate: () => scheduleAutoSave(),
     })
-    editor = e
+
     return {
-      destroy: () => {
+      destroy() {
         clearTimeout(autoSaveTimer)
-        let v; e.subscribe(inst => v = inst)()
-        v?.destroy()
+        editorInstance?.destroy()
+        editorInstance = null
       },
     }
   }
@@ -220,7 +201,7 @@
   </div>
 {:else if doc}
   <div class="editor-area">
-    <!-- Title + meta row -->
+    <!-- Title -->
     <div class="doc-header">
       <input
         class="doc-title"
@@ -231,7 +212,6 @@
         aria-label="Título"
       />
       <div class="doc-meta">
-        <!-- Tags -->
         {#each docTags as tag}
           <span class="tag-chip active">
             #{tag}
@@ -246,8 +226,6 @@
           placeholder="+ tag"
           aria-label="Adicionar tag"
         />
-
-        <!-- Save status -->
         <span class="save-status">
           {#if saving}⏳{:else if saveError}❌ {saveError}{:else}✓{/if}
         </span>
@@ -255,9 +233,9 @@
     </div>
 
     <!-- TipTap editor -->
-    <div class="tiptap-editor" use:editorReady></div>
+    <div class="tiptap-editor" use:mountEditor></div>
 
-    <!-- Backlinks panel -->
+    <!-- Backlinks -->
     {#if backlinks.length > 0}
       <div class="backlinks-panel">
         <h3>Referenciado por ({backlinks.length})</h3>
@@ -292,7 +270,7 @@
 
     <!-- File upload -->
     <div class="upload-row">
-      <label class="btn btn-ghost upload-label" title="Anexar arquivo">
+      <label class="btn btn-ghost upload-label">
         📎 Anexar arquivo
         <input type="file" class="hidden-input" onchange={handleFileUpload} />
       </label>
@@ -306,12 +284,8 @@
         <h2>Conflito de versão</h2>
         <p>Este documento foi alterado por outra aba. O que deseja fazer?</p>
         <div class="modal-actions">
-          <button class="btn btn-ghost" onclick={handleConflictReload}>
-            Descartar e recarregar
-          </button>
-          <button class="btn btn-primary" onclick={handleConflictOverwrite}>
-            Sobrescrever com minha versão
-          </button>
+          <button class="btn btn-ghost" onclick={handleConflictReload}>Descartar e recarregar</button>
+          <button class="btn btn-primary" onclick={handleConflictOverwrite}>Sobrescrever com minha versão</button>
         </div>
       </div>
     </div>
@@ -383,12 +357,7 @@
   }
 
   .att-link { color: var(--accent); }
-
   .upload-row { margin-top: .75rem; }
-
   .upload-label { cursor: pointer; }
-
-  .hidden-input {
-    display: none;
-  }
+  .hidden-input { display: none; }
 </style>
