@@ -17,7 +17,6 @@ export default defineConfig({
             '@tiptap/starter-kit',
             '@tiptap/extension-image',
             '@tiptap/suggestion',
-            'svelte-tiptap',
           ],
           d3: ['d3-force', 'd3-selection', 'd3-zoom', 'd3-drag'],
         },
