@@ -98,3 +98,16 @@ CREATE TABLE IF NOT EXISTS share_links (
 
 CREATE INDEX IF NOT EXISTS idx_share_links_document_id ON share_links(document_id);
 CREATE INDEX IF NOT EXISTS idx_share_links_token_hash  ON share_links(token_hash);
+
+-- ---------------------------------------------------------------------------
+-- document_urls (external links associated with documents)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS document_urls (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    url         TEXT    NOT NULL,
+    title       TEXT    NOT NULL DEFAULT '',
+    created_at  TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_urls_document_id ON document_urls(document_id);

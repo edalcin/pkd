@@ -64,7 +64,7 @@ func (s *LinkStore) GetLinksForDocument(docID int64) (*model.LinksResponse, erro
 func (s *LinkStore) CreateLink(sourceID, targetID int64) (*model.LinkEntry, error) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.db.Exec(
-		`INSERT INTO document_links (source_id, target_id, created_at) VALUES (?, ?, ?)`,
+		`INSERT INTO document_links (source_id, target_id, manual, created_at) VALUES (?, ?, 1, ?)`,
 		sourceID, targetID, now,
 	)
 	if err != nil {
@@ -103,20 +103,20 @@ func (s *LinkStore) DeleteLink(id int64) error {
 // GetGraphData returns nodes and edges for the graph visualisation.
 // When includeAll is false, only documents with at least one link are included.
 // When tags is non-empty, only documents with ALL of those tags are included.
+// Tag nodes are always appended (negative IDs) for every tag referenced by
+// the included document nodes.
 func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphData, error) {
 	edges, err := s.queryAllEdges()
 	if err != nil {
 		return nil, err
 	}
 
-	// Collect IDs of documents that appear in at least one edge
 	connectedIDs := map[int64]bool{}
 	for _, e := range edges {
 		connectedIDs[e.Source] = true
 		connectedIDs[e.Target] = true
 	}
 
-	// Build node query, optionally filtered by tags (AND semantics)
 	var nodeRows *sql.Rows
 	if len(tags) > 0 {
 		ph := strings.Repeat("?,", len(tags))
@@ -153,6 +153,7 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 		if err := nodeRows.Scan(&n.ID, &n.Title, &n.Icon); err != nil {
 			return nil, fmt.Errorf("links.GetGraphData scan: %w", err)
 		}
+		n.NodeType = "doc"
 		if includeAll || connectedIDs[n.ID] {
 			nodes = append(nodes, n)
 		}
@@ -161,12 +162,10 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 		return nil, fmt.Errorf("links.GetGraphData rows: %w", err)
 	}
 
-	// Fetch tags for each included node
 	for i := range nodes {
 		nodes[i].Tags, _ = s.queryTagsForDoc(nodes[i].ID)
 	}
 
-	// Filter edges to only those whose both endpoints made it into nodes
 	nodeSet := map[int64]bool{}
 	for _, n := range nodes {
 		nodeSet[n.ID] = true
@@ -176,6 +175,30 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 		if nodeSet[e.Source] && nodeSet[e.Target] {
 			filteredEdges = append(filteredEdges, e)
 		}
+	}
+
+	// Add tag nodes (negative IDs) and doc→tag edges for every tag
+	// that appears on at least one included document node.
+	tagNodeMap := map[int64]model.GraphNode{} // tag DB id → GraphNode
+	for _, n := range nodes {
+		for _, tagName := range n.Tags {
+			var tagID int64
+			if err := s.db.QueryRow(`SELECT id FROM tags WHERE name = ? COLLATE NOCASE`, tagName).Scan(&tagID); err != nil {
+				continue
+			}
+			graphTagID := -tagID
+			if _, exists := tagNodeMap[tagID]; !exists {
+				tagNodeMap[tagID] = model.GraphNode{
+					ID:       graphTagID,
+					Title:    "#" + tagName,
+					NodeType: "tag",
+				}
+			}
+			filteredEdges = append(filteredEdges, model.GraphEdge{Source: n.ID, Target: graphTagID})
+		}
+	}
+	for _, tn := range tagNodeMap {
+		nodes = append(nodes, tn)
 	}
 
 	return &model.GraphData{
@@ -190,8 +213,8 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 func (s *LinkStore) SyncLinksFromHTML(tx *sql.Tx, docID int64, bodyHTML string) error {
 	targetIDs := extractDocLinkIDs(bodyHTML)
 
-	// Load current links from DB
-	rows, err := tx.Query(`SELECT id, target_id FROM document_links WHERE source_id = ?`, docID)
+	// Load current auto-managed links from DB (manual=1 links are never touched by sync)
+	rows, err := tx.Query(`SELECT id, target_id FROM document_links WHERE source_id = ? AND manual = 0`, docID)
 	if err != nil {
 		return fmt.Errorf("links.Sync query: %w", err)
 	}

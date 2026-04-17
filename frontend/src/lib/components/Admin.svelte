@@ -10,6 +10,8 @@
   let cleanupResult = $state(null)
   let loading = $state(false)
   let activeTab = $state('backup')
+  let linkCheckResults = $state(null)
+  let linkChecking = $state(false)
 
   onMount(() => {
     loadTags()
@@ -105,6 +107,28 @@
       loading = false
     }
   }
+
+  // URL validity check
+  async function handleCheckLinks() {
+    linkChecking = true
+    linkCheckResults = null
+    try {
+      linkCheckResults = await apiPost('/api/admin/check-urls')
+    } finally {
+      linkChecking = false
+    }
+  }
+
+  async function deleteInvalidLinks() {
+    if (!linkCheckResults) return
+    const invalid = linkCheckResults.filter(r => !r.valid)
+    if (!invalid.length) return
+    if (!confirm(`Excluir ${invalid.length} link(s) inválido(s)?`)) return
+    for (const r of invalid) {
+      await apiDelete(`/api/documents/${r.document_id}/urls/${r.id}`)
+    }
+    linkCheckResults = linkCheckResults.filter(r => r.valid)
+  }
 </script>
 
 <div class="admin-wrap">
@@ -112,7 +136,7 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['cleanup','🧹 Limpeza']] as [id, label]}
+    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links']] as [id, label]}
       <button
         class="tab-btn {activeTab === id ? 'active' : ''}"
         onclick={() => activeTab = id}
@@ -202,6 +226,42 @@
       {/if}
     </div>
   {/if}
+
+  <!-- Links -->
+  {#if activeTab === 'links'}
+    <div class="admin-section">
+      <h3>Verificar links externos</h3>
+      <p class="muted" style="margin-bottom:.75rem">Verifica a validade de todos os links externos associados a documentos.</p>
+      <button class="btn btn-primary" onclick={handleCheckLinks} disabled={linkChecking}>
+        {linkChecking ? 'Verificando…' : '🔗 Verificar links'}
+      </button>
+
+      {#if linkCheckResults !== null}
+        {@const invalid = linkCheckResults.filter(r => !r.valid)}
+        {@const valid = linkCheckResults.filter(r => r.valid)}
+        <div style="margin-top:1rem">
+          <p style="margin-bottom:.5rem">
+            ✅ {valid.length} válido(s) · ❌ {invalid.length} inválido(s)
+          </p>
+          {#if invalid.length > 0}
+            <button class="btn btn-danger btn-sm" onclick={deleteInvalidLinks} style="margin-bottom:.75rem">
+              Excluir todos os inválidos
+            </button>
+          {/if}
+          <div class="link-check-list">
+            {#each linkCheckResults as r}
+              <div class="link-check-item {r.valid ? 'valid' : 'invalid'}">
+                <span class="lc-status">{r.valid ? '✅' : '❌'}</span>
+                <a href={r.url} target="_blank" rel="noopener" class="lc-url">{r.title || r.url}</a>
+                {#if r.title}<span class="lc-url-small">{r.url}</span>{/if}
+                <span class="lc-code">{r.status_code || 'erro'}</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -275,4 +335,28 @@
 
   .btn-sm { padding: .25rem .6rem; font-size: .8rem; }
   .muted { color: var(--text-muted); font-size: .875rem; }
+
+  .link-check-list {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .link-check-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .35rem .5rem;
+    border-radius: 4px;
+    font-size: .875rem;
+    background: var(--bg-hover);
+  }
+
+  .link-check-item.invalid { background: rgba(239, 68, 68, .1); }
+  .lc-status { flex-shrink: 0; }
+  .lc-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); }
+  .lc-url-small { font-size: .75rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lc-code { flex-shrink: 0; font-size: .75rem; color: var(--text-muted); font-family: monospace; }
 </style>

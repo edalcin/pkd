@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte'
+  import { onDestroy } from 'svelte'
   import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
   import Image from '@tiptap/extension-image'
@@ -17,6 +17,10 @@
   let backlinks = $state([])
   let outgoingLinks = $state([])
   let attachments = $state([])
+  let docUrls = $state([])
+  let urlInput = $state('')
+  let urlTitleInput = $state('')
+  let urlAdding = $state(false)
 
   // Link search state
   let linkQuery = $state('')
@@ -47,8 +51,6 @@
     cmd(editorInstance.chain().focus()).run()
   }
 
-  onMount(() => loadDocument())
-
   onDestroy(() => {
     clearTimeout(autoSaveTimer)
     editorInstance?.destroy()
@@ -61,7 +63,17 @@
       titleValue = doc.title
       docTags = doc.tags || []
       await loadLinks()
-      attachments = doc?.attachment_ids?.map(id => ({ id })) || []
+      try {
+        const atts = await apiGet(`/api/documents/${docId}/attachments`)
+        attachments = atts || []
+      } catch {
+        attachments = doc?.attachment_ids?.map(id => ({ id })) || []
+      }
+      try {
+        docUrls = await apiGet(`/api/documents/${docId}/urls`)
+      } catch {
+        docUrls = []
+      }
     } finally {
       loading = false
     }
@@ -210,6 +222,27 @@
     attachments = attachments.filter(a => a.id !== id)
   }
 
+  async function addURL() {
+    const url = urlInput.trim()
+    if (!url) return
+    urlAdding = true
+    try {
+      const u = await apiPost(`/api/documents/${doc.id}/urls`, { url, title: urlTitleInput.trim() })
+      docUrls = [...docUrls, u]
+      urlInput = ''
+      urlTitleInput = ''
+    } catch {
+      saveError = 'Erro ao adicionar link'
+    } finally {
+      urlAdding = false
+    }
+  }
+
+  async function deleteURL(id) {
+    await apiDelete(`/api/documents/${doc.id}/urls/${id}`)
+    docUrls = docUrls.filter(u => u.id !== id)
+  }
+
   // Image paste from clipboard
   function handleImagePaste(view, event) {
     const items = [...(event.clipboardData?.items || [])]
@@ -277,7 +310,7 @@
     <div class="empty-state"><div class="spinner"></div></div>
   </div>
 {:else if doc}
-  <div class="editor-area" onkeydown={handleKeydown} role="region" aria-label="Editor de documento">
+  <div class="editor-area" onkeydown={handleKeydown} role="region" aria-label="Editor de documento" tabindex="-1">
     <!-- Title -->
     <div class="doc-header">
       <input
@@ -456,6 +489,41 @@
         <input type="file" class="hidden-input" onchange={handleFileUpload} />
       </label>
     </div>
+
+    <!-- External URLs -->
+    <div class="urls-panel">
+      <h3>Links externos ({docUrls.length})</h3>
+      {#each docUrls as u}
+        <div class="url-item">
+          <a href={u.url} target="_blank" rel="noopener noreferrer" class="url-link">
+            🔗 {u.title || u.url}
+          </a>
+          {#if u.title}<span class="url-subtitle">{u.url}</span>{/if}
+          <button class="row-btn row-btn-del" onclick={() => deleteURL(u.id)} title="Remover link">×</button>
+        </div>
+      {/each}
+      <div class="url-add-row">
+        <input
+          class="url-input"
+          type="url"
+          bind:value={urlInput}
+          placeholder="https://exemplo.com"
+          aria-label="URL"
+          onkeydown={e => e.key === 'Enter' && addURL()}
+        />
+        <input
+          class="url-title-input"
+          type="text"
+          bind:value={urlTitleInput}
+          placeholder="Título (opcional)"
+          aria-label="Título do link"
+          onkeydown={e => e.key === 'Enter' && addURL()}
+        />
+        <button class="btn btn-ghost" onclick={addURL} disabled={urlAdding || !urlInput.trim()}>
+          + Link
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Version conflict dialog -->
@@ -596,7 +664,9 @@
     position: absolute;
     top: 100%;
     left: 0;
-    right: 0;
+    min-width: 320px;
+    width: max-content;
+    max-width: 480px;
     background: var(--bg-sidebar);
     border: 1px solid var(--border);
     border-radius: 5px;
@@ -666,4 +736,74 @@
   .upload-row { margin-top: .75rem; }
   .upload-label { cursor: pointer; }
   .hidden-input { display: none; }
+
+  .urls-panel {
+    margin-top: 1rem;
+    padding-top: .75rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .urls-panel h3 {
+    font-size: .8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: .5rem;
+  }
+
+  .url-item {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .2rem 0;
+    font-size: .9rem;
+  }
+
+  .url-link {
+    color: var(--accent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+
+  .url-link:hover { text-decoration: underline; }
+
+  .url-subtitle {
+    font-size: .75rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
+    flex-shrink: 0;
+  }
+
+  .url-add-row {
+    display: flex;
+    gap: .4rem;
+    margin-top: .5rem;
+    flex-wrap: wrap;
+  }
+
+  .url-input {
+    flex: 2;
+    min-width: 160px;
+    padding: .3rem .5rem;
+    font-size: .85rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-main, transparent);
+  }
+
+  .url-title-input {
+    flex: 1;
+    min-width: 100px;
+    padding: .3rem .5rem;
+    font-size: .85rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-main, transparent);
+  }
 </style>

@@ -80,5 +80,13 @@ func Open(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("store.Open commit: %w", err)
 	}
 
+	// Idempotent column migrations — ignore "duplicate column name" errors.
+	if _, err := db.Exec(`ALTER TABLE document_links ADD COLUMN manual INTEGER NOT NULL DEFAULT 0`); err != nil {
+		if !strings.Contains(err.Error(), "duplicate column name") {
+			db.Close()
+			return nil, fmt.Errorf("store.Open alter document_links: %w", err)
+		}
+	}
+
 	return db, nil
 }

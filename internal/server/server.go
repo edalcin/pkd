@@ -25,6 +25,7 @@ type Server struct {
 	shares      *store.ShareStore
 	backup      *store.BackupStore
 	links       *store.LinkStore
+	urls        *store.URLStore
 	throttle    *Throttle
 	handler     http.Handler
 }
@@ -42,6 +43,7 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 		shares:      store.NewShareStore(db),
 		backup:      store.NewBackupStore(db, cfg.DBPath),
 		links:       store.NewLinkStore(db),
+		urls:        store.NewURLStore(db),
 		throttle:    NewThrottle(cfg.TrustProxyHeaders),
 	}
 	s.handler = s.buildRouter()
@@ -115,6 +117,11 @@ func (s *Server) buildRouter() http.Handler {
 			r.Post("/api/documents/{id}/links", s.handleCreateLink())
 			r.Delete("/api/documents/{id}/links/{linkId}", s.handleDeleteLink())
 
+			// External URLs
+			r.Get("/api/documents/{id}/urls", s.handleListURLs())
+			r.Post("/api/documents/{id}/urls", s.handleCreateURL())
+			r.Delete("/api/documents/{id}/urls/{urlId}", s.handleDeleteURL())
+
 			// Graph view (NEW — 003-pkm-refactor)
 			r.Get("/api/graph", s.handleGraph())
 
@@ -132,6 +139,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/api/calendar/{year}/{month}", s.handleCalendar())
 
 		// Attachments
+		r.Get("/api/documents/{id}/attachments", s.handleListAttachments())
 		r.Post("/api/documents/{id}/attachments", s.handleCreateAttachment())
 		r.Get("/api/attachments/{id}", s.handleGetAttachment())
 		r.Delete("/api/attachments/{id}", s.handleDeleteAttachment())
@@ -148,6 +156,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/restore", s.handleAdminRestore())
 		r.Post("/api/admin/cleanup", s.handleAdminCleanup())
 		r.Put("/api/admin/tags/rename", s.handleAdminRenameTag())
+		r.Post("/api/admin/check-urls", s.handleAdminCheckURLs())
 	})
 
 	return r

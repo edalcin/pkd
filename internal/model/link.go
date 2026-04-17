@@ -31,10 +31,11 @@ type LinksResponse struct {
 
 // GraphNode is a node in the graph response.
 type GraphNode struct {
-	ID    int64    `json:"id"`
-	Title string   `json:"title"`
-	Icon  string   `json:"icon,omitempty"`
-	Tags  []string `json:"tags,omitempty"`
+	ID       int64    `json:"id"`
+	Title    string   `json:"title"`
+	Icon     string   `json:"icon,omitempty"`
+	Tags     []string `json:"tags,omitempty"`
+	NodeType string   `json:"node_type"` // "doc" or "tag"
 }
 
 // GraphEdge is a directed edge in the graph response.

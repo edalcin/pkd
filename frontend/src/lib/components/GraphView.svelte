@@ -86,13 +86,21 @@
       .enter().append('g')
       .attr('class', 'graph-node')
       .attr('cursor', 'pointer')
-      .on('click', (_, d) => { window.location.hash = `/doc/${d.id}` })
+      .on('click', (_, d) => {
+        if (d.node_type === 'tag') {
+          tagFilter = d.title.replace(/^#/, '')
+          loadGraph()
+        } else {
+          window.location.hash = `/doc/${d.id}`
+        }
+      })
 
     nodeEls.append('circle')
-      .attr('r', 6)
-      .attr('fill', d => getColor(d.tags))
-      .attr('stroke', 'var(--bg-panel)')
+      .attr('r', d => d.node_type === 'tag' ? 7 : 6)
+      .attr('fill', d => d.node_type === 'tag' ? '#e879f9' : getColor(d.tags))
+      .attr('stroke', d => d.node_type === 'tag' ? '#c026d3' : 'var(--bg-panel)')
       .attr('stroke-width', 2)
+      .attr('stroke-dasharray', d => d.node_type === 'tag' ? '3,2' : 'none')
 
     nodeEls.append('text')
       .attr('dy', 14)
@@ -102,10 +110,10 @@
     // Tooltip on hover
     nodeEls
       .on('mouseenter', function(_, d) {
-        select(this).select('circle').attr('r', 9)
+        select(this).select('circle').attr('r', d.node_type === 'tag' ? 9 : 9)
       })
-      .on('mouseleave', function() {
-        select(this).select('circle').attr('r', 6)
+      .on('mouseleave', function(_, d) {
+        select(this).select('circle').attr('r', d.node_type === 'tag' ? 7 : 6)
       })
 
     // Force simulation

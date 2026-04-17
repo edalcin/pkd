@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/edalcin/pkd/internal/store"
 )
@@ -132,6 +133,8 @@ func (s *Server) handleAdminRestore() http.HandlerFunc {
 		s.search = store.NewSearchStore(newDB)
 		s.shares = store.NewShareStore(newDB)
 		s.backup = store.NewBackupStore(newDB, s.cfg.DBPath)
+		s.links = store.NewLinkStore(newDB)
+		s.urls = store.NewURLStore(newDB)
 
 		// Invalidate all sessions (user must log in again)
 		s.sessions = s.sessions.Reset()
@@ -158,6 +161,62 @@ func (s *Server) handleAdminCleanup() http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]int{"orphans_removed": removed})
+	}
+}
+
+func (s *Server) handleAdminCheckURLs() http.HandlerFunc {
+	type result struct {
+		ID         int64  `json:"id"`
+		DocumentID int64  `json:"document_id"`
+		URL        string `json:"url"`
+		Title      string `json:"title"`
+		Valid       bool   `json:"valid"`
+		StatusCode  int    `json:"status_code"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		urls, err := s.urls.ListAll()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		client := &http.Client{
+			Timeout: 10 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 5 {
+					return http.ErrUseLastResponse
+				}
+				return nil
+			},
+		}
+
+		results := make([]result, 0, len(urls))
+		for _, u := range urls {
+			res := result{
+				ID:         u.ID,
+				DocumentID: u.DocumentID,
+				URL:        u.URL,
+				Title:      u.Title,
+			}
+			resp, err := client.Head(u.URL)
+			if err != nil {
+				// Try GET as fallback (some servers reject HEAD)
+				resp, err = client.Get(u.URL)
+				if err != nil {
+					res.Valid = false
+					res.StatusCode = 0
+					results = append(results, res)
+					continue
+				}
+				resp.Body.Close()
+			} else {
+				resp.Body.Close()
+			}
+			res.StatusCode = resp.StatusCode
+			res.Valid = resp.StatusCode >= 200 && resp.StatusCode < 400
+			results = append(results, res)
+		}
+		writeJSON(w, http.StatusOK, results)
 	}
 }
 

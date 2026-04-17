@@ -9,6 +9,22 @@ import (
 	"github.com/edalcin/pkd/internal/store"
 )
 
+func (s *Server) handleListAttachments() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		docID, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		atts, err := s.attachments.ListByDocument(docID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, atts)
+	}
+}
+
 func (s *Server) handleCreateAttachment() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		docID, err := parseID(r, "id")
