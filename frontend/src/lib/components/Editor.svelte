@@ -825,7 +825,7 @@
     position: fixed;
     min-width: 160px;
     max-width: 280px;
-    background: var(--bg-sidebar);
+    background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: 5px;
     z-index: 1000;
@@ -1006,7 +1006,7 @@
     position: fixed;
     min-width: 320px;
     max-width: 560px;
-    background: var(--bg-sidebar);
+    background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: 5px;
     z-index: 1000;
