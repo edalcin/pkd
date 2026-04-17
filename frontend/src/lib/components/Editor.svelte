@@ -346,37 +346,6 @@
           placeholder="+ tag"
           aria-label="Adicionar tag"
         />
-        <!-- Relate note search (inline with tags) -->
-        <div class="link-search-wrap">
-          <input
-            class="tag-input link-search-input"
-            type="text"
-            bind:value={linkQuery}
-            bind:this={linkInputEl}
-            oninput={onLinkInput}
-            onblur={() => setTimeout(closeLinkSearch, 150)}
-            placeholder="+ relacionar"
-            aria-label="Relacionar nota"
-            autocomplete="off"
-          />
-          {#if linkSearchOpen}
-            <div class="link-dropdown" role="listbox" style={dropdownStyle}>
-              {#each linkResults as hit}
-                <div
-                  class="link-option"
-                  role="option"
-                  aria-selected="false"
-                  tabindex="0"
-                  onmousedown={e => { e.preventDefault(); addLink(hit.id, hit.title) }}
-                  onkeydown={e => e.key === 'Enter' && addLink(hit.id, hit.title)}
-                >
-                  📄 {hit.title}
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
         <span class="save-status">
           {#if saving}⏳{:else if saveError}❌ {saveError}{:else}✓{/if}
         </span>
@@ -440,99 +409,144 @@
     <!-- TipTap editor -->
     <div class="tiptap-editor" use:mountEditor></div>
 
-    <!-- Related notes (outgoing links) -->
-    {#if outgoingLinks.length > 0}
-    <div class="links-panel">
-      <h3>Notas relacionadas ({outgoingLinks.length})</h3>
-      {#each outgoingLinks as link}
-        <div class="link-item">
-          <span
-            class="link-title"
-            role="button"
-            tabindex="0"
-            onclick={() => window.location.hash = `/doc/${link.target_id}`}
-            onkeydown={e => e.key === 'Enter' && (window.location.hash = `/doc/${link.target_id}`)}
-          >→ {link.target_title}</span>
-          <button class="row-btn row-btn-del" onmousedown={e => { e.preventDefault(); removeLink(link.id) }} title="Remover relação">×</button>
-        </div>
-      {/each}
-    </div>
-    {/if}
-
-    <!-- Backlinks (incoming) -->
-    {#if backlinks.length > 0}
-      <div class="backlinks-panel">
-        <h3>Referenciado por ({backlinks.length})</h3>
-        {#each backlinks as link}
-          <div
-            class="backlink-item {link.target_trashed ? 'broken' : ''}"
-            onclick={() => !link.target_trashed && (window.location.hash = `/doc/${link.source_id}`)}
-            onkeydown={e => e.key === 'Enter' && !link.target_trashed && (window.location.hash = `/doc/${link.source_id}`)}
-            role="button"
-            tabindex={link.target_trashed ? -1 : 0}
-          >
-            📄 {link.source_title}
-            {#if link.target_trashed}<span class="broken-badge">excluído</span>{/if}
-          </div>
-        {/each}
+    <!-- ── Área de associações ───────────────────────────────────── -->
+    <div class="assoc-area">
+      <div class="assoc-divider">
+        <span class="assoc-divider-label">Associações</span>
       </div>
-    {/if}
 
-    <!-- Attachments -->
-    {#if attachments.length > 0}
-      <div class="attachments-panel">
-        <h3>Anexos</h3>
-        {#each attachments as att}
-          <div class="attachment-item">
-            <a href="/api/attachments/{att.id}" target="_blank" class="att-link">
-              📎 {att.original_name || `Anexo #${att.id}`}
-            </a>
-            <button class="row-btn row-btn-del" onclick={() => deleteAttachment(att.id)}>×</button>
+      <div class="assoc-grid">
+
+        <!-- Coluna 1: Notas relacionadas -->
+        <section class="assoc-col">
+          <h4 class="assoc-col-title">📄 Notas relacionadas</h4>
+
+          <!-- busca para adicionar -->
+          <div class="link-search-wrap">
+            <input
+              class="assoc-search-input"
+              type="text"
+              bind:value={linkQuery}
+              bind:this={linkInputEl}
+              oninput={onLinkInput}
+              onblur={() => setTimeout(closeLinkSearch, 150)}
+              placeholder="Buscar nota para relacionar…"
+              aria-label="Relacionar nota"
+              autocomplete="off"
+            />
+            {#if linkSearchOpen}
+              <div class="link-dropdown" role="listbox" style={dropdownStyle}>
+                {#each linkResults as hit}
+                  <div
+                    class="link-option"
+                    role="option"
+                    aria-selected="false"
+                    tabindex="0"
+                    onmousedown={e => { e.preventDefault(); addLink(hit.id, hit.title) }}
+                    onkeydown={e => e.key === 'Enter' && addLink(hit.id, hit.title)}
+                  >📄 {hit.title}</div>
+                {/each}
+              </div>
+            {/if}
           </div>
-        {/each}
-      </div>
-    {/if}
 
-    <!-- File upload -->
-    <div class="upload-row">
-      <label class="btn btn-ghost upload-label">
-        📎 Anexar arquivo
-        <input type="file" class="hidden-input" onchange={handleFileUpload} />
-      </label>
-    </div>
+          <!-- outgoing -->
+          {#each outgoingLinks as link}
+            <div class="assoc-item">
+              <span
+                class="assoc-item-label link-title"
+                role="button" tabindex="0"
+                onclick={() => window.location.hash = `/doc/${link.target_id}`}
+                onkeydown={e => e.key === 'Enter' && (window.location.hash = `/doc/${link.target_id}`)}
+              >→ {link.target_title}</span>
+              <button class="row-btn row-btn-del" onmousedown={e => { e.preventDefault(); removeLink(link.id) }} title="Remover">×</button>
+            </div>
+          {/each}
 
-    <!-- External URLs -->
-    <div class="urls-panel">
-      <h3>Links externos ({docUrls.length})</h3>
-      {#each docUrls as u}
-        <div class="url-item">
-          <a href={u.url} target="_blank" rel="noopener noreferrer" class="url-link">
-            🔗 {u.title || u.url}
-          </a>
-          {#if u.title}<span class="url-subtitle">{u.url}</span>{/if}
-          <button class="row-btn row-btn-del" onclick={() => deleteURL(u.id)} title="Remover link">×</button>
-        </div>
-      {/each}
-      <div class="url-add-row">
-        <input
-          class="url-input"
-          type="url"
-          bind:value={urlInput}
-          placeholder="https://exemplo.com"
-          aria-label="URL"
-          onkeydown={e => e.key === 'Enter' && addURL()}
-        />
-        <input
-          class="url-title-input"
-          type="text"
-          bind:value={urlTitleInput}
-          placeholder="Título (opcional)"
-          aria-label="Título do link"
-          onkeydown={e => e.key === 'Enter' && addURL()}
-        />
-        <button class="btn btn-ghost" onclick={addURL} disabled={urlAdding || !urlInput.trim()}>
-          + Link
-        </button>
+          <!-- backlinks -->
+          {#if backlinks.length > 0}
+            <p class="assoc-sub-title">Referenciado por</p>
+            {#each backlinks as link}
+              <div
+                class="assoc-item backlink-item {link.target_trashed ? 'broken' : ''}"
+                onclick={() => !link.target_trashed && (window.location.hash = `/doc/${link.source_id}`)}
+                onkeydown={e => e.key === 'Enter' && !link.target_trashed && (window.location.hash = `/doc/${link.source_id}`)}
+                role="button" tabindex={link.target_trashed ? -1 : 0}
+              >
+                <span class="assoc-item-label">← {link.source_title}</span>
+                {#if link.target_trashed}<span class="broken-badge">excluído</span>{/if}
+              </div>
+            {/each}
+          {/if}
+
+          {#if outgoingLinks.length === 0 && backlinks.length === 0}
+            <p class="assoc-empty">Nenhuma nota relacionada</p>
+          {/if}
+        </section>
+
+        <!-- Coluna 2: Arquivos -->
+        <section class="assoc-col">
+          <h4 class="assoc-col-title">📎 Arquivos</h4>
+
+          {#each attachments as att}
+            <div class="assoc-item">
+              <a href="/api/attachments/{att.id}" target="_blank" class="assoc-item-label att-link">
+                {att.original_name || `Anexo #${att.id}`}
+              </a>
+              <button class="row-btn row-btn-del" onclick={() => deleteAttachment(att.id)} title="Remover">×</button>
+            </div>
+          {/each}
+
+          {#if attachments.length === 0}
+            <p class="assoc-empty">Nenhum arquivo anexado</p>
+          {/if}
+
+          <label class="assoc-add-btn">
+            + Anexar arquivo
+            <input type="file" class="hidden-input" onchange={handleFileUpload} />
+          </label>
+        </section>
+
+        <!-- Coluna 3: Links externos -->
+        <section class="assoc-col">
+          <h4 class="assoc-col-title">🔗 Links externos</h4>
+
+          {#each docUrls as u}
+            <div class="assoc-item">
+              <a href={u.url} target="_blank" rel="noopener noreferrer" class="assoc-item-label url-link" title={u.url}>
+                {u.title || u.url}
+              </a>
+              <button class="row-btn row-btn-del" onclick={() => deleteURL(u.id)} title="Remover">×</button>
+            </div>
+          {/each}
+
+          {#if docUrls.length === 0}
+            <p class="assoc-empty">Nenhum link externo</p>
+          {/if}
+
+          <div class="url-add-row">
+            <input
+              class="url-input"
+              type="url"
+              bind:value={urlInput}
+              placeholder="https://…"
+              aria-label="URL"
+              onkeydown={e => e.key === 'Enter' && addURL()}
+            />
+            <input
+              class="url-title-input"
+              type="text"
+              bind:value={urlTitleInput}
+              placeholder="Título (opcional)"
+              aria-label="Título do link"
+              onkeydown={e => e.key === 'Enter' && addURL()}
+            />
+            <button class="assoc-add-btn" onclick={addURL} disabled={urlAdding || !urlInput.trim()}>
+              + Adicionar
+            </button>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>
@@ -658,28 +672,151 @@
     margin-left: .25rem;
   }
 
-  /* ── Related notes / links ──────────────────────────── */
-  .links-panel {
-    margin-top: 1rem;
-    padding-top: .75rem;
-    border-top: 1px solid var(--border);
+  /* ── Área de associações (rodapé) ─────────────────────── */
+  .assoc-area {
+    margin-top: 2rem;
   }
 
-  /* Wrapper sits inline in the doc-meta row */
+  .assoc-divider {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: 1rem;
+  }
+
+  .assoc-divider::before,
+  .assoc-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .assoc-divider-label {
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .assoc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem 1.5rem;
+  }
+
+  @media (max-width: 700px) {
+    .assoc-grid { grid-template-columns: 1fr; }
+  }
+
+  .assoc-col {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    min-width: 0;
+  }
+
+  .assoc-col-title {
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    margin-bottom: .4rem;
+  }
+
+  .assoc-sub-title {
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-muted);
+    margin: .5rem 0 .2rem;
+    opacity: .7;
+  }
+
+  .assoc-item {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .2rem 0;
+    font-size: .875rem;
+    min-width: 0;
+  }
+
+  .assoc-item-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .assoc-item-label.link-title,
+  .assoc-item-label.url-link,
+  .assoc-item-label.att-link {
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .assoc-item-label.link-title:hover,
+  .assoc-item-label.url-link:hover,
+  .assoc-item-label.att-link:hover { text-decoration: underline; }
+
+  .assoc-empty {
+    font-size: .8rem;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: .2rem 0 .4rem;
+  }
+
+  .assoc-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    margin-top: .5rem;
+    padding: .3rem .6rem;
+    font-size: .8rem;
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: transparent;
+    transition: color .12s, border-color .12s;
+  }
+
+  .assoc-add-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .assoc-add-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* Search wrap inside assoc column */
   .link-search-wrap {
     position: relative;
-    display: inline-block;
+    display: block;
+    margin-bottom: .25rem;
   }
+
+  .assoc-search-input {
+    width: 100%;
+    padding: .3rem .5rem;
+    font-size: .85rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    box-sizing: border-box;
+  }
+
+  .assoc-search-input:focus { outline: none; border-color: var(--accent); }
 
   .link-dropdown {
     position: fixed;
-    min-width: 380px;
-    max-width: 600px;
+    min-width: 320px;
+    max-width: 560px;
     background: var(--bg-sidebar);
     border: 1px solid var(--border);
     border-radius: 5px;
     z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    box-shadow: 0 4px 16px rgba(0,0,0,.28);
     max-height: 260px;
     overflow-y: auto;
   }
@@ -693,125 +830,36 @@
     line-height: 1.35;
   }
 
-  .link-option:hover {
+  .link-option:hover { background: var(--bg-hover); }
+
+  .broken-badge {
+    font-size: .7rem;
     background: var(--bg-hover);
-  }
-
-  .link-item {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    padding: .2rem 0;
-    font-size: .9rem;
-  }
-
-  .link-title {
-    flex: 1;
-    cursor: pointer;
-    color: var(--accent);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .link-title:hover { text-decoration: underline; }
-
-  .attachments-panel {
-    margin-top: 1rem;
-    padding-top: .75rem;
-    border-top: 1px solid var(--border);
-  }
-
-  .attachments-panel h3,
-  .backlinks-panel h3 {
-    font-size: .8rem;
-    color: var(--text-muted);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    margin-bottom: .5rem;
-  }
-
-  .attachment-item {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    padding: .25rem 0;
-    font-size: .9rem;
-  }
-
-  .att-link { color: var(--accent); }
-  .upload-row { margin-top: .75rem; }
-  .upload-label { cursor: pointer; }
-  .hidden-input { display: none; }
-
-  .urls-panel {
-    margin-top: 1rem;
-    padding-top: .75rem;
-    border-top: 1px solid var(--border);
-  }
-
-  .urls-panel h3 {
-    font-size: .8rem;
-    color: var(--text-muted);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    margin-bottom: .5rem;
-  }
-
-  .url-item {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    padding: .2rem 0;
-    font-size: .9rem;
-  }
-
-  .url-link {
-    color: var(--accent);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-  }
-
-  .url-link:hover { text-decoration: underline; }
-
-  .url-subtitle {
-    font-size: .75rem;
-    color: var(--text-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 150px;
-    flex-shrink: 0;
+    padding: .1rem .3rem;
+    border-radius: 3px;
+    margin-left: .25rem;
   }
 
   .url-add-row {
     display: flex;
-    gap: .4rem;
+    flex-direction: column;
+    gap: .35rem;
     margin-top: .5rem;
-    flex-wrap: wrap;
   }
 
-  .url-input {
-    flex: 2;
-    min-width: 160px;
-    padding: .3rem .5rem;
-    font-size: .85rem;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--bg-main, transparent);
-  }
-
+  .url-input,
   .url-title-input {
-    flex: 1;
-    min-width: 100px;
+    width: 100%;
     padding: .3rem .5rem;
     font-size: .85rem;
     border: 1px solid var(--border);
     border-radius: 4px;
-    background: var(--bg-main, transparent);
+    background: transparent;
+    box-sizing: border-box;
   }
+
+  .url-input:focus,
+  .url-title-input:focus { outline: none; border-color: var(--accent); }
+
+  .hidden-input { display: none; }
 </style>
