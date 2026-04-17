@@ -116,6 +116,18 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 		connectedIDs[e.Source] = true
 		connectedIDs[e.Target] = true
 	}
+	// Docs with tags are also "connected" — they'll have doc→tag edges.
+	taggedRows, err := s.db.Query(`SELECT DISTINCT document_id FROM document_tags`)
+	if err != nil {
+		return nil, fmt.Errorf("links.GetGraphData tagged docs: %w", err)
+	}
+	for taggedRows.Next() {
+		var id int64
+		if taggedRows.Scan(&id) == nil {
+			connectedIDs[id] = true
+		}
+	}
+	taggedRows.Close()
 
 	var nodeRows *sql.Rows
 	if len(tags) > 0 {

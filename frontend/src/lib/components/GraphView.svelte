@@ -6,6 +6,8 @@
   import { apiGet } from '../api.js'
 
   let svgEl = $state(null)
+  let rawNodes = $state([])
+  let rawEdges = $state([])
   let nodes = $state([])
   let links = $state([])
   let loading = $state(true)
@@ -33,14 +35,23 @@
   onMount(() => loadGraph())
   onDestroy(() => simulation?.stop())
 
+  // Fire setupGraph only after svgEl is in the DOM and data is ready.
+  $effect(() => {
+    if (svgEl && rawNodes.length > 0) {
+      setupGraph(rawNodes, rawEdges)
+    }
+  })
+
   async function loadGraph() {
     loading = true
+    simulation?.stop()
     try {
       const params = new URLSearchParams()
       if (showAll) params.set('all', 'true')
       if (tagFilter) params.set('tag', tagFilter)
       const data = await apiGet('/api/graph?' + params)
-      setupGraph(data.nodes, data.edges)
+      rawNodes = data.nodes || []
+      rawEdges = data.edges || []
     } finally {
       loading = false
     }
@@ -145,10 +156,10 @@
 <div class="graph-container">
   {#if loading}
     <div class="empty-state"><div class="spinner"></div></div>
-  {:else if nodes.length === 0}
+  {:else if rawNodes.length === 0}
     <div class="empty-state">
       <span class="emoji">🕸️</span>
-      <p>Nenhuma conexão ainda.<br>Crie links com [[nome do documento]] no editor.</p>
+      <p>Nenhuma conexão ainda.<br>Adicione tags ou relacione documentos no editor.</p>
       {#if !showAll}
         <button class="btn btn-ghost" onclick={() => { showAll = true; loadGraph() }}>
           Mostrar todos os documentos
