@@ -1,29 +1,68 @@
-# PKD — Personal Knowledge Database
+<div align="center">
+  <img src="docs/pkd.png" alt="PKD" width="120" />
+  <h1>PKD — Personal Knowledge Database</h1>
+  <p>Base de conhecimento pessoal auto-hospedada, focada em organização, conexões e recuperação rápida de informações.</p>
 
-Base de conhecimento pessoal auto-hospedada. Segunda versão (PKM Refactor): links bidirecionais, grafo de conhecimento, captura de conteúdo externo, interface Svelte moderna.
-
-**Imagem:** `ghcr.io/edalcin/pkd:latest` · **Stack:** Go 1.25 + Svelte 5 + SQLite · **Tamanho:** ~22 MB
+  <p>
+    <img alt="Go 1.25" src="https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white" />
+    <img alt="Svelte 5" src="https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white" />
+    <img alt="SQLite" src="https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white" />
+    <img alt="Docker" src="https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white" />
+    <img alt="MIT" src="https://img.shields.io/badge/licença-MIT-green" />
+  </p>
+</div>
 
 ---
 
 ## Funcionalidades
 
+### Conteúdo e edição
+
 | | |
 |---|---|
 | 📁 **Hierarquia ilimitada** | Documentos dentro de documentos, arrastar e soltar para reorganizar |
-| ✏️ **Editor rico** | TipTap v2 — formatação, imagens inline redimensionáveis, tabelas, blocos de código |
-| 🔗 **Links bidirecionais** | Digite `[[nome]]` para criar links; backlinks aparecem automaticamente em "Referenciado por" |
-| 🕸️ **Graph View** | Visualização D3.js force-directed de toda a rede de documentos e conexões |
-| 📡 **Captura externa** | Envie links e textos de outros apps via PWA share target (`POST /api/capture` + Open Graph) |
-| 🏷️ **Hashtags** | Marque documentos com `#tags` e filtre a árvore por uma ou mais tags (AND) |
-| 🔍 **Super-busca** | Busca por substring em título, corpo e tags (SQLite FTS5) com snippets |
+| ✏️ **Editor rico** | TipTap v2 — negrito, itálico, títulos, listas, código, citações, imagens inline |
+| 🔗 **Links bidirecionais** | Digite `[[nome]]` para criar links; backlinks aparecem em "Referenciado por" |
+| 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
+| 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
 | 📅 **Calendário** | Navegue pelos documentos pela data de criação |
-| 📎 **Anexos** | Arquivos ficam em volume externo ao container, sobrevivem a atualizações |
+
+### Associações por documento
+
+Cada documento possui uma **área de associações** no rodapé, com três colunas:
+
+| Coluna | Funcionalidade |
+|---|---|
+| 📄 **Notas relacionadas** | Relacione documentos com busca autocomplete; backlinks automáticos |
+| 📎 **Arquivos** | Imagens mostram thumbnail; PDFs, áudios e outros tipos exibem ícone. Clicar abre modal de visualização (lightbox, embed PDF, player de áudio/vídeo) |
+| 🔗 **Links externos** | URLs com título opcional; verificação de validade no painel de administração |
+
+### Organização e visualização
+
+| | |
+|---|---|
+| 🏷️ **Hashtags com autocomplete** | Marque documentos com tags; ao digitar, sugeridas as tags já existentes no sistema |
+| 🕸️ **Graph View** | Grafo D3.js force-directed: nós de documentos (coloridos pela tag primária) + nós de tags (círculos tracejados). Clicar em tag filtra o grafo |
 | 🔗 **Links públicos** | Links de compartilhamento revogáveis, somente leitura |
-| 🛡️ **Administração** | Backup/restore, limpeza de órfãos, renomear/mesclar tags, lixeira |
-| 🌙 **Tema claro/escuro** | Alternância persistida no `localStorage` |
-| 📱 **Mobile-first** | Layout responsivo, alvos de toque ≥ 44 px |
-| 📲 **PWA** | Instalável como app; modo offline somente leitura; share target no celular |
+
+### Administração
+
+| | |
+|---|---|
+| 💾 **Backup / Restore** | Download do SQLite + restore com confirmação |
+| 🗑️ **Lixeira** | Documentos excluídos ficam em lixeira; restauráveis individualmente ou em lote |
+| 🏷️ **Tags** | Renomear e mesclar tags globalmente |
+| 🔗 **Verificação de links** | Testa todos os links externos (HTTP HEAD) e permite excluir os inválidos em lote |
+| 🧹 **Limpeza** | Remove anexos órfãos e executa `VACUUM` no banco |
+
+### Interface
+
+| | |
+|---|---|
+| 🌙 **Tema claro / escuro** | Alternância persistida no `localStorage` |
+| 📱 **Responsivo** | Layout mobile-first, alvos de toque ≥ 44 px |
+| 📲 **PWA** | Instalável como app; share target no celular; offline somente leitura |
+| 🧠 **Favicon** | Ícone personalizado do cérebro em todos os tamanhos (16 → 512 px) |
 
 ---
 
@@ -89,7 +128,7 @@ docker compose up -d
 
 | Variável | Obrigatória | Padrão | Descrição |
 |---|---|---|---|
-| `PKD_PASSWORD` | **sim** | — | Senha mestra (nunca armazenada, apenas comparada na memória) |
+| `PKD_PASSWORD` | **sim** | — | Senha mestra (nunca armazenada, comparada apenas em memória) |
 | `PKD_DB_PATH` | **sim** | — | Caminho do arquivo SQLite dentro do container |
 | `PKD_ATTACHMENTS_PATH` | **sim** | — | Caminho do diretório de anexos dentro do container |
 | `PKD_LISTEN_ADDR` | não | `:8080` | Endereço de escuta HTTP |
@@ -97,36 +136,45 @@ docker compose up -d
 | `PKD_MAX_IMAGE_MB` | não | `10` | Tamanho máximo de imagem inline (MB) |
 | `PKD_MAX_ATTACHMENT_MB` | não | `100` | Tamanho máximo de arquivo anexado (MB) |
 | `PKD_TRUST_PROXY_HEADERS` | não | `0` | Defina como `1` apenas atrás de proxy reverso confiável |
-| `PKD_BASE_URL` | não | *(host da request)* | URL pública base para links de compartilhamento (ex: `https://pkd.dalc.in/`) |
+| `PKD_BASE_URL` | não | *(host da request)* | URL pública base para links de compartilhamento (ex: `https://pkd.exemplo.com/`) |
 
 ---
 
-## Links bidirecionais
+## Como usar
 
-No editor TipTap, digite `[[` para abrir o autocomplete de documentos. Selecione o alvo — um link é criado com o ID do documento. O documento alvo mostra automaticamente "Referenciado por" na seção de backlinks.
+### Links bidirecionais
 
-Os links são sincronizados na mesma transação que o save do documento (atomicidade garantida).
+No editor, digite `[[` para abrir o autocomplete de documentos. Selecione o alvo — um link inline é criado com o ID do documento. O documento alvo exibe automaticamente "Referenciado por" na área de associações.
 
----
+Alternativamente, use o campo **"Buscar nota para relacionar…"** na coluna _Notas relacionadas_ no rodapé do documento para criar relações explícitas sem inserir o link no texto.
 
-## Graph View
+### Tags
 
-Acesse pelo ícone 🕸️ na barra superior. O grafo mostra documentos como nós (coloridos pela tag primária) e links como arestas. Apenas documentos conectados aparecem por padrão (toggle para mostrar todos). Interação: scroll para zoom, arrastar para pan, clicar em nó abre o documento.
+Digite no campo `+ tag` no cabeçalho do documento. Ao digitar, um dropdown sugere as tags já existentes no sistema — selecione ou continue digitando para criar uma nova. Confirme com `Enter` ou `,`.
 
----
+### Anexos e visualização
 
-## Captura de conteúdo externo
+Arraste um arquivo ou clique em **"+ Anexar arquivo"**. Imagens exibem thumbnail diretamente; clicar em qualquer anexo abre um modal:
 
-**No celular (PWA):** Compartilhe um link, texto ou imagem de qualquer app → selecione PKD no menu de compartilhamento do SO → novo documento criado com tag `#captura` e metadados Open Graph extraídos da URL.
+- **Imagem** → lightbox com zoom nativo do browser
+- **PDF** → visualizador embutido
+- **Áudio** → player HTML5
+- **Vídeo** → player HTML5
+- **Outros** → tela de download
 
-**Via API:**
-```bash
-curl -X POST http://localhost:8080/api/capture \
-  -H "Content-Type: application/json" \
-  -H "X-CSRF-Token: <token>" \
-  -b "pkd_session=<session>; pkd_csrf=<csrf>" \
-  -d '{"title": "Artigo interessante", "url": "https://example.com", "tags": ["leitura"]}'
-```
+### Links externos
+
+Na coluna _Links externos_ do rodapé, adicione URLs com título opcional. No painel de **Administração > Links**, teste a validade de todos os links externos cadastrados e exclua os quebrados em lote.
+
+### Graph View
+
+Acesse pelo ícone 🕸️ na barra superior. O grafo mostra:
+
+- **Nós de documento** → círculos coloridos pela tag primária
+- **Nós de tag** → círculos com borda tracejada rosa
+- **Arestas** → relações entre documentos e entre documentos e suas tags
+
+Por padrão só aparecem documentos com ao menos uma conexão (link ou tag). Marque **"Todos os docs"** para ver o grafo completo. Clicar em um nó de tag filtra o grafo por aquela tag.
 
 ---
 
@@ -140,7 +188,7 @@ pkd.exemplo.lan {
 }
 ```
 
-Ao usar proxy reverso, adicione `PKD_TRUST_PROXY_HEADERS=1`.
+Ao usar proxy reverso, adicione `PKD_TRUST_PROXY_HEADERS=1` e configure `PKD_BASE_URL` com a URL pública para que os links de compartilhamento gerem URLs corretas.
 
 ---
 
@@ -155,13 +203,43 @@ cd pkd
 # 1. Build do frontend Svelte
 cd frontend && npm install && npm run build && cd ..
 
-# 2. Testes e servidor de desenvolvimento Go
-go test ./...
+# 2. Rodar localmente
 PKD_PASSWORD=devpassword \
 PKD_DB_PATH=/tmp/pkd.sqlite \
 PKD_ATTACHMENTS_PATH=/tmp/pkd-att \
 go run ./cmd/pkd
 ```
+
+---
+
+## Arquitetura
+
+```mermaid
+graph TD
+    User(["👤 Usuário"]) -->|"HTTPS / Browser"| App
+    Mobile(["📱 Mobile OS"]) -->|"PWA Share Target"| App
+
+    subgraph Container ["🐳 Docker Container"]
+        App["⚙️ Go HTTP Server\n(chi router · handlers · middleware)"]
+        SPA["🌐 Svelte 5 SPA\n(TipTap v2 · D3.js · embutido no binário)"]
+    end
+
+    App --- SPA
+    App -->|"SQL / modernc-sqlite"| DB[("🗄️ SQLite\ndocuments · document_links\ndocument_urls · attachments\ntags · shares · FTS5")]
+    App -->|"os.File"| Vol[("📂 Attachments Volume")]
+```
+
+### Modelo de dados
+
+| Tabela | Descrição |
+|---|---|
+| `documents` | Documentos com hierarquia via `parent_id`, soft-delete, versionamento otimista |
+| `document_links` | Arestas direcionadas entre documentos (inline `[[...]]` ou painel). Flag `manual` distingue links do editor de links adicionados pelo painel |
+| `document_urls` | URLs externas com título opcional associadas a documentos |
+| `attachments` | Metadados de arquivos; binários em volume externo com path sharding |
+| `tags` + `document_tags` | Tags normalizadas; join N:N com documentos |
+| `documents_fts` | Tabela virtual FTS5 (contentless) para busca full-text |
+| `share_links` | Links públicos com hash de token e campo `revoked_at` |
 
 ---
 
@@ -176,28 +254,6 @@ go run ./cmd/pkd
 | [docs/c4/code.md](docs/c4/code.md) | 🇺🇸 EN | C4 Level 4 — Structs e fluxos de código |
 | [docs/security.md](docs/security.md) | 🇺🇸 EN | Referência de segurança |
 | [docs/operations.md](docs/operations.md) | 🇺🇸 EN | Guia de operações e backup |
-| [specs/003-pkm-refactor/quickstart.md](specs/003-pkm-refactor/quickstart.md) | 🇺🇸 EN | Quickstart detalhado v2 |
-
----
-
-## Arquitetura (resumo C4)
-
-```mermaid
-graph TD
-    User(["👤 Usuário"]) -->|"HTTPS / Browser"| App
-    Mobile(["📱 Mobile OS"]) -->|"PWA Share Target"| App
-
-    subgraph Container ["🐳 Docker Container"]
-        App["⚙️ Go HTTP Server\n(chi router, handlers,\nmiddleware, //go:embed)"]
-        SPA["🌐 Svelte 5 SPA\n(TipTap v2, D3.js,\nembarcado no binário Go)"]
-    end
-
-    App --- SPA
-    App -->|"SQL via modernc/sqlite"| DB[("🗄️ SQLite\n(documents, links,\ntags, shares, FTS5)")]
-    App -->|"os.File"| Vol[("📂 Attachments Volume\n(imagens e arquivos)")]
-```
-
-> Diagramas completos em [docs/c4/](docs/c4/).
 
 ---
 
