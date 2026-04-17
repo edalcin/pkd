@@ -27,6 +27,8 @@
   let linkResults = $state([])
   let linkSearchOpen = $state(false)
   let linkSearchTimer = null
+  let dropdownStyle = $state('')
+  let linkInputEl = $state(null)
   let saving = $state(false)
   let saveError = $state('')
   let conflictData = $state(null)
@@ -168,10 +170,18 @@
     linkSearchTimer = setTimeout(async () => {
       try {
         const hits = await apiGet(`/api/search?q=${encodeURIComponent(linkQuery)}`)
-        // Exclude self and already-linked docs
         const linked = new Set(outgoingLinks.map(l => l.target_id))
         linkResults = (hits || []).filter(h => h.id !== doc.id && !linked.has(h.id)).slice(0, 8)
-        linkSearchOpen = linkResults.length > 0
+        if (linkResults.length > 0) {
+          // Position dropdown below the input using fixed coords
+          if (linkInputEl) {
+            const r = linkInputEl.getBoundingClientRect()
+            dropdownStyle = `top:${r.bottom + 4}px;left:${r.left}px`
+          }
+          linkSearchOpen = true
+        } else {
+          linkSearchOpen = false
+        }
       } catch { linkResults = [] }
     }, 200)
   }
@@ -342,6 +352,7 @@
             class="tag-input link-search-input"
             type="text"
             bind:value={linkQuery}
+            bind:this={linkInputEl}
             oninput={onLinkInput}
             onblur={() => setTimeout(closeLinkSearch, 150)}
             placeholder="+ relacionar"
@@ -349,7 +360,7 @@
             autocomplete="off"
           />
           {#if linkSearchOpen}
-            <div class="link-dropdown" role="listbox">
+            <div class="link-dropdown" role="listbox" style={dropdownStyle}>
               {#each linkResults as hit}
                 <div
                   class="link-option"
@@ -661,28 +672,25 @@
   }
 
   .link-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    min-width: 320px;
-    width: max-content;
-    max-width: 480px;
+    position: fixed;
+    min-width: 380px;
+    max-width: 600px;
     background: var(--bg-sidebar);
     border: 1px solid var(--border);
     border-radius: 5px;
-    z-index: 100;
+    z-index: 1000;
     box-shadow: 0 4px 12px rgba(0,0,0,.25);
-    max-height: 220px;
+    max-height: 260px;
     overflow-y: auto;
   }
 
   .link-option {
-    padding: .4rem .6rem;
-    font-size: .85rem;
+    padding: .4rem .75rem;
+    font-size: .875rem;
     cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
   }
 
   .link-option:hover {
