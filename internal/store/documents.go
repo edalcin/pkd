@@ -310,14 +310,24 @@ func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 	row := db.QueryRow(`
 		SELECT id, parent_id, title, body_html, body_text, icon, position, version, created_at, updated_at
 		FROM documents WHERE id = ? AND trashed_at IS NULL`, id)
-	return scanDocRow(row, doc)
+	if err := scanDocRow(row, doc); err != nil {
+		return err
+	}
+	doc.Tags, _ = queryTagNames(db, id)
+	doc.AttachmentIDs, _ = queryAttachmentIDs(db, id)
+	return nil
 }
 
 func scanDocFromTx(tx *sql.Tx, id int64, doc *model.Document) error {
 	row := tx.QueryRow(`
 		SELECT id, parent_id, title, body_html, body_text, icon, position, version, created_at, updated_at
 		FROM documents WHERE id = ?`, id)
-	return scanDocRow(row, doc)
+	if err := scanDocRow(row, doc); err != nil {
+		return err
+	}
+	doc.Tags, _ = queryTagNamesTx(tx, id)
+	doc.AttachmentIDs, _ = queryAttachmentIDsTx(tx, id)
+	return nil
 }
 
 func scanDocRow(row *sql.Row, doc *model.Document) error {
@@ -342,6 +352,76 @@ func scanDocRow(row *sql.Row, doc *model.Document) error {
 	doc.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
 	doc.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedStr)
 	return nil
+}
+
+func queryTagNames(db *sql.DB, docID int64) ([]string, error) {
+	rows, err := db.Query(`
+		SELECT t.name FROM tags t
+		JOIN document_tags dt ON dt.tag_id = t.id
+		WHERE dt.document_id = ? ORDER BY t.name`, docID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var n string
+		if rows.Scan(&n) == nil {
+			names = append(names, n)
+		}
+	}
+	return names, rows.Err()
+}
+
+func queryTagNamesTx(tx *sql.Tx, docID int64) ([]string, error) {
+	rows, err := tx.Query(`
+		SELECT t.name FROM tags t
+		JOIN document_tags dt ON dt.tag_id = t.id
+		WHERE dt.document_id = ? ORDER BY t.name`, docID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var names []string
+	for rows.Next() {
+		var n string
+		if rows.Scan(&n) == nil {
+			names = append(names, n)
+		}
+	}
+	return names, rows.Err()
+}
+
+func queryAttachmentIDs(db *sql.DB, docID int64) ([]int64, error) {
+	rows, err := db.Query(`SELECT id FROM attachments WHERE document_id = ? ORDER BY created_at`, docID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if rows.Scan(&id) == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids, rows.Err()
+}
+
+func queryAttachmentIDsTx(tx *sql.Tx, docID int64) ([]int64, error) {
+	rows, err := tx.Query(`SELECT id FROM attachments WHERE document_id = ? ORDER BY created_at`, docID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if rows.Scan(&id) == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids, rows.Err()
 }
 
 func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
