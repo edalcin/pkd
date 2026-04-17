@@ -5,7 +5,7 @@
   import Image from '@tiptap/extension-image'
   import { DocLink } from '../editor/doclink-extension.js'
   import { saveDoc, loadDoc } from '../stores/documents.js'
-  import { setDocumentTags } from '../stores/tags.js'
+  import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiDelete } from '../api.js'
 
   let { docId } = $props()
@@ -13,6 +13,10 @@
   let doc = $state(null)
   let titleValue = $state('')
   let tagInput = $state('')
+  let tagSuggestions = $state([])
+  let tagSuggestionsOpen = $state(false)
+  let tagInputEl = $state(null)
+  let tagDropdownStyle = $state('')
   let docTags = $state([])
   let backlinks = $state([])
   let outgoingLinks = $state([])
@@ -82,6 +86,7 @@
       doc = await loadDoc(Number(docId))
       titleValue = doc.title
       docTags = doc.tags || []
+      loadTags()   // populate allTags store for autocomplete (fire-and-forget)
       await loadLinks()
       try {
         const atts = await apiGet(`/api/documents/${docId}/attachments`)
@@ -163,16 +168,41 @@
     await loadDocument()
   }
 
-  // Tags
-  async function addTag(e) {
-    if (e.key !== 'Enter' && e.key !== ',') return
-    e.preventDefault()
-    const name = tagInput.trim().toLowerCase().replace(/^#/, '').replace(/\s+/g, '-')
-    if (name && !docTags.includes(name)) {
-      docTags = [...docTags, name]
+  // Tags + autocomplete
+  function onTagInput() {
+    const q = tagInput.trim().toLowerCase().replace(/^#/, '')
+    if (!q) { tagSuggestions = []; tagSuggestionsOpen = false; return }
+    tagSuggestions = ($allTags || [])
+      .map(t => t.name)
+      .filter(n => n.includes(q) && !docTags.includes(n))
+      .slice(0, 8)
+    tagSuggestionsOpen = tagSuggestions.length > 0
+    if (tagSuggestionsOpen && tagInputEl) {
+      const r = tagInputEl.getBoundingClientRect()
+      tagDropdownStyle = `top:${r.bottom + 4}px;left:${r.left}px`
+    }
+  }
+
+  function closeTagSuggestions() {
+    tagSuggestionsOpen = false
+    tagSuggestions = []
+  }
+
+  async function commitTag(name) {
+    const normalized = name.trim().toLowerCase().replace(/^#/, '').replace(/\s+/g, '-')
+    if (normalized && !docTags.includes(normalized)) {
+      docTags = [...docTags, normalized]
       await setDocumentTags(doc.id, docTags)
     }
     tagInput = ''
+    closeTagSuggestions()
+  }
+
+  async function addTag(e) {
+    if (e.key === 'Escape') { closeTagSuggestions(); return }
+    if (e.key !== 'Enter' && e.key !== ',') return
+    e.preventDefault()
+    await commitTag(tagInput)
   }
 
   async function removeTag(name) {
@@ -377,14 +407,34 @@
             <button class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remover tag">×</button>
           </span>
         {/each}
-        <input
-          class="tag-input"
-          type="text"
-          bind:value={tagInput}
-          onkeydown={addTag}
-          placeholder="+ tag"
-          aria-label="Adicionar tag"
-        />
+        <div class="tag-input-wrap">
+          <input
+            class="tag-input"
+            type="text"
+            bind:value={tagInput}
+            bind:this={tagInputEl}
+            oninput={onTagInput}
+            onkeydown={addTag}
+            onblur={() => setTimeout(closeTagSuggestions, 150)}
+            placeholder="+ tag"
+            aria-label="Adicionar tag"
+            autocomplete="off"
+          />
+          {#if tagSuggestionsOpen}
+            <div class="tag-dropdown" role="listbox" style={tagDropdownStyle}>
+              {#each tagSuggestions as s}
+                <div
+                  class="tag-option"
+                  role="option"
+                  aria-selected="false"
+                  tabindex="0"
+                  onmousedown={e => { e.preventDefault(); commitTag(s) }}
+                  onkeydown={e => e.key === 'Enter' && commitTag(s)}
+                ># {s}</div>
+              {/each}
+            </div>
+          {/if}
+        </div>
         <span class="save-status">
           {#if saving}⏳{:else if saveError}❌ {saveError}{:else}✓{/if}
         </span>
@@ -756,6 +806,11 @@
 
   .doc-header { margin-bottom: .75rem; }
 
+  .tag-input-wrap {
+    position: relative;
+    display: inline-block;
+  }
+
   .tag-input {
     border: none;
     border-bottom: 1px solid var(--border);
@@ -765,6 +820,29 @@
     width: 80px;
     background: transparent;
   }
+
+  .tag-dropdown {
+    position: fixed;
+    min-width: 160px;
+    max-width: 280px;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .tag-option {
+    padding: .35rem .65rem;
+    font-size: .85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--accent);
+  }
+
+  .tag-option:hover { background: var(--bg-hover); }
 
   .tag-remove {
     font-size: .75rem;
