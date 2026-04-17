@@ -22,6 +22,24 @@
   let urlTitleInput = $state('')
   let urlAdding = $state(false)
 
+  // Attachment preview modal
+  let previewAtt = $state(null)
+
+  function openPreview(att) {
+    previewAtt = att
+  }
+  function closePreview() {
+    previewAtt = null
+  }
+  function previewType(mime) {
+    if (!mime) return 'download'
+    if (mime.startsWith('image/')) return 'image'
+    if (mime === 'application/pdf') return 'pdf'
+    if (mime.startsWith('audio/')) return 'audio'
+    if (mime.startsWith('video/')) return 'video'
+    return 'download'
+  }
+
   // Link search state
   let linkQuery = $state('')
   let linkResults = $state([])
@@ -298,6 +316,9 @@
       e.preventDefault()
       performSave()
     }
+    if (e.key === 'Escape' && previewAtt) {
+      closePreview()
+    }
   }
 
   // Svelte action: mounts the TipTap editor on the DOM node
@@ -512,11 +533,10 @@
             <div class="att-grid">
               {#each attachments as att}
                 <div class="att-card">
-                  <a
-                    href="/api/attachments/{att.id}"
-                    target="_blank"
+                  <button
                     class="att-preview"
                     title={att.original_name || `Anexo #${att.id}`}
+                    onclick={() => openPreview(att)}
                   >
                     {#if isImage(att.mime_type)}
                       <img
@@ -528,7 +548,7 @@
                     {:else}
                       <span class="att-icon">{fileIcon(att.mime_type)}</span>
                     {/if}
-                  </a>
+                  </button>
                   <div class="att-card-footer">
                     <span class="att-name" title={att.original_name}>
                       {att.original_name || `Anexo #${att.id}`}
@@ -593,6 +613,59 @@
       </div>
     </div>
   </div>
+
+  <!-- Attachment preview modal -->
+  {#if previewAtt}
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <div class="preview-backdrop" onclick={closePreview}>
+      <div class="preview-box" onclick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Visualizar arquivo">
+
+        <div class="preview-header">
+          <span class="preview-title">{previewAtt.original_name || `Anexo #${previewAtt.id}`}</span>
+          <div class="preview-actions">
+            <a href="/api/attachments/{previewAtt.id}" download={previewAtt.original_name} class="preview-dl-btn" title="Baixar">⬇ Baixar</a>
+            <button class="preview-close" onclick={closePreview} aria-label="Fechar">✕</button>
+          </div>
+        </div>
+
+        <div class="preview-body">
+          {#if previewType(previewAtt.mime_type) === 'image'}
+            <img src="/api/attachments/{previewAtt.id}" alt={previewAtt.original_name} class="preview-img" />
+
+          {:else if previewType(previewAtt.mime_type) === 'pdf'}
+            <embed
+              src="/api/attachments/{previewAtt.id}"
+              type="application/pdf"
+              class="preview-pdf"
+            />
+
+          {:else if previewType(previewAtt.mime_type) === 'audio'}
+            <div class="preview-audio-wrap">
+              <span class="preview-big-icon">🎵</span>
+              <p class="preview-file-name">{previewAtt.original_name}</p>
+              <!-- svelte-ignore a11y_media_has_caption -->
+              <audio controls src="/api/attachments/{previewAtt.id}" class="preview-audio"></audio>
+            </div>
+
+          {:else if previewType(previewAtt.mime_type) === 'video'}
+            <!-- svelte-ignore a11y_media_has_caption -->
+            <video controls src="/api/attachments/{previewAtt.id}" class="preview-video"></video>
+
+          {:else}
+            <div class="preview-download-wrap">
+              <span class="preview-big-icon">{fileIcon(previewAtt.mime_type)}</span>
+              <p class="preview-file-name">{previewAtt.original_name}</p>
+              <p class="preview-file-size">{previewAtt.size_bytes ? (previewAtt.size_bytes / 1024).toFixed(0) + ' KB' : ''}</p>
+              <a href="/api/attachments/{previewAtt.id}" download={previewAtt.original_name} class="btn btn-primary preview-dl-large">
+                ⬇ Fazer download
+              </a>
+            </div>
+          {/if}
+        </div>
+
+      </div>
+    </div>
+  {/if}
 
   <!-- Version conflict dialog -->
   {#if conflictData}
@@ -905,6 +978,145 @@
   .url-title-input:focus { outline: none; border-color: var(--accent); }
 
   .hidden-input { display: none; }
+
+  /* ── Attachment preview modal ───────────────────────── */
+  .preview-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.72);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .preview-box {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-panel, var(--bg-sidebar));
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: min(92vw, 1100px);
+    max-height: 90vh;
+    width: 100%;
+    box-shadow: 0 24px 64px rgba(0,0,0,.5);
+  }
+
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .6rem 1rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .preview-title {
+    font-size: .875rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+
+  .preview-actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-shrink: 0;
+  }
+
+  .preview-dl-btn {
+    font-size: .8rem;
+    color: var(--accent);
+    text-decoration: none;
+    padding: .2rem .5rem;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+  }
+  .preview-dl-btn:hover { background: var(--accent); color: #fff; }
+
+  .preview-close {
+    font-size: 1rem;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: .2rem .4rem;
+    border-radius: 4px;
+    line-height: 1;
+  }
+  .preview-close:hover { background: var(--bg-hover); color: var(--text); }
+
+  .preview-body {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    background: var(--bg-main, #111);
+  }
+
+  .preview-img {
+    max-width: 100%;
+    max-height: calc(90vh - 56px);
+    object-fit: contain;
+    display: block;
+  }
+
+  .preview-pdf {
+    width: 100%;
+    height: calc(90vh - 56px);
+    border: none;
+    display: block;
+  }
+
+  .preview-video {
+    max-width: 100%;
+    max-height: calc(90vh - 56px);
+    display: block;
+  }
+
+  .preview-audio-wrap,
+  .preview-download-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2.5rem 2rem;
+    background: var(--bg-panel, var(--bg-sidebar));
+  }
+
+  .preview-big-icon {
+    font-size: 4rem;
+    line-height: 1;
+  }
+
+  .preview-file-name {
+    font-size: .95rem;
+    font-weight: 600;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  .preview-file-size {
+    font-size: .8rem;
+    color: var(--text-muted);
+  }
+
+  .preview-audio {
+    width: 320px;
+    max-width: 100%;
+  }
+
+  .preview-dl-large {
+    margin-top: .5rem;
+    text-decoration: none;
+  }
 
   /* ── Attachment thumbnail grid ──────────────────────── */
   .att-grid {
