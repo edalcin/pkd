@@ -210,6 +210,24 @@
     linkResults = []
   }
 
+  // ── Attachment helpers ────────────────────────────────────────────────────
+  function isImage(mime) {
+    return !!mime?.startsWith('image/')
+  }
+
+  function fileIcon(mime) {
+    if (!mime) return '📎'
+    if (mime === 'application/pdf') return '📄'
+    if (mime.startsWith('audio/')) return '🎵'
+    if (mime.startsWith('video/')) return '🎬'
+    if (mime.includes('word') || mime.includes('officedocument.wordprocessing')) return '📝'
+    if (mime.includes('excel') || mime.includes('spreadsheet') || mime === 'text/csv') return '📊'
+    if (mime.includes('powerpoint') || mime.includes('presentation')) return '📑'
+    if (mime.startsWith('text/')) return '📃'
+    if (mime.includes('zip') || mime.includes('archive') || mime.includes('compressed')) return '🗜️'
+    return '📎'
+  }
+
   // File attachment upload
   async function handleFileUpload(e) {
     const file = e.target.files?.[0]
@@ -488,17 +506,42 @@
         <section class="assoc-col">
           <h4 class="assoc-col-title">📎 Arquivos</h4>
 
-          {#each attachments as att}
-            <div class="assoc-item">
-              <a href="/api/attachments/{att.id}" target="_blank" class="assoc-item-label att-link">
-                {att.original_name || `Anexo #${att.id}`}
-              </a>
-              <button class="row-btn row-btn-del" onclick={() => deleteAttachment(att.id)} title="Remover">×</button>
-            </div>
-          {/each}
-
           {#if attachments.length === 0}
             <p class="assoc-empty">Nenhum arquivo anexado</p>
+          {:else}
+            <div class="att-grid">
+              {#each attachments as att}
+                <div class="att-card">
+                  <a
+                    href="/api/attachments/{att.id}"
+                    target="_blank"
+                    class="att-preview"
+                    title={att.original_name || `Anexo #${att.id}`}
+                  >
+                    {#if isImage(att.mime_type)}
+                      <img
+                        src="/api/attachments/{att.id}"
+                        alt={att.original_name}
+                        class="att-thumb"
+                        loading="lazy"
+                      />
+                    {:else}
+                      <span class="att-icon">{fileIcon(att.mime_type)}</span>
+                    {/if}
+                  </a>
+                  <div class="att-card-footer">
+                    <span class="att-name" title={att.original_name}>
+                      {att.original_name || `Anexo #${att.id}`}
+                    </span>
+                    <button
+                      class="att-del-btn"
+                      onclick={() => deleteAttachment(att.id)}
+                      title="Remover"
+                    >×</button>
+                  </div>
+                </div>
+              {/each}
+            </div>
           {/if}
 
           <label class="assoc-add-btn">
@@ -862,4 +905,79 @@
   .url-title-input:focus { outline: none; border-color: var(--accent); }
 
   .hidden-input { display: none; }
+
+  /* ── Attachment thumbnail grid ──────────────────────── */
+  .att-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: .5rem;
+    margin-bottom: .4rem;
+  }
+
+  .att-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg-secondary, var(--bg-sidebar));
+  }
+
+  .att-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 72px;
+    background: var(--bg-hover);
+    text-decoration: none;
+    overflow: hidden;
+  }
+
+  .att-thumb {
+    width: 100%;
+    height: 72px;
+    object-fit: cover;
+    display: block;
+    transition: opacity .15s;
+  }
+
+  .att-thumb:hover { opacity: .85; }
+
+  .att-icon {
+    font-size: 2rem;
+    line-height: 1;
+    transition: transform .15s;
+  }
+
+  .att-preview:hover .att-icon { transform: scale(1.15); }
+
+  .att-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px 5px;
+    border-top: 1px solid var(--border);
+  }
+
+  .att-name {
+    flex: 1;
+    font-size: .68rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-muted);
+  }
+
+  .att-del-btn {
+    flex-shrink: 0;
+    font-size: .75rem;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+  }
+
+  .att-del-btn:hover { color: var(--text); }
 </style>
