@@ -17,11 +17,16 @@
   let allAttachments = $state([])
   let orphanCount = $state(0)
   let attachmentsLoading = $state(false)
+  let previewAtt = $state(null)
 
   // Tags tab — local editable copy
   let editableTags = $state([])
   let tagMsg = $state('')
   let pruneMsg = $state('')
+
+  // Shares tab
+  let shares = $state([])
+  let sharesLoading = $state(false)
 
   onMount(() => {
     loadTags()
@@ -50,6 +55,22 @@
     activeTab = id
     if (id === 'attachments' && allAttachments.length === 0) loadAttachments()
     if (id === 'tags') loadAdminTags()
+    if (id === 'shares') loadShares()
+  }
+
+  async function loadShares() {
+    sharesLoading = true
+    try {
+      shares = (await apiGet('/api/admin/shares')) || []
+    } finally {
+      sharesLoading = false
+    }
+  }
+
+  async function revokeShare(id) {
+    if (!confirm('Revogar este link de compartilhamento? Ele deixará de funcionar imediatamente.')) return
+    await apiDelete(`/api/admin/shares/${id}`)
+    shares = shares.filter(s => s.id !== id)
   }
 
   async function loadAdminTags() {
@@ -259,6 +280,15 @@
     return mime && mime.startsWith('image/')
   }
 
+  function previewType(mime) {
+    if (!mime) return 'download'
+    if (mime.startsWith('image/')) return 'image'
+    if (mime === 'application/pdf') return 'pdf'
+    if (mime.startsWith('audio/')) return 'audio'
+    if (mime.startsWith('video/')) return 'video'
+    return 'download'
+  }
+
   function formatBytes(bytes) {
     if (bytes < 1024) return bytes + ' B'
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -283,7 +313,7 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links']] as [id, label]}
+    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links'], ['shares','🌐 Compartilhados']] as [id, label]}
       <button
         class="tab-btn {activeTab === id ? 'active' : ''}"
         onclick={() => setTab(id)}
@@ -423,13 +453,13 @@
         <div class="att-grid">
           {#each allAttachments as att}
             <div class="att-card">
-              <div class="att-thumb">
+              <button class="att-thumb att-thumb-btn" onclick={() => previewAtt = att} title="Visualizar {att.original_name}">
                 {#if isImage(att.mime_type)}
                   <img src={att.url} alt={att.original_name} loading="lazy" />
                 {:else}
                   <span class="att-icon">{fileIcon(att.mime_type)}</span>
                 {/if}
-              </div>
+              </button>
               <div class="att-info">
                 <span class="att-name" title={att.original_name}>{att.original_name}</span>
                 <span class="att-doc muted" title={att.document_title}>{att.document_title}</span>
@@ -513,7 +543,86 @@
       {/if}
     </div>
   {/if}
+
+  <!-- Shares -->
+  {#if activeTab === 'shares'}
+    <div class="admin-section">
+      <div class="section-header">
+        <h3>Links públicos ativos ({shares.length})</h3>
+        <button class="btn btn-ghost btn-sm" onclick={loadShares} disabled={sharesLoading}>
+          {sharesLoading ? 'Carregando…' : '↻ Atualizar'}
+        </button>
+      </div>
+
+      {#if sharesLoading}
+        <p class="muted">Carregando…</p>
+      {:else if shares.length === 0}
+        <p class="muted">Nenhum link de compartilhamento ativo.</p>
+      {:else}
+        <div class="share-list">
+          {#each shares as share}
+            <div class="share-item">
+              <div class="share-info">
+                <a
+                  class="share-doc-title"
+                  href="#/doc/{share.document_id}"
+                  onclick={() => activeTab = ''}
+                >{share.document_title}</a>
+                <span class="share-date muted">
+                  Criado em {new Date(share.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' })}
+                </span>
+              </div>
+              <button
+                class="btn btn-danger btn-sm"
+                onclick={() => revokeShare(share.id)}
+              >Revogar</button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
+
+<!-- Attachment preview modal (Admin) -->
+{#if previewAtt}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="preview-backdrop" onclick={() => previewAtt = null}>
+    <div class="preview-box" onclick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Visualizar arquivo">
+      <div class="preview-header">
+        <span class="preview-title">{previewAtt.original_name}</span>
+        <div class="preview-actions">
+          <a href={previewAtt.url} download={previewAtt.original_name} class="preview-dl-btn" title="Baixar">⬇ Baixar</a>
+          <button class="preview-close" onclick={() => previewAtt = null} aria-label="Fechar">✕</button>
+        </div>
+      </div>
+      <div class="preview-body">
+        {#if previewType(previewAtt.mime_type) === 'image'}
+          <img src={previewAtt.url} alt={previewAtt.original_name} class="preview-img" />
+        {:else if previewType(previewAtt.mime_type) === 'pdf'}
+          <embed src={previewAtt.url} type="application/pdf" class="preview-pdf" />
+        {:else if previewType(previewAtt.mime_type) === 'audio'}
+          <div class="preview-audio-wrap">
+            <span class="preview-big-icon">🎵</span>
+            <p class="preview-file-name">{previewAtt.original_name}</p>
+            <!-- svelte-ignore a11y_media_has_caption -->
+            <audio controls src={previewAtt.url} class="preview-audio"></audio>
+          </div>
+        {:else if previewType(previewAtt.mime_type) === 'video'}
+          <!-- svelte-ignore a11y_media_has_caption -->
+          <video controls src={previewAtt.url} class="preview-video"></video>
+        {:else}
+          <div class="preview-download-wrap">
+            <span class="preview-big-icon">{fileIcon(previewAtt.mime_type)}</span>
+            <p class="preview-file-name">{previewAtt.original_name}</p>
+            <p class="preview-file-size">{previewAtt.size_bytes ? (previewAtt.size_bytes / 1024).toFixed(0) + ' KB' : ''}</p>
+            <a href={previewAtt.url} download={previewAtt.original_name} class="btn btn-primary">⬇ Fazer download</a>
+          </div>
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .admin-wrap {
@@ -733,4 +842,134 @@
   .lc-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); }
   .lc-url-small { font-size: .75rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lc-code { flex-shrink: 0; font-size: .75rem; color: var(--text-muted); font-family: monospace; }
+
+  /* Clickable attachment thumb */
+  .att-thumb-btn {
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  .att-thumb-btn:hover { opacity: .85; }
+
+  /* Shares tab */
+  .share-list {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+  }
+
+  .share-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .5rem .75rem;
+    border-radius: var(--radius);
+    background: var(--bg-hover);
+    font-size: .875rem;
+  }
+
+  .share-info {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    min-width: 0;
+  }
+
+  .share-doc-title {
+    font-weight: 500;
+    color: var(--accent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .share-date { font-size: .8rem; }
+
+  /* Preview modal (reused from Editor) */
+  .preview-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.65);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .preview-box {
+    background: var(--bg-panel);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 800px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    gap: .5rem;
+    flex-shrink: 0;
+  }
+
+  .preview-title {
+    font-weight: 500;
+    font-size: .9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .preview-actions { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+
+  .preview-dl-btn {
+    font-size: .8rem;
+    color: var(--accent);
+    padding: .25rem .5rem;
+    border-radius: var(--radius);
+  }
+  .preview-dl-btn:hover { background: var(--bg-hover); }
+
+  .preview-close {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    font-size: .9rem;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .preview-close:hover { background: var(--bg-hover); color: var(--text); }
+
+  .preview-body {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    min-height: 200px;
+  }
+
+  .preview-img { max-width: 100%; max-height: 75vh; object-fit: contain; }
+  .preview-pdf { width: 100%; height: 75vh; border: none; }
+  .preview-video { max-width: 100%; max-height: 75vh; }
+
+  .preview-audio-wrap, .preview-download-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 1rem; padding: 2rem;
+  }
+
+  .preview-big-icon { font-size: 4rem; }
+  .preview-file-name { font-size: .9rem; font-weight: 500; text-align: center; }
+  .preview-file-size { font-size: .8rem; color: var(--text-muted); }
+  .preview-audio { width: 300px; max-width: 100%; }
 </style>

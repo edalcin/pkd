@@ -40,6 +40,30 @@
   function toggleSidebar() { sidebarOpen = !sidebarOpen }
   function closeSidebar() { sidebarOpen = false }
 
+  // ─── Sidebar resize (desktop) ─────────────────────────────
+  let sidebarWidth = $state(Number(localStorage.getItem('pkd-sidebar-width')) || 260)
+  let resizing = $state(false)
+  let resizeAnchor = { x: 0, w: 0 }
+
+  function onResizeStart(e) {
+    resizing = true
+    resizeAnchor = { x: e.clientX, w: sidebarWidth }
+    document.addEventListener('mousemove', onResizeMove)
+    document.addEventListener('mouseup', onResizeEnd)
+  }
+
+  function onResizeMove(e) {
+    const w = Math.max(160, Math.min(480, resizeAnchor.w + e.clientX - resizeAnchor.x))
+    sidebarWidth = w
+  }
+
+  function onResizeEnd() {
+    resizing = false
+    localStorage.setItem('pkd-sidebar-width', String(sidebarWidth))
+    document.removeEventListener('mousemove', onResizeMove)
+    document.removeEventListener('mouseup', onResizeEnd)
+  }
+
   // ─── Share dialog ─────────────────────────────────────────
   let shareDocId = $state(null)
   function openShare(id) { shareDocId = id }
@@ -109,9 +133,18 @@
     <!-- Main layout -->
     <div class="app-layout">
       <!-- Sidebar with mobile overlay -->
-      <aside class="sidebar {sidebarOpen ? 'open' : ''}" aria-label="Navegação">
+      <aside class="sidebar {sidebarOpen ? 'open' : ''}" style="width:{sidebarWidth}px" aria-label="Navegação">
         <Sidebar onNavigate={() => sidebarOpen = false} />
       </aside>
+      <!-- Drag handle for desktop resize -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div
+        class="resize-handle {resizing ? 'active' : ''}"
+        onmousedown={onResizeStart}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Redimensionar painel lateral"
+      ></div>
 
       <!-- Overlay for mobile -->
       {#if sidebarOpen}

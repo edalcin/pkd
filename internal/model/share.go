@@ -18,3 +18,12 @@ type ShareCreateResponse struct {
 	URL      string `json:"url"`
 	RevokeID int64  `json:"revoke_id"`
 }
+
+// ShareWithDoc is returned by the admin list-shares endpoint.
+// It enriches a ShareLink with the associated document title.
+type ShareWithDoc struct {
+	ID            int64     `json:"id"`
+	DocumentID    int64     `json:"document_id"`
+	DocumentTitle string    `json:"document_title"`
+	CreatedAt     time.Time `json:"created_at"`
+}

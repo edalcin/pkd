@@ -105,9 +105,7 @@ input:focus, textarea:focus, select:focus {
 
 /* ─── Sidebar ────────────────────────────────────────────────────────────── */
 .sidebar {
-  width: 260px;
-  min-width: 200px;
-  max-width: 380px;
+  width: 260px; /* overridden by inline style on desktop */
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
   display: flex;
@@ -115,6 +113,18 @@ input:focus, textarea:focus, select:focus {
   overflow: hidden;
   flex-shrink: 0;
 }
+
+/* Drag handle between sidebar and content */
+.resize-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background .15s;
+  z-index: 10;
+}
+.resize-handle:hover,
+.resize-handle.active { background: var(--accent); }
 
 .sidebar-inner {
   flex: 1;
@@ -533,6 +543,7 @@ input:focus, textarea:focus, select:focus {
     transition: transform .25s ease;
   }
   .sidebar.open { transform: translateX(0); }
+  .resize-handle { display: none; }
   .editor-area { padding: 1rem; }
   .doc-title { font-size: 1.4rem; }
 

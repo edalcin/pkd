@@ -335,6 +335,38 @@ func (s *Server) handleAdminPruneTags() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleAdminListShares() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		shares, err := s.shares.ListAllActive()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if shares == nil {
+			shares = []*model.ShareWithDoc{}
+		}
+		writeJSON(w, http.StatusOK, shares)
+	}
+}
+
+func (s *Server) handleAdminRevokeShare() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		shareID, err := parseID(r, "shareID")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		if err := s.shares.Revoke(shareID); errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		} else if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func (s *Server) handleAdminRenameTag() http.HandlerFunc {
 	type request struct {
 		Old string `json:"old"`
