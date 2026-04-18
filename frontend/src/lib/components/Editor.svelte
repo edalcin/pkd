@@ -99,11 +99,17 @@
     scheduleAutoSave()
   }
 
-  // Image insertion — URL popover
+  // Image insertion — URL popover + upload
   let imgUrlOpen = $state(false)
   let imgUrlValue = $state('')
   let imgUrlInputEl = $state(null)
   let imgUploading = $state(false)
+  let uploadImgInputEl = $state(null)
+
+  function triggerImageUpload(e) {
+    e.preventDefault()
+    uploadImgInputEl?.click()
+  }
 
   $effect(() => {
     if (imgUrlOpen && imgUrlInputEl) {
@@ -137,7 +143,7 @@
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await apiFetch(`/api/documents/${doc.id}/attachments`, { method: 'POST', body: fd })
+      const res = await apiFetch(`/api/documents/${doc.id}/attachments?inline=1`, { method: 'POST', body: fd })
       if (!res.ok) return
       const att = await res.json()
       if (att?.url) {
@@ -653,60 +659,12 @@
         <div class="tb-sep" role="separator"></div>
 
         <!-- Link -->
-        <div class="tb-img-group">
-          <button class="tb-btn {isActive('link') ? 'active' : ''}" onmousedown={toggleLink} title="Inserir / editar link">🔗</button>
-          {#if linkOpen}
-            <div class="tb-img-popover tb-link-popover">
-              <input
-                bind:this={extLinkInputEl}
-                bind:value={linkHref}
-                class="tb-img-url-input"
-                type="url"
-                placeholder="https://…"
-                onblur={onLinkBlur}
-                onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertLink() } else if (e.key === 'Escape') { linkOpen = false; linkHref = ''; linkText = '' } }}
-              />
-              {#if !editorInstance?.getAttributes('link').href}
-                <input
-                  bind:value={linkText}
-                  class="tb-img-url-input"
-                  type="text"
-                  placeholder="Texto (opcional)"
-                  style="width:140px"
-                  onblur={onLinkBlur}
-                  onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertLink() } else if (e.key === 'Escape') { linkOpen = false; linkHref = ''; linkText = '' } }}
-                />
-              {/if}
-              <button class="tb-btn" onmousedown={e => { e.preventDefault(); insertLink() }}>Inserir</button>
-              {#if isActive('link')}
-                <button class="tb-btn" onmousedown={clearLink} title="Remover link" style="color:var(--danger,#ef4444)">✕</button>
-              {/if}
-            </div>
-          {/if}
-        </div>
+        <button class="tb-btn {isActive('link') ? 'active' : ''}" onmousedown={toggleLink} title="Inserir / editar link">🔗</button>
 
-        <!-- Image: URL popover + inline upload -->
-        <div class="tb-img-group">
-          <button class="tb-btn" onmousedown={toggleImgUrl} title="Inserir imagem por URL">🖼</button>
-          <label class="tb-btn tb-img-upload-label" title={imgUploading ? 'Enviando…' : 'Fazer upload de imagem'} onmousedown={e => e.preventDefault()}>
-            {imgUploading ? '⏳' : '📤'}
-            <input type="file" accept="image/*" class="sr-only" onchange={handleImageUploadInline} disabled={imgUploading} />
-          </label>
-          {#if imgUrlOpen}
-            <div class="tb-img-popover">
-              <input
-                bind:this={imgUrlInputEl}
-                bind:value={imgUrlValue}
-                class="tb-img-url-input"
-                type="url"
-                placeholder="https://…"
-                onblur={onImgUrlBlur}
-                onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertImageByURL() } else if (e.key === 'Escape') { imgUrlOpen = false; imgUrlValue = '' } }}
-              />
-              <button class="tb-btn" onmousedown={e => { e.preventDefault(); insertImageByURL() }}>Inserir</button>
-            </div>
-          {/if}
-        </div>
+        <!-- Image: URL + upload -->
+        <button class="tb-btn {imgUrlOpen ? 'active' : ''}" onmousedown={toggleImgUrl} title="Inserir imagem por URL">🖼</button>
+        <button class="tb-btn" onmousedown={triggerImageUpload} title={imgUploading ? 'Enviando…' : 'Fazer upload de imagem'}>{imgUploading ? '⏳' : '📤'}</button>
+        <input bind:this={uploadImgInputEl} type="file" accept="image/*" class="sr-only" onchange={handleImageUploadInline} disabled={imgUploading} />
 
         <!-- Table -->
         <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }} title="Inserir tabela">⊞</button>
@@ -734,6 +692,52 @@
         </button>
       </div>
     {/key}
+
+    <!-- Inline panels that must live outside the overflow:auto toolbar -->
+    {#if linkOpen}
+      <div class="tb-panel">
+        <span class="tb-panel-label">🔗 Link</span>
+        <input
+          bind:this={extLinkInputEl}
+          bind:value={linkHref}
+          class="tb-panel-input"
+          type="url"
+          placeholder="https://…"
+          onblur={onLinkBlur}
+          onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertLink() } else if (e.key === 'Escape') { linkOpen = false; linkHref = ''; linkText = '' } }}
+        />
+        {#if !editorInstance?.getAttributes('link').href}
+          <input
+            bind:value={linkText}
+            class="tb-panel-input"
+            type="text"
+            placeholder="Texto (opcional)"
+            style="width:160px"
+            onblur={onLinkBlur}
+            onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertLink() } else if (e.key === 'Escape') { linkOpen = false; linkHref = ''; linkText = '' } }}
+          />
+        {/if}
+        <button class="tb-btn" onmousedown={e => { e.preventDefault(); insertLink() }}>Inserir</button>
+        {#if isActive('link')}
+          <button class="tb-btn" onmousedown={clearLink} style="color:var(--danger,#ef4444)" title="Remover link">✕ Remover</button>
+        {/if}
+      </div>
+    {/if}
+    {#if imgUrlOpen}
+      <div class="tb-panel">
+        <span class="tb-panel-label">🖼 Imagem por URL</span>
+        <input
+          bind:this={imgUrlInputEl}
+          bind:value={imgUrlValue}
+          class="tb-panel-input"
+          type="url"
+          placeholder="https://…"
+          onblur={onImgUrlBlur}
+          onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertImageByURL() } else if (e.key === 'Escape') { imgUrlOpen = false; imgUrlValue = '' } }}
+        />
+        <button class="tb-btn" onmousedown={e => { e.preventDefault(); insertImageByURL() }}>Inserir</button>
+      </div>
+    {/if}
 
     <!-- TipTap editor -->
     <div class="tiptap-editor" use:mountEditor></div>
@@ -1068,20 +1072,7 @@
     flex: 1;
   }
 
-  .tb-img-group {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 1px;
-  }
-
-  .tb-img-upload-label {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-
+  /* Hidden file input (triggered programmatically) */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -1091,34 +1082,35 @@
     white-space: nowrap;
   }
 
-  .tb-img-popover {
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    z-index: 200;
+  /* Inline panel that appears below the toolbar (outside overflow container) */
+  .tb-panel {
     display: flex;
-    gap: 4px;
     align-items: center;
-    background: var(--bg-panel);
+    gap: 6px;
+    padding: 5px 8px;
+    margin-bottom: 4px;
+    background: var(--bg-secondary, var(--bg-sidebar));
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 6px 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,.18);
-    white-space: nowrap;
+    flex-wrap: wrap;
   }
 
-  .tb-img-url-input {
-    width: 260px;
+  .tb-panel-label {
+    font-size: .8rem;
+    color: var(--text-muted, #6b7280);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .tb-panel-input {
+    flex: 1;
+    min-width: 180px;
     padding: 3px 6px;
     border: 1px solid var(--border);
     border-radius: 4px;
     font-size: .85rem;
     background: var(--bg);
     color: var(--text);
-  }
-
-  .tb-link-popover {
-    min-width: 0;
   }
 
   /* Make links in the editor body visually obvious and cursor-correct */

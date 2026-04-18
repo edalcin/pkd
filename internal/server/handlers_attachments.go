@@ -92,7 +92,11 @@ func (s *Server) handleCreateAttachment() http.HandlerFunc {
 				mimeType = mime.TypeByExtension(filepath.Ext(origName))
 			}
 			maxBytes = s.cfg.MaxAttachmentMB * 1024 * 1024
-			att, err := s.attachments.CreateFile(docID, origName, mimeType, file, maxBytes)
+			subdir := ""
+			if r.URL.Query().Get("inline") == "1" {
+				subdir = "inline"
+			}
+			att, err := s.attachments.CreateFile(docID, origName, mimeType, subdir, file, maxBytes)
 			if errors.Is(err, store.ErrTooLarge) {
 				http.Error(w, "file too large", http.StatusRequestEntityTooLarge)
 				return
@@ -105,7 +109,7 @@ func (s *Server) handleCreateAttachment() http.HandlerFunc {
 			return
 		}
 
-		att, err := s.attachments.CreateFile(docID, origName, mimeType, r.Body, maxBytes)
+		att, err := s.attachments.CreateFile(docID, origName, mimeType, "", r.Body, maxBytes)
 		if errors.Is(err, store.ErrTooLarge) {
 			http.Error(w, "file too large", http.StatusRequestEntityTooLarge)
 			return

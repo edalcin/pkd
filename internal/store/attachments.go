@@ -26,15 +26,26 @@ func NewAttachmentStore(db *sql.DB, attachmentsPath string) *AttachmentStore {
 
 // CreateFile writes body to a sharded path under attachmentsPath and inserts
 // the metadata row. If the stream exceeds maxBytes it is rejected.
+// subdir, when non-empty, adds an extra folder level (e.g. "inline" for
+// images embedded directly in the document body).
 // Returns the created Attachment with a populated URL.
-func (s *AttachmentStore) CreateFile(docID int64, origName, mimeType string, body io.Reader, maxBytes int64) (*model.Attachment, error) {
-	// Generate a random stored filename and shard path: ab/cd/<random>
+func (s *AttachmentStore) CreateFile(docID int64, origName, mimeType, subdir string, body io.Reader, maxBytes int64) (*model.Attachment, error) {
+	// Generate a random stored filename and shard path: [subdir/]ab/cd/<random>
 	token := security.NewToken(16) // 16 bytes → 22 chars base64url
-	shardDir := filepath.Join(s.attachmentsPath, token[:2], token[2:4])
+	base := s.attachmentsPath
+	if subdir != "" {
+		base = filepath.Join(base, subdir)
+	}
+	shardDir := filepath.Join(base, token[:2], token[2:4])
 	if err := os.MkdirAll(shardDir, 0750); err != nil {
 		return nil, fmt.Errorf("mkdir shard: %w", err)
 	}
-	storedFilename := filepath.Join(token[:2], token[2:4], token)
+	var storedFilename string
+	if subdir != "" {
+		storedFilename = filepath.Join(subdir, token[:2], token[2:4], token)
+	} else {
+		storedFilename = filepath.Join(token[:2], token[2:4], token)
+	}
 	fullPath := filepath.Join(s.attachmentsPath, storedFilename)
 
 	f, err := os.Create(fullPath)

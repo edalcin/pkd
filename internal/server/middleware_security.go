@@ -30,7 +30,7 @@ func PublicShareCSP(next http.Handler) http.Handler {
 
 const cspSPA = "default-src 'self'; " +
 	"script-src 'self'; " +
-	"img-src 'self' data: blob:; " +
+	"img-src 'self' data: blob: https: http:; " +
 	"style-src 'self' 'unsafe-inline'; " +
 	"connect-src 'self'; " +
 	"font-src 'self'; " +
