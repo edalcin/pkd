@@ -4,8 +4,10 @@ import (
 	"errors"
 	"mime"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/edalcin/pkd/internal/store"
 )
@@ -144,13 +146,35 @@ func (s *Server) handleGetAttachment() http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", att.MimeType)
 		// Use "inline" for types browsers can display natively; "attachment" forces download.
+		inline := isInlineableMIME(att.MimeType)
 		disposition := "attachment"
-		if isInlineableMIME(att.MimeType) {
+		if inline {
 			disposition = "inline"
 		}
 		safeName := strings.NewReplacer(`"`, `'`, `\`, `-`).Replace(att.OriginalName)
 		w.Header().Set("Content-Disposition", disposition+`; filename="`+safeName+`"`)
-		http.ServeFile(w, r, fullPath)
+
+		// Override the global security headers for inline-displayable attachments.
+		// The global middleware sets X-Frame-Options: DENY and frame-ancestors 'none',
+		// which would block the browser's built-in PDF/image viewer inside <embed>/<iframe>.
+		if inline {
+			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+			w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
+		}
+
+		// Use ServeContent instead of ServeFile to avoid URL-path redirect logic.
+		f, err := os.Open(fullPath)
+		if err != nil {
+			http.Error(w, "file not found", http.StatusNotFound)
+			return
+		}
+		defer f.Close()
+		fi, _ := f.Stat()
+		var modTime time.Time
+		if fi != nil {
+			modTime = fi.ModTime()
+		}
+		http.ServeContent(w, r, att.OriginalName, modTime, f)
 	}
 }
 

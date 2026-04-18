@@ -239,15 +239,30 @@ func (s *DocumentStore) ListTrash() ([]*model.Document, error) {
 }
 
 // PermanentDelete hard-deletes a trashed document. Use EmptyTrash for bulk.
+// Non-trashed children are moved to root to satisfy the FK RESTRICT constraint.
 func (s *DocumentStore) PermanentDelete(id int64) error {
-	_, err := s.db.Exec(`DELETE FROM documents WHERE id = ? AND trashed_at IS NOT NULL`, id)
-	return err
+	return WithTx(s.db, func(tx *sql.Tx) error {
+		if _, err := tx.Exec(`UPDATE documents SET parent_id = NULL WHERE parent_id = ?`, id); err != nil {
+			return err
+		}
+		_, err := tx.Exec(`DELETE FROM documents WHERE id = ? AND trashed_at IS NOT NULL`, id)
+		return err
+	})
 }
 
 // EmptyTrash hard-deletes all trashed documents.
+// Non-trashed children of trashed parents are moved to root first (FK RESTRICT).
 func (s *DocumentStore) EmptyTrash() error {
-	_, err := s.db.Exec(`DELETE FROM documents WHERE trashed_at IS NOT NULL`)
-	return err
+	return WithTx(s.db, func(tx *sql.Tx) error {
+		if _, err := tx.Exec(`
+			UPDATE documents SET parent_id = NULL
+			WHERE trashed_at IS NULL
+			  AND parent_id IN (SELECT id FROM documents WHERE trashed_at IS NOT NULL)`); err != nil {
+			return err
+		}
+		_, err := tx.Exec(`DELETE FROM documents WHERE trashed_at IS NOT NULL`)
+		return err
+	})
 }
 
 // listByTags returns documents that carry ALL tags in the filter (AND semantics).

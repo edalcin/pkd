@@ -228,7 +228,7 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   flex-direction: column;
   padding: 1.5rem 2rem;
-  max-width: 800px;
+  max-width: 1080px;
   margin: 0 auto;
   width: 100%;
 }
@@ -317,10 +317,11 @@ input:focus, textarea:focus, select:focus {
   pointer-events: none;
 }
 
-/* Highlight mark */
+/* Highlight mark — force dark text so it's readable on any light highlight color */
 .tiptap-editor .ProseMirror mark {
   border-radius: 2px;
   padding: 0 .15em;
+  color: #111 !important;
 }
 
 /* Doc-link inline nodes */

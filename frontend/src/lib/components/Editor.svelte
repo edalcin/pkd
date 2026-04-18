@@ -807,14 +807,17 @@
   .toolbar {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     gap: 2px;
     padding: .25rem .25rem;
     margin-bottom: .5rem;
     background: var(--bg-secondary, var(--bg-sidebar));
     border: 1px solid var(--border);
     border-radius: 6px;
+    scrollbar-width: none; /* Firefox */
   }
+  .toolbar::-webkit-scrollbar { display: none; } /* Chrome/Safari */
 
   .tb-btn {
     display: inline-flex;
