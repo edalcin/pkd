@@ -40,9 +40,57 @@
 
   let highlightColor = $state('#fef08a') // default yellow
 
+  // Image insertion — URL popover
+  let imgUrlOpen = $state(false)
+  let imgUrlValue = $state('')
+  let imgUrlInputEl = $state(null)
+  let imgUploading = $state(false)
+
+  $effect(() => {
+    if (imgUrlOpen && imgUrlInputEl) {
+      setTimeout(() => imgUrlInputEl?.focus(), 30)
+    }
+  })
+
+  function toggleImgUrl(e) {
+    e.preventDefault()
+    imgUrlOpen = !imgUrlOpen
+    if (!imgUrlOpen) imgUrlValue = ''
+  }
+
   function insertImageByURL() {
-    const url = prompt('URL da imagem:')
-    if (url?.trim()) fmt(c => c.setImage({ src: url.trim() }))
+    const url = imgUrlValue.trim()
+    if (url) editorInstance?.chain().focus().setImage({ src: url }).run()
+    imgUrlOpen = false
+    imgUrlValue = ''
+  }
+
+  function onImgUrlBlur() {
+    // Delay so that clicking "Inserir" fires submit before closing
+    setTimeout(() => { imgUrlOpen = false; imgUrlValue = '' }, 150)
+  }
+
+  // Image upload — inserts into editor body AND registers as attachment
+  async function handleImageUploadInline(e) {
+    const file = e.target.files?.[0]
+    if (!file || !doc) return
+    imgUploading = true
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await apiFetch(`/api/documents/${doc.id}/attachments`, { method: 'POST', body: fd })
+      if (!res.ok) return
+      const att = await res.json()
+      if (att?.url) {
+        editorInstance?.chain().focus().setImage({ src: att.url }).run()
+        scheduleAutoSave()
+        // Refresh attachment list so it appears in the footer too
+        try { attachments = await apiGet(`/api/documents/${doc.id}/attachments`) } catch {}
+      }
+    } finally {
+      imgUploading = false
+      e.target.value = ''
+    }
   }
 
   // Attachment preview modal
@@ -541,8 +589,28 @@
 
         <div class="tb-sep" role="separator"></div>
 
-        <!-- Image by URL -->
-        <button class="tb-btn" onmousedown={e => { e.preventDefault(); insertImageByURL() }} title="Inserir imagem por URL">🖼</button>
+        <!-- Image: URL popover + inline upload -->
+        <div class="tb-img-group">
+          <button class="tb-btn" onmousedown={toggleImgUrl} title="Inserir imagem por URL">🖼</button>
+          <label class="tb-btn tb-img-upload-label" title={imgUploading ? 'Enviando…' : 'Fazer upload de imagem'} onmousedown={e => e.preventDefault()}>
+            {imgUploading ? '⏳' : '📤'}
+            <input type="file" accept="image/*" class="sr-only" onchange={handleImageUploadInline} disabled={imgUploading} />
+          </label>
+          {#if imgUrlOpen}
+            <div class="tb-img-popover">
+              <input
+                bind:this={imgUrlInputEl}
+                bind:value={imgUrlValue}
+                class="tb-img-url-input"
+                type="url"
+                placeholder="https://…"
+                onblur={onImgUrlBlur}
+                onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertImageByURL() } else if (e.key === 'Escape') { imgUrlOpen = false; imgUrlValue = '' } }}
+              />
+              <button class="tb-btn" onmousedown={e => { e.preventDefault(); insertImageByURL() }}>Inserir</button>
+            </div>
+          {/if}
+        </div>
 
         <!-- Table -->
         <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }} title="Inserir tabela">⊞</button>
@@ -902,6 +970,55 @@
 
   .tb-spacer {
     flex: 1;
+  }
+
+  .tb-img-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1px;
+  }
+
+  .tb-img-upload-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+  }
+
+  .tb-img-popover {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 200;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.18);
+    white-space: nowrap;
+  }
+
+  .tb-img-url-input {
+    width: 260px;
+    padding: 3px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: .85rem;
+    background: var(--bg);
+    color: var(--text);
   }
 
   .tb-save {
