@@ -9,6 +9,7 @@
   import TableHeader from '@tiptap/extension-table-header'
   import Highlight from '@tiptap/extension-highlight'
   import TextAlign from '@tiptap/extension-text-align'
+  import Link from '@tiptap/extension-link'
   import { DocLink } from '../editor/doclink-extension.js'
   import { saveDoc, loadDoc, linksRefreshSignal } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
@@ -39,6 +40,64 @@
   )
 
   let highlightColor = $state('#fef08a') // default yellow
+
+  // Link insertion — URL popover
+  let linkOpen = $state(false)
+  let linkHref = $state('')
+  let linkText = $state('')
+  let extLinkInputEl = $state(null)
+
+  $effect(() => {
+    if (linkOpen && extLinkInputEl) {
+      // Pre-fill with existing link href if cursor is inside one
+      const existing = editorInstance?.getAttributes('link').href || ''
+      linkHref = existing
+      // Pre-fill text with selection (only if no existing link)
+      if (!existing) {
+        const { from, to } = editorInstance?.state.selection ?? {}
+        linkText = from != null && to != null && from !== to
+          ? editorInstance.state.doc.textBetween(from, to)
+          : ''
+      }
+      setTimeout(() => extLinkInputEl?.focus(), 30)
+    }
+  })
+
+  function toggleLink(e) {
+    e.preventDefault()
+    linkOpen = !linkOpen
+    if (!linkOpen) { linkHref = ''; linkText = '' }
+  }
+
+  function insertLink() {
+    const href = linkHref.trim()
+    if (!href) { editorInstance?.chain().focus().unsetLink().run(); linkOpen = false; return }
+    const chain = editorInstance?.chain().focus()
+    // If there's selected text, wrap it; otherwise insert the text (or href) as a link node
+    const { from, to } = editorInstance?.state.selection ?? {}
+    const hasSelection = from != null && to != null && from !== to
+    if (hasSelection) {
+      chain.setLink({ href }).run()
+    } else {
+      const label = linkText.trim() || href
+      chain.insertContent(`<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`).run()
+    }
+    linkOpen = false
+    linkHref = ''
+    linkText = ''
+    scheduleAutoSave()
+  }
+
+  function onLinkBlur() {
+    setTimeout(() => { linkOpen = false; linkHref = ''; linkText = '' }, 150)
+  }
+
+  function clearLink(e) {
+    e.preventDefault()
+    editorInstance?.chain().focus().unsetLink().run()
+    linkOpen = false
+    scheduleAutoSave()
+  }
 
   // Image insertion — URL popover
   let imgUrlOpen = $state(false)
@@ -117,7 +176,7 @@
   let linkSearchOpen = $state(false)
   let linkSearchTimer = null
   let dropdownStyle = $state('')
-  let linkInputEl = $state(null)
+  let linkHrefInputEl = $state(null)
   let saving = $state(false)
   let saveError = $state('')
   let conflictData = $state(null)
@@ -299,8 +358,8 @@
         linkResults = (hits || []).filter(h => h.id !== doc.id && !linked.has(h.id)).slice(0, 8)
         if (linkResults.length > 0) {
           // Position dropdown below the input using fixed coords
-          if (linkInputEl) {
-            const r = linkInputEl.getBoundingClientRect()
+          if (linkHrefInputEl) {
+            const r = linkHrefInputEl.getBoundingClientRect()
             dropdownStyle = `top:${r.bottom + 4}px;left:${r.left}px`
           }
           linkSearchOpen = true
@@ -441,6 +500,10 @@
         TableHeader,
         Highlight.configure({ multicolor: true }),
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        Link.configure({
+          openOnClick: true,
+          HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
+        }),
         DocLink,
       ],
       content: doc?.body_html || '',
@@ -589,6 +652,39 @@
 
         <div class="tb-sep" role="separator"></div>
 
+        <!-- Link -->
+        <div class="tb-img-group">
+          <button class="tb-btn {isActive('link') ? 'active' : ''}" onmousedown={toggleLink} title="Inserir / editar link">🔗</button>
+          {#if linkOpen}
+            <div class="tb-img-popover tb-link-popover">
+              <input
+                bind:this={extLinkInputEl}
+                bind:value={linkHref}
+                class="tb-img-url-input"
+                type="url"
+                placeholder="https://…"
+                onblur={onLinkBlur}
+                onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertLink() } else if (e.key === 'Escape') { linkOpen = false; linkHref = ''; linkText = '' } }}
+              />
+              {#if !editorInstance?.getAttributes('link').href}
+                <input
+                  bind:value={linkText}
+                  class="tb-img-url-input"
+                  type="text"
+                  placeholder="Texto (opcional)"
+                  style="width:140px"
+                  onblur={onLinkBlur}
+                  onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertLink() } else if (e.key === 'Escape') { linkOpen = false; linkHref = ''; linkText = '' } }}
+                />
+              {/if}
+              <button class="tb-btn" onmousedown={e => { e.preventDefault(); insertLink() }}>Inserir</button>
+              {#if isActive('link')}
+                <button class="tb-btn" onmousedown={clearLink} title="Remover link" style="color:var(--danger,#ef4444)">✕</button>
+              {/if}
+            </div>
+          {/if}
+        </div>
+
         <!-- Image: URL popover + inline upload -->
         <div class="tb-img-group">
           <button class="tb-btn" onmousedown={toggleImgUrl} title="Inserir imagem por URL">🖼</button>
@@ -691,7 +787,7 @@
               class="assoc-search-input"
               type="text"
               bind:value={linkQuery}
-              bind:this={linkInputEl}
+              bind:this={linkHrefInputEl}
               oninput={onLinkInput}
               onblur={() => setTimeout(closeLinkSearch, 150)}
               placeholder="Buscar documento para relacionar…"
@@ -1019,6 +1115,17 @@
     font-size: .85rem;
     background: var(--bg);
     color: var(--text);
+  }
+
+  .tb-link-popover {
+    min-width: 0;
+  }
+
+  /* Make links in the editor body visually obvious and cursor-correct */
+  :global(.ProseMirror a) {
+    color: var(--accent, #3b82f6);
+    text-decoration: underline;
+    cursor: pointer;
   }
 
   .tb-save {
