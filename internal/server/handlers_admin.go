@@ -153,8 +153,8 @@ func (s *Server) handleAdminRestore() http.HandlerFunc {
 		s.links = store.NewLinkStore(newDB)
 		s.urls = store.NewURLStore(newDB)
 
-		// Invalidate all sessions (user must log in again)
-		s.sessions = s.sessions.Reset()
+		// Invalidate all sessions (user must log in again after restore)
+		s.sessions = s.sessions.Reset(newDB)
 
 		w.WriteHeader(http.StatusNoContent)
 	}

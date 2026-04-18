@@ -16,6 +16,9 @@ export const tagFilter = writable([])
 /** Whether any data is loading. */
 export const loading = writable(false)
 
+/** Controls expand/collapse of all tree nodes. 'expand' | 'collapse' | null */
+export const treeExpansionSignal = writable(null)
+
 /** Load the document tree, optionally filtered by tags. */
 export async function loadTree(tags = get(tagFilter)) {
   tagFilter.set(tags)

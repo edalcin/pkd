@@ -23,7 +23,7 @@
 | 📁 **Hierarquia ilimitada** | Documentos dentro de documentos, arrastar e soltar para reorganizar |
 | ✏️ **Editor rico** | TipTap v2 — negrito, itálico, títulos, listas, código, citações, imagens inline |
 | 📐 **Barra de ferramentas completa** | Tabelas, imagem por URL, alinhamento de parágrafo, destaque de texto com cor personalizável |
-| 🔗 **Links bidirecionais** | Digite `[[nome]]` para criar links; backlinks aparecem em "Referenciado por" |
+| 🔗 **Links bidirecionais** | Relacione documentos pelo painel "Notas relacionadas"; backlinks aparecem automaticamente em "Referenciado por" |
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
 | 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
 | 📅 **Calendário** | Navegue pelos documentos pela data de criação |
@@ -151,9 +151,7 @@ docker compose up -d
 
 ### Links bidirecionais
 
-No editor, digite `[[` para abrir o autocomplete de documentos. Selecione o alvo — um link inline é criado com o ID do documento. O documento alvo exibe automaticamente "Referenciado por" na área de associações.
-
-Alternativamente, use o campo **"Buscar nota para relacionar…"** na coluna _Notas relacionadas_ no rodapé do documento para criar relações explícitas sem inserir o link no texto.
+Use o campo **"Buscar nota para relacionar…"** na coluna _Notas relacionadas_ no rodapé do documento para criar relações entre documentos. O documento alvo exibe automaticamente o documento de origem em "Referenciado por", criando um vínculo bidirecional visível nos dois lados.
 
 ### Tags e cores
 
@@ -251,7 +249,7 @@ graph TD
 | Tabela | Descrição |
 |---|---|
 | `documents` | Documentos com hierarquia via `parent_id`, soft-delete, versionamento otimista |
-| `document_links` | Arestas direcionadas entre documentos (inline `[[...]]` ou painel). Flag `manual` distingue links do editor de links adicionados pelo painel |
+| `document_links` | Arestas direcionadas entre documentos. Flag `manual` registra links adicionados pelo painel de notas relacionadas |
 | `document_urls` | URLs externas com título opcional associadas a documentos |
 | `attachments` | Metadados de arquivos; binários em volume externo com path sharding |
 | `tags` + `document_tags` | Tags normalizadas com campo `color`; join N:N com documentos |

@@ -1,10 +1,11 @@
 // PKD Service Worker — Svelte 5 app (003-pkm-refactor)
 // Strategy:
-//   App shell (index.html + Vite assets) → cache-first, pre-cached on install
+//   index.html (/) → network-first (picks up UI updates; cache fallback for offline)
+//   manifest.webmanifest + Vite assets → cache-first (content-hash filenames)
 //   GET /api/documents/:id → stale-while-revalidate (LRU of last 100 docs)
 //   Mutating requests (POST/PUT/DELETE/PATCH) → network-only; offline → 503
 //   PWA share_target (POST /api/capture) → passes through to network (auth via cookie)
-const SHELL_CACHE = 'pkd-shell-v5';
+const SHELL_CACHE = 'pkd-shell-v6';
 const DOC_CACHE   = 'pkd-docs-v5';
 const DOC_MAX     = 100;
 
@@ -48,7 +49,8 @@ self.addEventListener('fetch', event => {
   const method = request.method;
   const isMutation = !['GET', 'HEAD'].includes(method);
   const isDocAPI   = /^\/api\/documents\/\d+$/.test(url.pathname) && method === 'GET';
-  const isShell    = url.pathname === '/' || url.pathname === '/manifest.webmanifest';
+  const isIndex    = url.pathname === '/';
+  const isShell    = url.pathname === '/manifest.webmanifest';
   const isAsset    = url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/');
 
   if (isMutation) {
@@ -58,8 +60,12 @@ self.addEventListener('fetch', event => {
   } else if (isDocAPI) {
     // Document GET: stale-while-revalidate for offline read-only access
     event.respondWith(staleWhileRevalidate(request));
+  } else if (isIndex) {
+    // index.html: network-first so UI updates are picked up without CTRL+F5.
+    // Falls back to cache only when offline.
+    event.respondWith(networkFirst(request));
   } else if (isShell || isAsset) {
-    // App shell + Vite-hashed assets: cache-first
+    // manifest + Vite-hashed assets: cache-first (content-hash = implicit versioning)
     event.respondWith(cacheFirst(request));
   }
   // Everything else → browser default (network)
@@ -78,6 +84,17 @@ async function networkOrOffline(request) {
         'x-pkd-offline': '1',
       },
     });
+  }
+}
+
+async function networkFirst(request) {
+  const cache = await caches.open(SHELL_CACHE);
+  try {
+    const res = await fetch(request);
+    if (res.ok) await cache.put(request, res.clone());
+    return res;
+  } catch {
+    return (await cache.match(request)) || new Response('', { status: 503 });
   }
 }
 

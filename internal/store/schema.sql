@@ -111,3 +111,14 @@ CREATE TABLE IF NOT EXISTS document_urls (
 );
 
 CREATE INDEX IF NOT EXISTS idx_document_urls_document_id ON document_urls(document_id);
+
+-- ---------------------------------------------------------------------------
+-- sessions (persistent across server restarts)
+-- Timestamps stored as Unix epoch integers for compact storage.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sessions (
+    id           TEXT    PRIMARY KEY NOT NULL,
+    ip           TEXT    NOT NULL DEFAULT '',
+    created_at   INTEGER NOT NULL,
+    last_seen_at INTEGER NOT NULL
+);

@@ -41,7 +41,7 @@ func main() {
 
 	log.Printf("schema ready at %s", cfg.DBPath)
 
-	sess := sessions.New(cfg.SessionIdleMinutes)
+	sess := sessions.New(cfg.SessionIdleMinutes, db)
 	srv := server.New(cfg, db, sess)
 
 	httpSrv := &http.Server{

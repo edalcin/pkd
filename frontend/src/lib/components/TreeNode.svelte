@@ -1,5 +1,5 @@
 <script>
-  import { createDoc, trashDoc, moveDoc, loadTree } from '../stores/documents.js'
+  import { createDoc, trashDoc, moveDoc, loadTree, treeExpansionSignal } from '../stores/documents.js'
 
   let {
     node,
@@ -10,6 +10,11 @@
 
   let expanded = $state(true)
   let draggingOver = $state(false)
+
+  $effect(() => {
+    if ($treeExpansionSignal === 'expand') expanded = true
+    else if ($treeExpansionSignal === 'collapse') expanded = false
+  })
 
   function navigate() {
     onNavigate(node.id)
