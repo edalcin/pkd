@@ -31,9 +31,9 @@ func (s *ShareStore) Create(docID int64) (plaintext string, share *model.ShareLi
 	var id int64
 	err = WithTx(s.db, func(tx *sql.Tx) error {
 		res, err := tx.Exec(`
-			INSERT INTO share_links (document_id, token_hash, created_at)
-			VALUES (?, ?, ?)`,
-			docID, hash, now.Format(time.RFC3339Nano))
+			INSERT INTO share_links (document_id, token_hash, token_plain, created_at)
+			VALUES (?, ?, ?, ?)`,
+			docID, hash, plaintext, now.Format(time.RFC3339Nano))
 		if err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ func (s *ShareStore) ListByDocument(docID int64) ([]*model.ShareLink, error) {
 // ordered newest first. Used by the admin panel.
 func (s *ShareStore) ListAllActive() ([]*model.ShareWithDoc, error) {
 	rows, err := s.db.Query(`
-		SELECT sl.id, sl.document_id, d.title, sl.created_at
+		SELECT sl.id, sl.document_id, d.title, sl.created_at, sl.token_plain
 		FROM share_links sl
 		JOIN documents d ON d.id = sl.document_id
 		WHERE sl.revoked_at IS NULL AND d.trashed_at IS NULL
@@ -144,7 +144,7 @@ func (s *ShareStore) ListAllActive() ([]*model.ShareWithDoc, error) {
 	for rows.Next() {
 		var sl model.ShareWithDoc
 		var createdStr string
-		if err := rows.Scan(&sl.ID, &sl.DocumentID, &sl.DocumentTitle, &createdStr); err != nil {
+		if err := rows.Scan(&sl.ID, &sl.DocumentID, &sl.DocumentTitle, &createdStr, &sl.Token); err != nil {
 			return nil, err
 		}
 		sl.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)

@@ -73,6 +73,17 @@
     shares = shares.filter(s => s.id !== id)
   }
 
+  let copyFeedback = $state('')
+  async function copyShareURL(url) {
+    try {
+      await navigator.clipboard.writeText(url)
+      copyFeedback = url
+      setTimeout(() => { copyFeedback = '' }, 2000)
+    } catch {
+      prompt('Copie o link:', url)
+    }
+  }
+
   async function loadAdminTags() {
     const all = (await apiGet('/api/admin/tags')) || []
     editableTags = all.map(t => ({ ...t, _editing: false, _editName: t.name, _editColor: t.color || '#6b7280' }))
@@ -568,14 +579,26 @@
                   href="#/doc/{share.document_id}"
                   onclick={() => activeTab = ''}
                 >{share.document_title}</a>
+                {#if share.url}
+                  <span class="share-url muted" title={share.url}>{share.url}</span>
+                {/if}
                 <span class="share-date muted">
                   Criado em {new Date(share.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' })}
                 </span>
               </div>
-              <button
-                class="btn btn-danger btn-sm"
-                onclick={() => revokeShare(share.id)}
-              >Revogar</button>
+              <div class="share-actions">
+                {#if share.url}
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onclick={() => copyShareURL(share.url)}
+                    title={share.url}
+                  >{copyFeedback === share.url ? '✓ Copiado!' : '📋 Copiar'}</button>
+                {/if}
+                <button
+                  class="btn btn-danger btn-sm"
+                  onclick={() => revokeShare(share.id)}
+                >Revogar</button>
+              </div>
             </div>
           {/each}
         </div>
@@ -886,7 +909,22 @@
     white-space: nowrap;
   }
 
+  .share-url {
+    font-size: .72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+  }
+
   .share-date { font-size: .8rem; }
+
+  .share-actions {
+    display: flex;
+    align-items: center;
+    gap: .375rem;
+    flex-shrink: 0;
+  }
 
   /* Preview modal (reused from Editor) */
   .preview-backdrop {

@@ -345,6 +345,20 @@ func (s *Server) handleAdminListShares() http.HandlerFunc {
 		if shares == nil {
 			shares = []*model.ShareWithDoc{}
 		}
+		// Build the base URL once and attach the full public URL to each share.
+		base := s.cfg.BaseURL
+		if base == "" {
+			scheme := "http"
+			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+				scheme = "https"
+			}
+			base = scheme + "://" + r.Host + "/"
+		}
+		for _, sh := range shares {
+			if sh.Token != "" {
+				sh.URL = base + "public/" + sh.Token
+			}
+		}
 		writeJSON(w, http.StatusOK, shares)
 	}
 }
