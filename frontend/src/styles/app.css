@@ -287,6 +287,42 @@ input:focus, textarea:focus, select:focus {
   height: 0;
 }
 
+/* Table styles */
+.tiptap-editor .ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: .75em 0;
+  overflow: auto;
+  display: block;
+}
+.tiptap-editor .ProseMirror th,
+.tiptap-editor .ProseMirror td {
+  border: 1px solid var(--border);
+  padding: .35em .65em;
+  min-width: 60px;
+  vertical-align: top;
+  position: relative;
+}
+.tiptap-editor .ProseMirror th {
+  background: var(--bg-hover);
+  font-weight: 600;
+  text-align: left;
+}
+.tiptap-editor .ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  opacity: .12;
+  pointer-events: none;
+}
+
+/* Highlight mark */
+.tiptap-editor .ProseMirror mark {
+  border-radius: 2px;
+  padding: 0 .15em;
+}
+
 /* Doc-link inline nodes */
 .doc-link {
   display: inline-flex;

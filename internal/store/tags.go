@@ -79,15 +79,36 @@ func (s *TagStore) SetDocumentTags(docID int64, rawNames []string) error {
 	})
 }
 
-// ListWithCounts returns all tags ordered by name with document counts.
+// ListWithCounts returns only tags that have at least one non-trashed document.
+// Used by the public /api/tags endpoint (sidebar, editor autocomplete).
 func (s *TagStore) ListWithCounts() ([]*model.TagWithCount, error) {
-	rows, err := s.db.Query(`
-		SELECT t.id, t.name, t.color, COUNT(dt.document_id) as cnt
-		FROM tags t
-		LEFT JOIN document_tags dt ON dt.tag_id = t.id
-		LEFT JOIN documents d ON d.id = dt.document_id AND d.trashed_at IS NULL
-		GROUP BY t.id
-		ORDER BY t.name`)
+	return s.listCounts(false)
+}
+
+// ListAllWithCounts returns all tags including those with count=0 (exclusive to
+// trashed documents or completely unused). Used by the admin tags panel.
+func (s *TagStore) ListAllWithCounts() ([]*model.TagWithCount, error) {
+	return s.listCounts(true)
+}
+
+func (s *TagStore) listCounts(includeEmpty bool) ([]*model.TagWithCount, error) {
+	var q string
+	if includeEmpty {
+		q = `SELECT t.id, t.name, t.color, COUNT(d.id) as cnt
+			 FROM tags t
+			 LEFT JOIN document_tags dt ON dt.tag_id = t.id
+			 LEFT JOIN documents d ON d.id = dt.document_id AND d.trashed_at IS NULL
+			 GROUP BY t.id
+			 ORDER BY t.name`
+	} else {
+		q = `SELECT t.id, t.name, t.color, COUNT(d.id) as cnt
+			 FROM tags t
+			 INNER JOIN document_tags dt ON dt.tag_id = t.id
+			 INNER JOIN documents d ON d.id = dt.document_id AND d.trashed_at IS NULL
+			 GROUP BY t.id
+			 ORDER BY t.name`
+	}
+	rows, err := s.db.Query(q)
 	if err != nil {
 		return nil, err
 	}

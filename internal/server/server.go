@@ -155,6 +155,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/backup", s.handleAdminBackup())
 		r.Post("/api/admin/restore", s.handleAdminRestore())
 		r.Post("/api/admin/cleanup", s.handleAdminCleanup())
+		r.Get("/api/admin/tags", s.handleAdminListAllTags())
 		r.Put("/api/admin/tags/rename", s.handleAdminRenameTag())
 		r.Post("/api/admin/tags/prune", s.handleAdminPruneTags())
 		r.Put("/api/admin/tags/{id}", s.handleAdminUpdateTag())

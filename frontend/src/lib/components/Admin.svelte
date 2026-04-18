@@ -29,7 +29,7 @@
   })
 
   async function loadTrash() {
-    trash = await apiGet('/api/admin/trash')
+    trash = (await apiGet('/api/admin/trash')) || []
   }
 
   async function loadAttachments() {
@@ -49,17 +49,17 @@
   function setTab(id) {
     activeTab = id
     if (id === 'attachments' && allAttachments.length === 0) loadAttachments()
-    if (id === 'tags') syncEditableTags()
+    if (id === 'tags') loadAdminTags()
+  }
+
+  async function loadAdminTags() {
+    const all = (await apiGet('/api/admin/tags')) || []
+    editableTags = all.map(t => ({ ...t, _editing: false, _editName: t.name, _editColor: t.color || '#6b7280' }))
   }
 
   function syncEditableTags() {
-    editableTags = $tags.map(t => ({ ...t, _editing: false, _editName: t.name, _editColor: t.color || '#6b7280' }))
+    loadAdminTags()
   }
-
-  $effect(() => {
-    // Keep editableTags in sync when $tags store updates (after save)
-    if (activeTab === 'tags') syncEditableTags()
-  })
 
   // Backup
   async function handleBackup() {

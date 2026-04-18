@@ -3,6 +3,12 @@
   import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
   import Image from '@tiptap/extension-image'
+  import Table from '@tiptap/extension-table'
+  import TableRow from '@tiptap/extension-table-row'
+  import TableCell from '@tiptap/extension-table-cell'
+  import TableHeader from '@tiptap/extension-table-header'
+  import Highlight from '@tiptap/extension-highlight'
+  import TextAlign from '@tiptap/extension-text-align'
   import { DocLink } from '../editor/doclink-extension.js'
   import { saveDoc, loadDoc } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
@@ -30,6 +36,13 @@
   const tagColorMap = $derived(
     Object.fromEntries(($allTags || []).map(t => [t.name, t.color || '']))
   )
+
+  let highlightColor = $state('#fef08a') // default yellow
+
+  function insertImageByURL() {
+    const url = prompt('URL da imagem:')
+    if (url?.trim()) fmt(c => c.setImage({ src: url.trim() }))
+  }
 
   // Attachment preview modal
   let previewAtt = $state(null)
@@ -363,6 +376,12 @@
       extensions: [
         StarterKit,
         Image.configure({ inline: true, allowBase64: true }),
+        Table.configure({ resizable: false }),
+        TableRow,
+        TableCell,
+        TableHeader,
+        Highlight.configure({ multicolor: true }),
+        TextAlign.configure({ types: ['heading', 'paragraph'] }),
         DocLink,
       ],
       content: doc?.body_html || '',
@@ -486,6 +505,43 @@
           onmousedown={e => { e.preventDefault(); fmt(c => c.toggleBlockquote()) }} title="Citação" aria-pressed={isActive('blockquote')}>"</button>
         <button class="tb-btn {isActive('codeBlock') ? 'active' : ''}"
           onmousedown={e => { e.preventDefault(); fmt(c => c.toggleCodeBlock()) }} title="Bloco de código" aria-pressed={isActive('codeBlock')}>&lt;/&gt;</button>
+
+        <div class="tb-sep" role="separator"></div>
+
+        <!-- Text alignment -->
+        <button class="tb-btn {isActive({textAlign:'left'}) ? 'active' : ''}"
+          onmousedown={e => { e.preventDefault(); fmt(c => c.setTextAlign('left')) }} title="Alinhar à esquerda">⬅</button>
+        <button class="tb-btn {isActive({textAlign:'center'}) ? 'active' : ''}"
+          onmousedown={e => { e.preventDefault(); fmt(c => c.setTextAlign('center')) }} title="Centralizar">⬛</button>
+        <button class="tb-btn {isActive({textAlign:'right'}) ? 'active' : ''}"
+          onmousedown={e => { e.preventDefault(); fmt(c => c.setTextAlign('right')) }} title="Alinhar à direita">➡</button>
+        <button class="tb-btn {isActive({textAlign:'justify'}) ? 'active' : ''}"
+          onmousedown={e => { e.preventDefault(); fmt(c => c.setTextAlign('justify')) }} title="Justificar">≡</button>
+
+        <div class="tb-sep" role="separator"></div>
+
+        <!-- Highlight -->
+        <button class="tb-btn tb-highlight {isActive('highlight') ? 'active' : ''}"
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleHighlight({ color: highlightColor })) }}
+          title="Realçar texto">
+          <span style="background:{highlightColor};padding:0 3px;border-radius:2px">H</span>
+        </button>
+        <input type="color" class="tb-color-input" bind:value={highlightColor} title="Cor do realce" />
+
+        <div class="tb-sep" role="separator"></div>
+
+        <!-- Image by URL -->
+        <button class="tb-btn" onmousedown={e => { e.preventDefault(); insertImageByURL() }} title="Inserir imagem por URL">🖼</button>
+
+        <!-- Table -->
+        <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }} title="Inserir tabela">⊞</button>
+        {#if isActive('table')}
+          <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.addRowAfter()) }} title="Nova linha abaixo">+↓</button>
+          <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.addColumnAfter()) }} title="Nova coluna à direita">+→</button>
+          <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.deleteRow()) }} title="Remover linha">-↓</button>
+          <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.deleteColumn()) }} title="Remover coluna">-→</button>
+          <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.deleteTable()) }} title="Remover tabela" style="color:var(--danger,#ef4444)">✕⊞</button>
+        {/if}
 
         <div class="tb-sep" role="separator"></div>
 
@@ -811,6 +867,17 @@
 
   .tb-save.saving {
     opacity: .7;
+  }
+
+  .tb-color-input {
+    width: 24px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    background: none;
+    flex-shrink: 0;
   }
 
   .doc-header { margin-bottom: .75rem; }

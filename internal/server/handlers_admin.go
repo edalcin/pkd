@@ -21,7 +21,7 @@ func (s *Server) handleAdminListTrash() http.HandlerFunc {
 			return
 		}
 		if docs == nil {
-			docs = nil // JSON will encode as null; frontend handles it
+			docs = []*model.Document{}
 		}
 		writeJSON(w, http.StatusOK, docs)
 	}
@@ -234,6 +234,20 @@ func (s *Server) handleAdminCheckURLs() http.HandlerFunc {
 			results = append(results, res)
 		}
 		writeJSON(w, http.StatusOK, results)
+	}
+}
+
+func (s *Server) handleAdminListAllTags() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tags, err := s.tags.ListAllWithCounts()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if tags == nil {
+			tags = []*model.TagWithCount{}
+		}
+		writeJSON(w, http.StatusOK, tags)
 	}
 }
 

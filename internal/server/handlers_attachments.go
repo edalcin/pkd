@@ -5,9 +5,28 @@ import (
 	"mime"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/edalcin/pkd/internal/store"
 )
+
+// isInlineableMIME returns true for MIME types browsers can display natively.
+func isInlineableMIME(mimeType string) bool {
+	switch {
+	case strings.HasPrefix(mimeType, "image/"):
+		return true
+	case strings.HasPrefix(mimeType, "text/"):
+		return true
+	case strings.HasPrefix(mimeType, "audio/"):
+		return true
+	case strings.HasPrefix(mimeType, "video/"):
+		return true
+	case mimeType == "application/pdf":
+		return true
+	default:
+		return false
+	}
+}
 
 func (s *Server) handleListAttachments() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +143,13 @@ func (s *Server) handleGetAttachment() http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", att.MimeType)
-		w.Header().Set("Content-Disposition", `attachment; filename="`+att.OriginalName+`"`)
+		// Use "inline" for types browsers can display natively; "attachment" forces download.
+		disposition := "attachment"
+		if isInlineableMIME(att.MimeType) {
+			disposition = "inline"
+		}
+		safeName := strings.NewReplacer(`"`, `'`, `\`, `-`).Replace(att.OriginalName)
+		w.Header().Set("Content-Disposition", disposition+`; filename="`+safeName+`"`)
 		http.ServeFile(w, r, fullPath)
 	}
 }

@@ -34,6 +34,8 @@ const cspSPA = "default-src 'self'; " +
 	"style-src 'self' 'unsafe-inline'; " +
 	"connect-src 'self'; " +
 	"font-src 'self'; " +
+	"object-src 'self'; " + // allows <embed> for inline PDF preview
+	"frame-src 'self'; " + // allows <iframe> as PDF fallback
 	"frame-ancestors 'none'; " +
 	"base-uri 'self'; " +
 	"form-action 'self'"
