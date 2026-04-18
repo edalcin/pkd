@@ -10,7 +10,7 @@
   import Highlight from '@tiptap/extension-highlight'
   import TextAlign from '@tiptap/extension-text-align'
   import { DocLink } from '../editor/doclink-extension.js'
-  import { saveDoc, loadDoc } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiDelete } from '../api.js'
 
@@ -146,6 +146,11 @@
       editorInstance = null
       loadDocument()
     }
+  })
+
+  // Reload links when a relationship is created from the sidebar
+  $effect(() => {
+    if ($linksRefreshSignal && doc) loadLinks()
   })
 
   // Auto-save: 2 seconds after user stops typing
@@ -608,9 +613,9 @@
 
       <div class="assoc-grid">
 
-        <!-- Coluna 1: Notas relacionadas -->
+        <!-- Coluna 1: Documentos relacionados -->
         <section class="assoc-col">
-          <h4 class="assoc-col-title">📄 Notas relacionadas</h4>
+          <h4 class="assoc-col-title">📄 Documentos relacionados</h4>
 
           <!-- busca para adicionar -->
           <div class="link-search-wrap">
@@ -621,7 +626,7 @@
               bind:this={linkInputEl}
               oninput={onLinkInput}
               onblur={() => setTimeout(closeLinkSearch, 150)}
-              placeholder="Buscar nota para relacionar…"
+              placeholder="Buscar documento para relacionar…"
               aria-label="Relacionar nota"
               autocomplete="off"
             />
@@ -671,7 +676,7 @@
           {/if}
 
           {#if outgoingLinks.length === 0 && backlinks.length === 0}
-            <p class="assoc-empty">Nenhuma nota relacionada</p>
+            <p class="assoc-empty">Nenhum documento relacionado</p>
           {/if}
         </section>
 

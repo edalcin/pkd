@@ -1,5 +1,6 @@
 <script>
-  import { createDoc, trashDoc, moveDoc, loadTree, treeExpansionSignal } from '../stores/documents.js'
+  import { createDoc, trashDoc, moveDoc, loadTree, treeExpansionSignal, linksRefreshSignal } from '../stores/documents.js'
+  import { apiPost } from '../api.js'
 
   let {
     node,
@@ -10,6 +11,7 @@
 
   let expanded = $state(true)
   let draggingOver = $state(false)
+  let linkAdding = $state(false)
 
   $effect(() => {
     if ($treeExpansionSignal === 'expand') expanded = true
@@ -30,6 +32,22 @@
     e.stopPropagation()
     if (confirm(`Mover "${node.title}" para a lixeira?`)) {
       await trashDoc(node.id)
+    }
+  }
+
+  async function handleRelate(e) {
+    e.stopPropagation()
+    if (!activeId || activeId === node.id || linkAdding) return
+    linkAdding = true
+    try {
+      await apiPost(`/api/documents/${activeId}/links`, { target_id: node.id })
+      linksRefreshSignal.update(n => n + 1)
+    } catch (err) {
+      if (!err.message?.includes('already exists')) {
+        console.error('Erro ao relacionar:', err)
+      }
+    } finally {
+      linkAdding = false
     }
   }
 
@@ -90,6 +108,14 @@
 
     <!-- Actions (shown on hover) -->
     <span class="row-actions">
+      {#if activeId && activeId !== node.id}
+        <button
+          class="row-btn row-btn-relate {linkAdding ? 'adding' : ''}"
+          onclick={handleRelate}
+          title="Relacionar com documento atual"
+          aria-label="Relacionar"
+        >→</button>
+      {/if}
       <button class="row-btn" onclick={handleNewChild} title="Novo filho">+</button>
       <button class="row-btn row-btn-del" onclick={handleDelete} title="Lixeira">×</button>
     </span>
@@ -143,6 +169,8 @@
   }
   .row-btn:hover { background: var(--bg-active); color: var(--text); }
   .row-btn-del:hover { color: var(--danger); }
+  .row-btn-relate:hover { color: var(--accent); }
+  .row-btn-relate.adding { opacity: .5; cursor: default; }
 
   .drag-over { background: var(--bg-active); outline: 2px dashed var(--accent); }
 </style>

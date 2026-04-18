@@ -19,6 +19,9 @@ export const loading = writable(false)
 /** Controls expand/collapse of all tree nodes. 'expand' | 'collapse' | null */
 export const treeExpansionSignal = writable(null)
 
+/** Incremented whenever a link is created from the sidebar, so Editor reloads. */
+export const linksRefreshSignal = writable(0)
+
 /** Load the document tree, optionally filtered by tags. */
 export async function loadTree(tags = get(tagFilter)) {
   tagFilter.set(tags)
