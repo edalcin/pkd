@@ -22,6 +22,7 @@
 |---|---|
 | 📁 **Hierarquia ilimitada** | Documentos dentro de documentos, arrastar e soltar para reorganizar |
 | ✏️ **Editor rico** | TipTap v2 — negrito, itálico, títulos, listas, código, citações, imagens inline |
+| 📐 **Barra de ferramentas completa** | Tabelas, imagem por URL, alinhamento de parágrafo, destaque de texto com cor personalizável |
 | 🔗 **Links bidirecionais** | Digite `[[nome]]` para criar links; backlinks aparecem em "Referenciado por" |
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
 | 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
@@ -37,11 +38,16 @@ Cada documento possui uma **área de associações** no rodapé, com três colun
 | 📎 **Arquivos** | Imagens mostram thumbnail; PDFs, áudios e outros tipos exibem ícone. Clicar abre modal de visualização (lightbox, embed PDF, player de áudio/vídeo) |
 | 🔗 **Links externos** | URLs com título opcional; verificação de validade no painel de administração |
 
+### Sub-documentos
+
+Quando um documento possui filhos diretos na hierarquia, eles são exibidos como **cards clicáveis** logo abaixo do conteúdo principal, antes da área de associações. Cada card mostra o ícone, o título e um preview do texto (até 160 caracteres). Clicar em um card navega diretamente para o sub-documento.
+
 ### Organização e visualização
 
 | | |
 |---|---|
 | 🏷️ **Hashtags com autocomplete** | Marque documentos com tags; ao digitar, sugeridas as tags já existentes no sistema |
+| 🎨 **Cores por tag** | Cada tag possui cor configurável; chips coloridos em toda a interface (sidebar e editor) |
 | 🕸️ **Graph View** | Grafo D3.js force-directed: nós de documentos (coloridos pela tag primária) + nós de tags (círculos tracejados). Clicar em tag filtra o grafo |
 | 🔗 **Links públicos** | Links de compartilhamento revogáveis, somente leitura |
 
@@ -51,7 +57,8 @@ Cada documento possui uma **área de associações** no rodapé, com três colun
 |---|---|
 | 💾 **Backup / Restore** | Download do SQLite + restore com confirmação |
 | 🗑️ **Lixeira** | Documentos excluídos ficam em lixeira; restauráveis individualmente ou em lote |
-| 🏷️ **Tags** | Renomear e mesclar tags globalmente |
+| 🏷️ **Tags** | Renomear, editar cor, excluir ou mesclar tags globalmente; botão para remover tags órfãs |
+| 📎 **Arquivos** | Grade com todos os anexos do sistema (thumbnail para imagens), listagem de arquivos órfãos com limpeza em lote |
 | 🔗 **Verificação de links** | Testa todos os links externos (HTTP HEAD) e permite excluir os inválidos em lote |
 | 🧹 **Limpeza** | Remove anexos órfãos e executa `VACUUM` no banco |
 
@@ -148,9 +155,15 @@ No editor, digite `[[` para abrir o autocomplete de documentos. Selecione o alvo
 
 Alternativamente, use o campo **"Buscar nota para relacionar…"** na coluna _Notas relacionadas_ no rodapé do documento para criar relações explícitas sem inserir o link no texto.
 
-### Tags
+### Tags e cores
 
 Digite no campo `+ tag` no cabeçalho do documento. Ao digitar, um dropdown sugere as tags já existentes no sistema — selecione ou continue digitando para criar uma nova. Confirme com `Enter` ou `,`.
+
+Para personalizar a cor de uma tag, acesse **Administração → Tags**, clique no seletor de cor ao lado da tag desejada e confirme. A cor propaga imediatamente para os chips de tag na sidebar e no editor.
+
+### Sub-documentos
+
+Crie documentos filhos normalmente pela sidebar (clique direito → "Novo sub-documento"). Ao abrir o documento pai, os filhos diretos aparecem automaticamente como cards logo abaixo do conteúdo, com preview do texto. Clicar em um card navega para o sub-documento.
 
 ### Anexos e visualização
 
@@ -161,6 +174,10 @@ Arraste um arquivo ou clique em **"+ Anexar arquivo"**. Imagens exibem thumbnail
 - **Áudio** → player HTML5
 - **Vídeo** → player HTML5
 - **Outros** → tela de download
+
+### Destaque de texto
+
+Na barra de ferramentas do editor, o botão de destaque (🖊) aplica cor de fundo ao texto selecionado. Clique no quadrado de cor ao lado para escolher a cor antes de aplicar. O texto destacado mantém legibilidade tanto no tema claro quanto no escuro.
 
 ### Links externos
 
@@ -237,7 +254,7 @@ graph TD
 | `document_links` | Arestas direcionadas entre documentos (inline `[[...]]` ou painel). Flag `manual` distingue links do editor de links adicionados pelo painel |
 | `document_urls` | URLs externas com título opcional associadas a documentos |
 | `attachments` | Metadados de arquivos; binários em volume externo com path sharding |
-| `tags` + `document_tags` | Tags normalizadas; join N:N com documentos |
+| `tags` + `document_tags` | Tags normalizadas com campo `color`; join N:N com documentos |
 | `documents_fts` | Tabela virtual FTS5 (contentless) para busca full-text |
 | `share_links` | Links públicos com hash de token e campo `revoked_at` |
 

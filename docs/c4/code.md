@@ -1,6 +1,6 @@
 # C4 Level 4 — Code: PKD
 
-> **Versão**: v2 (003-pkm-refactor) · **Data**: 2026-04-16
+> **Versão**: v2.1 · **Data**: 2026-04-18
 
 ## Modelo de dados — Structs Go (`internal/model/`)
 
@@ -32,6 +32,35 @@ classDiagram
         +int64 Version
         +[]string Tags
         +[]*DocumentTreeNode Children
+    }
+
+    class Tag {
+        +int64 ID
+        +string Name
+        +string Color
+    }
+
+    class TagWithCount {
+        +int64 ID
+        +string Name
+        +string Color
+        +int Count
+    }
+
+    class Attachment {
+        +int64 ID
+        +int64 DocumentID
+        +string OriginalName
+        +string StoredFilename
+        +string MimeType
+        +int64 SizeBytes
+        +string URL
+        +time.Time CreatedAt
+    }
+
+    class AttachmentWithDoc {
+        +Attachment
+        +string DocumentTitle
     }
 
     class Link {
@@ -81,6 +110,9 @@ classDiagram
     Document "1" --> "*" Document : parent_id
     Document "1" --> "*" Link : como source_id
     Document "1" --> "*" Link : como target_id
+    Document "1" --> "*" Attachment : document_id
+    AttachmentWithDoc --> Attachment : embeds
+    TagWithCount --> Tag : extends
     LinksResponse --> LinkEntry
     GraphData --> GraphNode
     GraphData --> GraphEdge
@@ -119,6 +151,44 @@ sequenceDiagram
         Handler-->>Browser: 200 Document JSON
     end
 ```
+
+## Fluxo de carregamento de sub-documentos (cards)
+
+Quando um documento é aberto no editor, filhos diretos são carregados para exibição como cards.
+
+```mermaid
+sequenceDiagram
+    participant Editor as Editor.svelte
+    participant API as Go HTTP Server
+    participant SQLite
+
+    Editor->>API: GET /api/documents/{id}/children
+    API->>SQLite: SELECT ... FROM documents WHERE parent_id=? AND trashed_at IS NULL ORDER BY position
+    SQLite-->>API: rows
+    API-->>Editor: [Document, ...] (array vazio [] se sem filhos)
+    alt children.length > 0
+        Editor->>Editor: renderiza .children-grid com cards clicáveis
+    else
+        Editor->>Editor: seção oculta (nada renderizado)
+    end
+```
+
+## Fluxo de exclusão permanente com integridade referencial
+
+```mermaid
+flowchart TD
+    A[Admin: Excluir da lixeira] --> B[handleAdminDeleteTrashItem]
+    B --> C[attachments.DeleteByDocument\nremove arquivos do disco + rows do DB]
+    C --> D[docs.PermanentDelete]
+    D --> E[BEGIN TX]
+    E --> F["UPDATE documents SET parent_id=NULL\nWHERE parent_id=? (detach children)"]
+    F --> G["DELETE FROM documents\nWHERE id=? AND trashed_at IS NOT NULL"]
+    G --> H[COMMIT]
+    H --> I[tags.PruneUnused\nDELETE tags não referenciadas]
+    I --> J[200 OK]
+```
+
+> **Por que o detach explícito?** SQLite com `PRAGMA foreign_keys=ON` e `ON DELETE RESTRICT` bloqueia o `DELETE` se existirem filhos. Documentos filhos não-lixados devem ser promovidos para root, não excluídos junto com o pai.
 
 ## Fluxo de criação de link bidirecional no editor
 
@@ -166,7 +236,23 @@ flowchart TD
     K --> L[201 Document JSON]
 ```
 
-## Schema SQL — tabela document_links (nova em v2)
+## Schema SQL — tabela tags (coluna color adicionada)
+
+```sql
+CREATE TABLE IF NOT EXISTS tags (
+    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    name  TEXT    NOT NULL UNIQUE,
+    color TEXT    NOT NULL DEFAULT ''   -- hex color, e.g. '#ef4444'; vazio = cor padrão
+);
+```
+
+A coluna `color` é adicionada via migração idempotente:
+
+```go
+{`ALTER TABLE tags ADD COLUMN color TEXT NOT NULL DEFAULT ''`, "alter tags color"},
+```
+
+## Schema SQL — tabela document_links
 
 ```sql
 CREATE TABLE IF NOT EXISTS document_links (
@@ -174,13 +260,11 @@ CREATE TABLE IF NOT EXISTS document_links (
     source_id   INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     target_id   INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     created_at  TEXT    NOT NULL,
-    UNIQUE(source_id, target_id)   -- único link de A→B; A→B e B→A são registros independentes
+    UNIQUE(source_id, target_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_document_links_source ON document_links(source_id);
 CREATE INDEX IF NOT EXISTS idx_document_links_target ON document_links(target_id);
--- idx_document_links_target viabiliza a query de backlinks:
--- SELECT * FROM document_links WHERE target_id = ? (quem referencia documento X)
 ```
 
 **Decisões de design:**
@@ -188,7 +272,6 @@ CREATE INDEX IF NOT EXISTS idx_document_links_target ON document_links(target_id
 - **Backlinks derivados** — `WHERE target_id = X` com índice; sem tabela materializada
 - **CASCADE on DELETE** — links removidos automaticamente quando documento é permanentemente excluído
 - **Links mantidos no trash** — quando documento vai para lixeira, links permanecem; UI marca como "quebrado"
-- **Autorreferência permitida** — A pode linkar para A (uso válido: seções do mesmo documento)
 
 ## Roteamento hash-based (frontend)
 
@@ -203,14 +286,57 @@ flowchart LR
     Router -->|"#/search?q=..."| SearchPage["Search results"]
 ```
 
-O servidor Go serve apenas `/` → `index.html`. O fragmento `#...` nunca chega ao servidor — é tratado exclusivamente no cliente. Isso elimina a necessidade de catch-all no backend e permite PWA offline sem service worker complexo.
+O servidor Go serve apenas `/` → `index.html` (com `Cache-Control: no-cache` para garantir que o browser sempre busque o shell mais recente após deploys). O fragmento `#...` nunca chega ao servidor — tratado exclusivamente no cliente.
 
-## Endpoints REST — adições v2
+## Endpoints REST
+
+### Documentos
+
+| Método | Caminho | Handler | Descrição |
+|---|---|---|---|
+| POST | `/api/documents` | `handleCreateDocument` | Cria documento. Body: `{parent_id?, title}` |
+| GET | `/api/documents/{id}` | `handleGetDocument` | Retorna documento com tags e attachment_ids |
+| PUT | `/api/documents/{id}` | `handleUpdateDocument` | Salva com versionamento otimista; sincroniza links |
+| DELETE | `/api/documents/{id}` | `handleDeleteDocument` | Soft-delete (move para lixeira) |
+| POST | `/api/documents/{id}/move` | `handleMoveDocument` | Body: `{new_parent_id}` |
+| POST | `/api/documents/{id}/restore` | `handleRestoreDocument` | Restaura da lixeira |
+| GET | `/api/documents/{id}/children` | `handleListChildren` | Filhos diretos não-lixados para cards de sub-docs |
+
+### Links bidirecionais
 
 | Método | Caminho | Handler | Descrição |
 |---|---|---|---|
 | GET | `/api/documents/{id}/links` | `handleListLinks` | `{outgoing: [LinkEntry], incoming: [LinkEntry]}` |
 | POST | `/api/documents/{id}/links` | `handleCreateLink` | Body: `{target_id}` → 201 LinkEntry |
 | DELETE | `/api/documents/{id}/links/{linkId}` | `handleDeleteLink` | 204 sem corpo |
-| GET | `/api/graph` | `handleGraph` | `{nodes: [GraphNode], edges: [GraphEdge]}`. Query: `?tag=&all=true` |
-| POST | `/api/capture` | `handleCapture` | JSON ou form-encoded. Cria doc + tag #captura + Open Graph |
+
+### Administração
+
+| Método | Caminho | Handler | Descrição |
+|---|---|---|---|
+| GET | `/api/admin/trash` | `handleAdminListTrash` | Lista todos os documentos na lixeira |
+| DELETE | `/api/admin/trash/{id}` | `handleAdminDeleteTrashItem` | Exclui permanentemente (com limpeza de anexos e tags) |
+| POST | `/api/admin/trash/empty` | `handleAdminEmptyTrash` | Esvazia lixeira completa |
+| GET | `/api/admin/tags` | `handleAdminListAllTags` | Lista todas as tags (LEFT JOIN, inclui count=0) |
+| PUT | `/api/admin/tags/{id}` | `handleAdminUpdateTag` | Atualiza nome e/ou cor da tag |
+| DELETE | `/api/admin/tags/{id}` | `handleAdminDeleteTag` | Remove tag e suas associações |
+| POST | `/api/admin/tags/prune` | `handleAdminPruneTags` | Remove tags sem nenhum documento |
+| GET | `/api/admin/attachments` | `handleAdminListAttachments` | Lista todos os anexos com título do documento |
+| GET | `/api/admin/attachments/orphans` | `handleAdminListOrphans` | Lista arquivos em disco sem registro no DB |
+| POST | `/api/admin/backup` | `handleAdminBackup` | Download do SQLite via VACUUM INTO |
+| POST | `/api/admin/restore` | `handleAdminRestore` | Restaura backup (requer confirmação) |
+| POST | `/api/admin/cleanup` | `handleAdminCleanup` | Remove anexos órfãos + VACUUM |
+| POST | `/api/admin/check-urls` | `handleAdminCheckURLs` | Testa validade de links externos (HTTP HEAD) |
+
+### Outros
+
+| Método | Caminho | Descrição |
+|---|---|---|
+| GET | `/api/graph` | `{nodes, edges}` para D3.js. Query: `?tag=&all=true` |
+| POST | `/api/capture` | Cria doc a partir de URL/texto; extrai Open Graph |
+| GET | `/api/tags` | Tags ativas (INNER JOIN — exclui docs na lixeira) |
+| GET | `/api/search` | Busca FTS5. Query: `?q=` |
+| GET | `/api/documents/{id}/attachments` | Lista anexos do documento |
+| POST | `/api/documents/{id}/attachments` | Upload (multipart ou octet-stream) |
+| GET | `/api/attachments/{id}` | Serve arquivo com Content-Disposition correto |
+| DELETE | `/api/attachments/{id}` | Remove anexo |

@@ -1,6 +1,6 @@
 # C4 Level 1 — System Context: PKD
 
-> **Versão**: v2 (003-pkm-refactor) · **Data**: 2026-04-16
+> **Versão**: v2.1 · **Data**: 2026-04-18
 
 ## Descrição
 
