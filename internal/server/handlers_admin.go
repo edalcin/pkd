@@ -301,6 +301,26 @@ func (s *Server) handleAdminDeleteTag() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleAdminPruneTags() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		before, err := s.tags.ListWithCounts()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if err := s.tags.PruneUnused(); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		after, err := s.tags.ListWithCounts()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]int{"removed": len(before) - len(after)})
+	}
+}
+
 func (s *Server) handleAdminRenameTag() http.HandlerFunc {
 	type request struct {
 		Old string `json:"old"`

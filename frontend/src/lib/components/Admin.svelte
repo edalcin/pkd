@@ -21,6 +21,7 @@
   // Tags tab — local editable copy
   let editableTags = $state([])
   let tagMsg = $state('')
+  let pruneMsg = $state('')
 
   onMount(() => {
     loadTags()
@@ -177,6 +178,22 @@
     }
   }
 
+  async function handlePruneTags() {
+    const orphans = editableTags.filter(t => t.count === 0)
+    if (orphans.length === 0) { pruneMsg = 'Nenhuma tag órfã encontrada.'; return }
+    if (!confirm(`Remover ${orphans.length} tag(s) sem documentos?`)) return
+    pruneMsg = ''
+    const res = await apiFetch('/api/admin/tags/prune', { method: 'POST' })
+    if (res.ok) {
+      const data = await res.json()
+      pruneMsg = `${data.removed} tag(s) órfã(s) removida(s).`
+      await loadTags()
+      syncEditableTags()
+    } else {
+      pruneMsg = 'Erro: ' + await res.text()
+    }
+  }
+
   async function saveTagColor(tag) {
     await apiFetch(`/api/admin/tags/${tag.id}`, {
       method: 'PUT',
@@ -323,7 +340,15 @@
     <div class="admin-section">
       <div class="section-header">
         <h3>Tags ({editableTags.length})</h3>
-        {#if tagMsg}<span class="tag-msg">{tagMsg}</span>{/if}
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          {#if tagMsg}<span class="tag-msg">{tagMsg}</span>{/if}
+          {#if pruneMsg}<span class="tag-msg">{pruneMsg}</span>{/if}
+          {#if editableTags.filter(t => t.count === 0).length > 0}
+            <button class="btn btn-danger btn-sm" onclick={handlePruneTags}>
+              🧹 Remover {editableTags.filter(t => t.count === 0).length} tag(s) órfã(s)
+            </button>
+          {/if}
+        </div>
       </div>
 
       {#if editableTags.length === 0}

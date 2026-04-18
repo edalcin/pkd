@@ -45,8 +45,15 @@
   {#if $tags.length > 0}
     <div class="tag-filter" aria-label="Filtrar por tag">
       {#each $tags as tag}
+        {@const isActive = selectedTags.includes(tag.name)}
+        {@const c = tag.color || ''}
         <button
-          class="tag-chip {selectedTags.includes(tag.name) ? 'active' : ''}"
+          class="tag-chip {isActive ? 'active' : ''}"
+          style={c && isActive
+            ? `background:${c}; border-color:${c}; color:#fff`
+            : c
+            ? `background:${c}22; border-color:${c}; color:${c}`
+            : ''}
           onclick={() => toggleTag(tag.name)}
           title="#{tag.name} — {tag.count} documentos"
         >

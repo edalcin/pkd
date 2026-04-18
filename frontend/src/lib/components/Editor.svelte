@@ -26,6 +26,11 @@
   let urlTitleInput = $state('')
   let urlAdding = $state(false)
 
+  // Map tag name → color, derived from the global tags store
+  const tagColorMap = $derived(
+    Object.fromEntries(($allTags || []).map(t => [t.name, t.color || '']))
+  )
+
   // Attachment preview modal
   let previewAtt = $state(null)
 
@@ -402,7 +407,11 @@
       />
       <div class="doc-meta">
         {#each docTags as tag}
-          <span class="tag-chip active">
+          {@const c = tagColorMap[tag] || ''}
+          <span
+            class="tag-chip active"
+            style={c ? `background:${c}; border-color:${c}; color:#fff` : ''}
+          >
             #{tag}
             <button class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remover tag">×</button>
           </span>
