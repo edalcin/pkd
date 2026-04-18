@@ -265,6 +265,20 @@ func (s *DocumentStore) EmptyTrash() error {
 	})
 }
 
+// ListChildren returns all non-trashed direct children of parentID, ordered by position then id.
+func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) {
+	rows, err := s.db.Query(`
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, created_at, updated_at
+		FROM documents
+		WHERE parent_id = ? AND trashed_at IS NULL
+		ORDER BY position ASC, id ASC`, parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDocRows(rows)
+}
+
 // listByTags returns documents that carry ALL tags in the filter (AND semantics).
 func (s *DocumentStore) listByTags(tags []string) ([]*model.Document, error) {
 	// Build: WHERE id IN (SELECT document_id FROM document_tags JOIN tags ... GROUP BY HAVING count = len(tags))

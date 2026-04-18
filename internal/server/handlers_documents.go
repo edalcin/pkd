@@ -161,6 +161,25 @@ func (s *Server) handleMoveDocument() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleListChildren() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		children, err := s.docs.ListChildren(id)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if children == nil {
+			children = []*model.Document{}
+		}
+		writeJSON(w, http.StatusOK, children)
+	}
+}
+
 func (s *Server) handleRestoreDocument() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseID(r, "id")

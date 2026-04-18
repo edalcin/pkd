@@ -108,6 +108,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Delete("/api/documents/{id}", s.handleDeleteDocument())
 		r.Post("/api/documents/{id}/move", s.handleMoveDocument())
 		r.Post("/api/documents/{id}/restore", s.handleRestoreDocument())
+			r.Get("/api/documents/{id}/children", s.handleListChildren())
 
 		// Tree
 			r.Get("/api/tree", s.handleTree())
