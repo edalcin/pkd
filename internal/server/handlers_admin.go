@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/edalcin/pkd/internal/model"
 	"github.com/edalcin/pkd/internal/store"
 )
 
@@ -33,20 +34,36 @@ func (s *Server) handleAdminDeleteTrashItem() http.HandlerFunc {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
+		// Delete attachment files first (FK is RESTRICT, not CASCADE)
+		if err := s.attachments.DeleteByDocument(id); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 		if err := s.docs.PermanentDelete(id); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		// Clean up tags that were exclusive to this document
+		_ = s.tags.PruneUnused()
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
 func (s *Server) handleAdminEmptyTrash() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		trashed, err := s.docs.ListTrash()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		for _, doc := range trashed {
+			_ = s.attachments.DeleteByDocument(doc.ID)
+		}
 		if err := s.docs.EmptyTrash(); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		_ = s.tags.PruneUnused()
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -217,6 +234,70 @@ func (s *Server) handleAdminCheckURLs() http.HandlerFunc {
 			results = append(results, res)
 		}
 		writeJSON(w, http.StatusOK, results)
+	}
+}
+
+func (s *Server) handleAdminListAttachments() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		atts, err := s.attachments.ListAllWithDocument()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if atts == nil {
+			atts = []*model.AttachmentWithDoc{}
+		}
+		writeJSON(w, http.StatusOK, atts)
+	}
+}
+
+func (s *Server) handleAdminListOrphans() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orphans, err := s.attachments.ListOrphanedStoredFiles()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]int{"count": len(orphans)})
+	}
+}
+
+func (s *Server) handleAdminUpdateTag() http.HandlerFunc {
+	type request struct {
+		Name  string `json:"name"`
+		Color string `json:"color"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := s.tags.Update(id, req.Name, req.Color); err != nil {
+			http.Error(w, "internal error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (s *Server) handleAdminDeleteTag() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		if err := s.tags.Delete(id); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

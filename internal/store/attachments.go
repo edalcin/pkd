@@ -142,6 +142,49 @@ func (s *AttachmentStore) ListByDocument(docID int64) ([]*model.Attachment, erro
 	return atts, rows.Err()
 }
 
+// ListAllWithDocument returns all attachments joined with their document title,
+// ordered newest first. Used by the admin attachments panel.
+func (s *AttachmentStore) ListAllWithDocument() ([]*model.AttachmentWithDoc, error) {
+	rows, err := s.db.Query(`
+		SELECT a.id, a.document_id, a.original_name, a.mime_type, a.size_bytes, a.created_at,
+		       COALESCE(d.title, '(sem documento)') as doc_title
+		FROM attachments a
+		LEFT JOIN documents d ON d.id = a.document_id
+		ORDER BY a.created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var atts []*model.AttachmentWithDoc
+	for rows.Next() {
+		var a model.AttachmentWithDoc
+		var createdStr string
+		if err := rows.Scan(&a.ID, &a.DocumentID, &a.OriginalName, &a.MimeType, &a.SizeBytes, &createdStr, &a.DocumentTitle); err != nil {
+			return nil, err
+		}
+		a.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
+		a.URL = fmt.Sprintf("/api/attachments/%d", a.ID)
+		atts = append(atts, &a)
+	}
+	return atts, rows.Err()
+}
+
+// DeleteByDocument removes all attachment files and rows for a given document.
+// Used before permanently deleting a document that has attachments.
+func (s *AttachmentStore) DeleteByDocument(docID int64) error {
+	atts, err := s.ListByDocument(docID)
+	if err != nil {
+		return err
+	}
+	for _, att := range atts {
+		if path, err := security.SafeAttachmentPath(s.attachmentsPath, att.StoredFilename); err == nil {
+			os.Remove(path)
+		}
+	}
+	_, err = s.db.Exec(`DELETE FROM attachments WHERE document_id = ?`, docID)
+	return err
+}
+
 // ListOrphanedStoredFiles returns stored filenames that have no matching row.
 // Used by the admin cleanup handler.
 func (s *AttachmentStore) ListOrphanedStoredFiles() ([]string, error) {

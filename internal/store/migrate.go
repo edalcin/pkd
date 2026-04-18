@@ -81,10 +81,19 @@ func Open(dbPath string) (*sql.DB, error) {
 	}
 
 	// Idempotent column migrations — ignore "duplicate column name" errors.
-	if _, err := db.Exec(`ALTER TABLE document_links ADD COLUMN manual INTEGER NOT NULL DEFAULT 0`); err != nil {
-		if !strings.Contains(err.Error(), "duplicate column name") {
-			db.Close()
-			return nil, fmt.Errorf("store.Open alter document_links: %w", err)
+	colMigrations := []struct {
+		sql string
+		ctx string
+	}{
+		{`ALTER TABLE document_links ADD COLUMN manual INTEGER NOT NULL DEFAULT 0`, "alter document_links"},
+		{`ALTER TABLE tags ADD COLUMN color TEXT NOT NULL DEFAULT ''`, "alter tags color"},
+	}
+	for _, m := range colMigrations {
+		if _, err := db.Exec(m.sql); err != nil {
+			if !strings.Contains(err.Error(), "duplicate column name") {
+				db.Close()
+				return nil, fmt.Errorf("store.Open %s: %w", m.ctx, err)
+			}
 		}
 	}
 

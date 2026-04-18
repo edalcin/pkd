@@ -156,6 +156,10 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/restore", s.handleAdminRestore())
 		r.Post("/api/admin/cleanup", s.handleAdminCleanup())
 		r.Put("/api/admin/tags/rename", s.handleAdminRenameTag())
+		r.Put("/api/admin/tags/{id}", s.handleAdminUpdateTag())
+		r.Delete("/api/admin/tags/{id}", s.handleAdminDeleteTag())
+		r.Get("/api/admin/attachments", s.handleAdminListAttachments())
+		r.Get("/api/admin/attachments/orphans", s.handleAdminListOrphans())
 		r.Post("/api/admin/check-urls", s.handleAdminCheckURLs())
 	})
 
@@ -163,8 +167,12 @@ func (s *Server) buildRouter() http.Handler {
 }
 
 // serveFile returns a handler that serves a single file from an embedded FS.
+// index.html is served with no-cache so browsers always fetch the latest shell,
+// which in turn references hashed asset filenames from the current build.
 func serveFile(root fs.FS, name string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
 		http.ServeFileFS(w, r, root, name)
 	}
 }

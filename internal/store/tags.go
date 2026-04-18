@@ -82,7 +82,7 @@ func (s *TagStore) SetDocumentTags(docID int64, rawNames []string) error {
 // ListWithCounts returns all tags ordered by name with document counts.
 func (s *TagStore) ListWithCounts() ([]*model.TagWithCount, error) {
 	rows, err := s.db.Query(`
-		SELECT t.id, t.name, COUNT(dt.document_id) as cnt
+		SELECT t.id, t.name, t.color, COUNT(dt.document_id) as cnt
 		FROM tags t
 		LEFT JOIN document_tags dt ON dt.tag_id = t.id
 		LEFT JOIN documents d ON d.id = dt.document_id AND d.trashed_at IS NULL
@@ -95,12 +95,35 @@ func (s *TagStore) ListWithCounts() ([]*model.TagWithCount, error) {
 	var tags []*model.TagWithCount
 	for rows.Next() {
 		var t model.TagWithCount
-		if err := rows.Scan(&t.ID, &t.Name, &t.Count); err != nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.Count); err != nil {
 			return nil, err
 		}
 		tags = append(tags, &t)
 	}
 	return tags, rows.Err()
+}
+
+// Delete removes a tag and all its document associations (via cascade).
+func (s *TagStore) Delete(id int64) error {
+	_, err := s.db.Exec(`DELETE FROM tags WHERE id = ?`, id)
+	return err
+}
+
+// Update changes the name and/or color of a tag.
+func (s *TagStore) Update(id int64, name, color string) error {
+	norm := NormalizeName(name)
+	if norm == "" {
+		return errors.New("tag name must not be empty")
+	}
+	_, err := s.db.Exec(`UPDATE tags SET name = ?, color = ? WHERE id = ?`, norm, color, id)
+	return err
+}
+
+// PruneUnused deletes tags that have no document associations. Called after
+// permanent document deletion to clean up tags that were exclusive to that doc.
+func (s *TagStore) PruneUnused() error {
+	_, err := s.db.Exec(`DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM document_tags)`)
+	return err
 }
 
 // ListForDocument returns the tag names for a given document.

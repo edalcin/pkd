@@ -13,6 +13,15 @@
   let linkCheckResults = $state(null)
   let linkChecking = $state(false)
 
+  // Attachments tab
+  let allAttachments = $state([])
+  let orphanCount = $state(0)
+  let attachmentsLoading = $state(false)
+
+  // Tags tab — local editable copy
+  let editableTags = $state([])
+  let tagMsg = $state('')
+
   onMount(() => {
     loadTags()
     loadTrash()
@@ -21,6 +30,35 @@
   async function loadTrash() {
     trash = await apiGet('/api/admin/trash')
   }
+
+  async function loadAttachments() {
+    attachmentsLoading = true
+    try {
+      const [atts, orphans] = await Promise.all([
+        apiGet('/api/admin/attachments'),
+        apiGet('/api/admin/attachments/orphans'),
+      ])
+      allAttachments = atts || []
+      orphanCount = orphans?.count ?? 0
+    } finally {
+      attachmentsLoading = false
+    }
+  }
+
+  function setTab(id) {
+    activeTab = id
+    if (id === 'attachments' && allAttachments.length === 0) loadAttachments()
+    if (id === 'tags') syncEditableTags()
+  }
+
+  function syncEditableTags() {
+    editableTags = $tags.map(t => ({ ...t, _editing: false, _editName: t.name, _editColor: t.color || '#6b7280' }))
+  }
+
+  $effect(() => {
+    // Keep editableTags in sync when $tags store updates (after save)
+    if (activeTab === 'tags') syncEditableTags()
+  })
 
   // Backup
   async function handleBackup() {
@@ -79,7 +117,7 @@
     await loadTrash()
   }
 
-  // Tag rename/merge
+  // Tag management
   async function handleRenameTag() {
     renameMsg = ''
     if (!renameOld || !renameNew) { renameMsg = 'Preencha os dois campos.'; return }
@@ -88,21 +126,91 @@
       body: JSON.stringify({ old: renameOld, new: renameNew }),
     })
     if (res.ok) {
-      renameMsg = `Tag "#${renameOld}" renomeada para "#${renameNew}".`
+      renameMsg = `Tag "#${renameOld}" mesclada/renomeada para "#${renameNew}".`
       renameOld = ''
       renameNew = ''
       await loadTags()
+      syncEditableTags()
     } else {
       renameMsg = 'Erro: ' + await res.text()
     }
   }
 
-  // Cleanup
+  function startEdit(tag) {
+    tag._editing = true
+    tag._editName = tag.name
+    tag._editColor = tag.color || '#6b7280'
+    editableTags = [...editableTags]
+  }
+
+  function cancelEdit(tag) {
+    tag._editing = false
+    editableTags = [...editableTags]
+  }
+
+  async function saveTag(tag) {
+    tagMsg = ''
+    const res = await apiFetch(`/api/admin/tags/${tag.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: tag._editName, color: tag._editColor }),
+    })
+    if (res.ok) {
+      tag._editing = false
+      await loadTags()
+      syncEditableTags()
+      tagMsg = 'Tag salva.'
+    } else {
+      tagMsg = 'Erro ao salvar: ' + await res.text()
+    }
+  }
+
+  async function deleteTag(tag) {
+    if (!confirm(`Excluir a tag "#${tag.name}"? Ela será removida de todos os documentos.`)) return
+    tagMsg = ''
+    const res = await apiFetch(`/api/admin/tags/${tag.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      await loadTags()
+      syncEditableTags()
+      tagMsg = `Tag "#${tag.name}" excluída.`
+    } else {
+      tagMsg = 'Erro ao excluir: ' + await res.text()
+    }
+  }
+
+  async function saveTagColor(tag) {
+    await apiFetch(`/api/admin/tags/${tag.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: tag.name, color: tag._editColor }),
+    })
+    await loadTags()
+    syncEditableTags()
+  }
+
+  // Attachment management
+  async function deleteAttachment(att) {
+    if (!confirm(`Excluir o arquivo "${att.original_name}"?`)) return
+    await apiDelete(`/api/attachments/${att.id}`)
+    allAttachments = allAttachments.filter(a => a.id !== att.id)
+  }
+
+  async function handleCleanupOrphans() {
+    loading = true
+    try {
+      const data = await apiPost('/api/admin/cleanup')
+      cleanupResult = data
+      orphanCount = 0
+    } finally {
+      loading = false
+    }
+  }
+
+  // Cleanup tab
   async function handleCleanup() {
     loading = true
     try {
       const data = await apiPost('/api/admin/cleanup')
       cleanupResult = data
+      orphanCount = 0
     } finally {
       loading = false
     }
@@ -129,6 +237,28 @@
     }
     linkCheckResults = linkCheckResults.filter(r => r.valid)
   }
+
+  function isImage(mime) {
+    return mime && mime.startsWith('image/')
+  }
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
+
+  function fileIcon(mime) {
+    if (!mime) return '📎'
+    if (mime.startsWith('image/')) return '🖼️'
+    if (mime.startsWith('video/')) return '🎬'
+    if (mime.startsWith('audio/')) return '🎵'
+    if (mime.includes('pdf')) return '📄'
+    if (mime.includes('zip') || mime.includes('archive')) return '🗜️'
+    if (mime.includes('spreadsheet') || mime.includes('excel')) return '📊'
+    if (mime.includes('document') || mime.includes('word')) return '📝'
+    return '📎'
+  }
 </script>
 
 <div class="admin-wrap">
@@ -136,10 +266,10 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links']] as [id, label]}
+    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links']] as [id, label]}
       <button
         class="tab-btn {activeTab === id ? 'active' : ''}"
-        onclick={() => activeTab = id}
+        onclick={() => setTab(id)}
       >{label}</button>
     {/each}
   </div>
@@ -191,33 +321,129 @@
   <!-- Tags -->
   {#if activeTab === 'tags'}
     <div class="admin-section">
-      <h3>Renomear / Mesclar tags</h3>
+      <div class="section-header">
+        <h3>Tags ({editableTags.length})</h3>
+        {#if tagMsg}<span class="tag-msg">{tagMsg}</span>{/if}
+      </div>
+
+      {#if editableTags.length === 0}
+        <p class="muted">Nenhuma tag cadastrada.</p>
+      {:else}
+        <div class="tag-table">
+          {#each editableTags as tag}
+            <div class="tag-row">
+              {#if tag._editing}
+                <input
+                  type="color"
+                  class="color-input"
+                  bind:value={tag._editColor}
+                  title="Cor da tag"
+                />
+                <input
+                  class="tag-name-input"
+                  bind:value={tag._editName}
+                  onkeydown={e => e.key === 'Enter' && saveTag(tag)}
+                />
+                <span class="tag-count muted">({tag.count})</span>
+                <button class="btn btn-primary btn-sm" onclick={() => saveTag(tag)}>Salvar</button>
+                <button class="btn btn-ghost btn-sm" onclick={() => cancelEdit(tag)}>Cancelar</button>
+              {:else}
+                <span
+                  class="tag-color-dot"
+                  style="background:{tag.color || '#6b7280'}"
+                  title={tag.color || 'sem cor'}
+                ></span>
+                <span class="tag-name"># {tag.name}</span>
+                <span class="tag-count muted">({tag.count})</span>
+                <button class="btn btn-ghost btn-sm" onclick={() => startEdit(tag)} title="Editar">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick={() => deleteTag(tag)} title="Excluir">🗑</button>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <div class="admin-section">
+      <h3>Mesclar tags</h3>
+      <p class="muted" style="margin-bottom:.5rem">Renomeia uma tag ou mescla-a em outra existente.</p>
       <div class="rename-row">
-        <input bind:value={renameOld} placeholder="Tag atual" list="tags-list" />
+        <input bind:value={renameOld} placeholder="Tag de origem" list="tags-list" />
         <span>→</span>
-        <input bind:value={renameNew} placeholder="Novo nome" />
-        <button class="btn btn-primary" onclick={handleRenameTag}>Renomear</button>
+        <input bind:value={renameNew} placeholder="Tag de destino" />
+        <button class="btn btn-primary" onclick={handleRenameTag}>Mesclar / Renomear</button>
       </div>
       {#if renameMsg}<p class="rename-msg">{renameMsg}</p>{/if}
       <datalist id="tags-list">
         {#each $tags as tag}<option value={tag.name}></option>{/each}
       </datalist>
     </div>
+  {/if}
+
+  <!-- Attachments -->
+  {#if activeTab === 'attachments'}
     <div class="admin-section">
-      <h3>Todas as tags</h3>
-      <div class="tag-list">
-        {#each $tags as tag}
-          <span class="tag-chip"># {tag.name} <small>({tag.count})</small></span>
-        {/each}
+      <div class="section-header">
+        <h3>Arquivos anexados ({allAttachments.length})</h3>
+        <button class="btn btn-ghost btn-sm" onclick={loadAttachments} disabled={attachmentsLoading}>
+          {attachmentsLoading ? 'Carregando…' : '↻ Atualizar'}
+        </button>
       </div>
+
+      {#if attachmentsLoading}
+        <p class="muted">Carregando…</p>
+      {:else if allAttachments.length === 0}
+        <p class="muted">Nenhum arquivo anexado.</p>
+      {:else}
+        <div class="att-grid">
+          {#each allAttachments as att}
+            <div class="att-card">
+              <div class="att-thumb">
+                {#if isImage(att.mime_type)}
+                  <img src={att.url} alt={att.original_name} loading="lazy" />
+                {:else}
+                  <span class="att-icon">{fileIcon(att.mime_type)}</span>
+                {/if}
+              </div>
+              <div class="att-info">
+                <span class="att-name" title={att.original_name}>{att.original_name}</span>
+                <span class="att-doc muted" title={att.document_title}>{att.document_title}</span>
+                <span class="att-size muted">{formatBytes(att.size_bytes)}</span>
+              </div>
+              <button
+                class="btn btn-danger btn-sm att-del"
+                onclick={() => deleteAttachment(att)}
+                title="Excluir arquivo"
+              >🗑</button>
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
+
+    {#if orphanCount > 0}
+      <div class="admin-section orphan-section">
+        <div class="section-header">
+          <h3>Arquivos órfãos ({orphanCount})</h3>
+        </div>
+        <p class="muted" style="margin-bottom:.75rem">
+          Arquivos no disco sem registro no banco de dados. Podem ser resquícios de uploads com falha.
+        </p>
+        <button class="btn btn-danger" onclick={handleCleanupOrphans} disabled={loading}>
+          {loading ? 'Limpando…' : '🧹 Remover arquivos órfãos'}
+        </button>
+        {#if cleanupResult}
+          <p class="cleanup-result">✓ {cleanupResult.orphans_removed} arquivo(s) removido(s).</p>
+        {/if}
+      </div>
+    {/if}
   {/if}
 
   <!-- Cleanup -->
   {#if activeTab === 'cleanup'}
     <div class="admin-section">
-      <h3>Limpeza</h3>
-      <p class="muted" style="margin-bottom:.75rem">Remove anexos órfãos e executa VACUUM no banco.</p>
+      <h3>Limpeza do banco</h3>
+      <p class="muted" style="margin-bottom:.75rem">Remove anexos órfãos e executa VACUUM no banco de dados.</p>
       <button class="btn btn-primary" onclick={handleCleanup} disabled={loading}>
         {loading ? 'Limpando…' : '🧹 Iniciar limpeza'}
       </button>
@@ -267,7 +493,7 @@
 <style>
   .admin-wrap {
     padding: 1.5rem 2rem;
-    max-width: 700px;
+    max-width: 800px;
     margin: 0 auto;
     width: 100%;
   }
@@ -276,6 +502,7 @@
 
   .tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: .25rem;
     border-bottom: 1px solid var(--border);
     margin-bottom: 1.25rem;
@@ -297,6 +524,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: .75rem;
+    gap: .5rem;
   }
 
   .trash-item {
@@ -311,6 +539,55 @@
   .trash-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .trash-date { color: var(--text-muted); font-size: .8rem; flex-shrink: 0; }
 
+  /* Tag table */
+  .tag-table {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+  }
+
+  .tag-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem .4rem;
+    border-radius: var(--radius);
+    background: var(--bg-hover);
+    font-size: .875rem;
+  }
+
+  .tag-color-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,.15);
+  }
+
+  .color-input {
+    width: 32px;
+    height: 28px;
+    padding: 1px 2px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    flex-shrink: 0;
+    background: none;
+  }
+
+  .tag-name { flex: 1; font-weight: 500; }
+  .tag-count { font-size: .8rem; flex-shrink: 0; }
+
+  .tag-name-input {
+    flex: 1;
+    padding: .3rem .6rem;
+    border-radius: 4px;
+    font-size: .875rem;
+    min-width: 80px;
+  }
+
+  .tag-msg { font-size: .875rem; color: var(--success); }
+
   .rename-row {
     display: flex;
     align-items: center;
@@ -320,11 +597,83 @@
   .rename-row input { flex: 1; min-width: 120px; padding: .45rem .75rem; }
   .rename-msg { margin-top: .5rem; font-size: .875rem; color: var(--success); }
 
-  .tag-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .375rem;
+  /* Attachment grid */
+  .att-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: .75rem;
     margin-top: .5rem;
+  }
+
+  .att-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-hover);
+    position: relative;
+  }
+
+  .att-thumb {
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  .att-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .att-icon { font-size: 2.5rem; }
+
+  .att-info {
+    padding: .4rem .5rem;
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .att-name {
+    font-size: .8rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .att-doc {
+    font-size: .75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .att-size { font-size: .7rem; }
+
+  .att-del {
+    position: absolute;
+    top: .25rem;
+    right: .25rem;
+    opacity: 0;
+    transition: opacity .15s;
+    padding: .2rem .4rem;
+    font-size: .75rem;
+  }
+  .att-card:hover .att-del { opacity: 1; }
+
+  .orphan-section {
+    border: 1px solid var(--warning, #f59e0b);
+    border-radius: var(--radius);
+    padding: .75rem 1rem;
+    background: rgba(245, 158, 11, .06);
   }
 
   .cleanup-result {
@@ -334,7 +683,7 @@
   }
 
   .btn-sm { padding: .25rem .6rem; font-size: .8rem; }
-  .muted { color: var(--text-muted); font-size: .875rem; }
+  .muted { color: var(--text-muted); }
 
   .link-check-list {
     display: flex;
