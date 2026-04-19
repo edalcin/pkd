@@ -473,7 +473,7 @@
               </button>
               <div class="att-info">
                 <span class="att-name" title={att.original_name}>{att.original_name}</span>
-                <span class="att-doc muted" title={att.document_title}>{att.document_title}</span>
+                <a class="att-doc muted" href="#/doc/{att.document_id}" onclick={() => activeTab = ''} title={att.document_title}>{att.document_title}</a>
                 <span class="att-size muted">{formatBytes(att.size_bytes)}</span>
               </div>
               <button
@@ -811,7 +811,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: inherit;
+    text-decoration: none;
   }
+  a.att-doc:hover { text-decoration: underline; }
 
   .att-size { font-size: .7rem; }
 
