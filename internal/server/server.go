@@ -107,11 +107,13 @@ func (s *Server) buildRouter() http.Handler {
 		r.Put("/api/documents/{id}", s.handleUpdateDocument())
 		r.Delete("/api/documents/{id}", s.handleDeleteDocument())
 		r.Post("/api/documents/{id}/move", s.handleMoveDocument())
+		r.Post("/api/documents/{id}/reorder", s.handleReorderDocument())
 		r.Post("/api/documents/{id}/restore", s.handleRestoreDocument())
 			r.Get("/api/documents/{id}/children", s.handleListChildren())
 
 		// Tree
 			r.Get("/api/tree", s.handleTree())
+			r.Post("/api/tree/sort", s.handleSortTree())
 
 			// Bidirectional links (NEW — 003-pkm-refactor)
 			r.Get("/api/documents/{id}/links", s.handleListLinks())

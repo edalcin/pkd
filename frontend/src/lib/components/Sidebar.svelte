@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import TreeNode from './TreeNode.svelte'
-  import { tree, loadTree, createDoc, treeExpansionSignal } from '../stores/documents.js'
+  import { tree, loadTree, createDoc, sortTree, treeExpansionSignal } from '../stores/documents.js'
   import { tags, loadTags } from '../stores/tags.js'
   import { apiGet } from '../api.js'
 
@@ -105,6 +105,8 @@
     {#if !sidebarQuery}
       <button class="expand-btn" onclick={expandAll} title="Expandir tudo" aria-label="Expandir tudo">▾</button>
       <button class="expand-btn" onclick={collapseAll} title="Recolher tudo" aria-label="Recolher tudo">▸</button>
+      <button class="expand-btn" onclick={() => sortTree('alpha')} title="Ordenar A-Z">A-Z</button>
+      <button class="expand-btn" onclick={() => sortTree('created')} title="Ordenar por data de criação">📅</button>
     {/if}
   </div>
 

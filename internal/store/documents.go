@@ -180,6 +180,157 @@ func (s *DocumentStore) Restore(id int64) error {
 	})
 }
 
+// Reorder moves a document to newParentID and places it before beforeID within
+// that parent's children. beforeID == nil appends the document at the end.
+// Also updates the position field for every affected sibling.
+func (s *DocumentStore) Reorder(id int64, newParentID *int64, beforeID *int64) error {
+	if newParentID != nil && *newParentID == id {
+		return ErrCircularMove
+	}
+	return WithTx(s.db, func(tx *sql.Tx) error {
+		if newParentID != nil {
+			if err := checkCircular(tx, id, *newParentID); err != nil {
+				return err
+			}
+		}
+		siblings, err := querySiblingIDs(tx, newParentID, id)
+		if err != nil {
+			return err
+		}
+		insertAt := len(siblings)
+		if beforeID != nil {
+			for i, sid := range siblings {
+				if sid == *beforeID {
+					insertAt = i
+					break
+				}
+			}
+		}
+		ordered := make([]int64, 0, len(siblings)+1)
+		ordered = append(ordered, siblings[:insertAt]...)
+		ordered = append(ordered, id)
+		ordered = append(ordered, siblings[insertAt:]...)
+
+		var parentArg interface{}
+		if newParentID != nil {
+			parentArg = *newParentID
+		}
+		if _, err := tx.Exec(
+			`UPDATE documents SET parent_id = ?, updated_at = `+nowISO+` WHERE id = ? AND trashed_at IS NULL`,
+			parentArg, id); err != nil {
+			return err
+		}
+		return reassignPositions(tx, ordered)
+	})
+}
+
+// SortAll re-orders every level of the tree by the given criterion.
+// Accepted values for by: "alpha" (title A-Z), "created" (oldest first), "updated" (newest first).
+func (s *DocumentStore) SortAll(by string) error {
+	var orderClause string
+	switch by {
+	case "alpha":
+		orderClause = "title COLLATE NOCASE ASC, id ASC"
+	case "created":
+		orderClause = "created_at ASC, id ASC"
+	case "updated":
+		orderClause = "updated_at DESC, id ASC"
+	default:
+		return fmt.Errorf("unknown sort criterion: %s", by)
+	}
+	return WithTx(s.db, func(tx *sql.Tx) error {
+		prows, err := tx.Query(`SELECT DISTINCT parent_id FROM documents WHERE trashed_at IS NULL`)
+		if err != nil {
+			return err
+		}
+		type group struct{ id *int64 }
+		var groups []group
+		for prows.Next() {
+			var pid sql.NullInt64
+			if err := prows.Scan(&pid); err != nil {
+				prows.Close()
+				return err
+			}
+			if pid.Valid {
+				v := pid.Int64
+				groups = append(groups, group{&v})
+			} else {
+				groups = append(groups, group{nil})
+			}
+		}
+		prows.Close()
+		if err := prows.Err(); err != nil {
+			return err
+		}
+		for _, g := range groups {
+			var crows *sql.Rows
+			if g.id == nil {
+				crows, err = tx.Query(
+					`SELECT id FROM documents WHERE parent_id IS NULL AND trashed_at IS NULL ORDER BY `+orderClause)
+			} else {
+				crows, err = tx.Query(
+					`SELECT id FROM documents WHERE parent_id = ? AND trashed_at IS NULL ORDER BY `+orderClause, *g.id)
+			}
+			if err != nil {
+				return err
+			}
+			var ids []int64
+			for crows.Next() {
+				var cid int64
+				if err := crows.Scan(&cid); err != nil {
+					crows.Close()
+					return err
+				}
+				ids = append(ids, cid)
+			}
+			crows.Close()
+			if err := crows.Err(); err != nil {
+				return err
+			}
+			if err := reassignPositions(tx, ids); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func querySiblingIDs(tx *sql.Tx, parentID *int64, excludeID int64) ([]int64, error) {
+	var rows *sql.Rows
+	var err error
+	if parentID == nil {
+		rows, err = tx.Query(
+			`SELECT id FROM documents WHERE parent_id IS NULL AND trashed_at IS NULL AND id != ? ORDER BY position ASC, id ASC`,
+			excludeID)
+	} else {
+		rows, err = tx.Query(
+			`SELECT id FROM documents WHERE parent_id = ? AND trashed_at IS NULL AND id != ? ORDER BY position ASC, id ASC`,
+			*parentID, excludeID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func reassignPositions(tx *sql.Tx, ids []int64) error {
+	for pos, id := range ids {
+		if _, err := tx.Exec(`UPDATE documents SET position = ? WHERE id = ?`, pos, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Move changes a document's parent. Rejects self-move and circular moves.
 // newParentID == nil moves the document to root level.
 func (s *DocumentStore) Move(id int64, newParentID *int64) error {

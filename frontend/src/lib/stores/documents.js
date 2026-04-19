@@ -76,10 +76,42 @@ export async function restoreDoc(id) {
   await loadTree()
 }
 
-/** Move a document to a new parent. */
+/** Move a document to a new parent (nest as child). */
 export async function moveDoc(id, newParentId) {
   await apiPost(`/api/documents/${id}/move`, { new_parent_id: newParentId })
   await loadTree()
+}
+
+/** Reorder a document within its parent. beforeId=null appends at end. */
+export async function reorderDoc(id, parentId, beforeId) {
+  await apiPost(`/api/documents/${id}/reorder`, { parent_id: parentId ?? null, before_id: beforeId ?? null })
+  await loadTree()
+}
+
+/** Sort the entire tree by criterion: "alpha" | "created" | "updated". */
+export async function sortTree(by) {
+  await apiPost('/api/tree/sort', { by })
+  await loadTree()
+}
+
+/** Returns the ID of the sibling immediately after afterId at the given parent level. */
+export function findNextSiblingId(afterId, parentId) {
+  const nodes = get(tree)
+  const siblings = parentId == null ? nodes : (findChildrenOf(nodes, parentId) ?? [])
+  const idx = siblings.findIndex(n => n.id === afterId)
+  if (idx === -1 || idx === siblings.length - 1) return null
+  return siblings[idx + 1].id
+}
+
+function findChildrenOf(nodes, parentId) {
+  for (const n of nodes) {
+    if (n.id === parentId) return n.children || []
+    if (n.children?.length) {
+      const found = findChildrenOf(n.children, parentId)
+      if (found !== null) return found
+    }
+  }
+  return null
 }
 
 // Recursively update a tree node's fields

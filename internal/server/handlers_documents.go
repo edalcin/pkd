@@ -161,6 +161,51 @@ func (s *Server) handleMoveDocument() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleReorderDocument() http.HandlerFunc {
+	type request struct {
+		NewParentID *int64 `json:"parent_id"`
+		BeforeID    *int64 `json:"before_id"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := s.docs.Reorder(id, req.NewParentID, req.BeforeID); errors.Is(err, store.ErrCircularMove) {
+			http.Error(w, "circular move not allowed", http.StatusBadRequest)
+			return
+		} else if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (s *Server) handleSortTree() http.HandlerFunc {
+	type request struct {
+		By string `json:"by"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.By == "" {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := s.docs.SortAll(req.By); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func (s *Server) handleListChildren() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseID(r, "id")

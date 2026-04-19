@@ -1,5 +1,5 @@
 <script>
-  import { createDoc, trashDoc, moveDoc, loadTree, treeExpansionSignal, linksRefreshSignal } from '../stores/documents.js'
+  import { createDoc, trashDoc, moveDoc, reorderDoc, findNextSiblingId, loadTree, treeExpansionSignal, linksRefreshSignal } from '../stores/documents.js'
   import { apiPost } from '../api.js'
 
   let {
@@ -10,7 +10,7 @@
   } = $props()
 
   let expanded = $state(true)
-  let draggingOver = $state(false)
+  let dropZone = $state(null) // 'before' | 'inside' | 'after'
   let linkAdding = $state(false)
 
   $effect(() => {
@@ -58,19 +58,32 @@
 
   function onDragOver(e) {
     e.preventDefault()
-    draggingOver = true
+    const rect = e.currentTarget.getBoundingClientRect()
+    const relY = (e.clientY - rect.top) / rect.height
+    dropZone = relY < 0.3 ? 'before' : relY > 0.7 ? 'after' : 'inside'
   }
 
-  function onDragLeave() {
-    draggingOver = false
+  function onDragLeave(e) {
+    // Only clear if leaving the row itself (not entering a child element)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      dropZone = null
+    }
   }
 
   async function onDrop(e) {
     e.preventDefault()
-    draggingOver = false
+    const zone = dropZone
+    dropZone = null
     const draggedId = Number(e.dataTransfer.getData('text/plain'))
-    if (draggedId && draggedId !== node.id) {
+    if (!draggedId || draggedId === node.id) return
+
+    if (zone === 'inside') {
       await moveDoc(draggedId, node.id)
+    } else if (zone === 'before') {
+      await reorderDoc(draggedId, node.parent_id, node.id)
+    } else {
+      const nextId = findNextSiblingId(node.id, node.parent_id)
+      await reorderDoc(draggedId, node.parent_id, nextId)
     }
   }
 </script>
@@ -78,7 +91,7 @@
 <div>
   <!-- Row -->
   <div
-    class="tree-item {node.id === activeId ? 'active' : ''} {draggingOver ? 'drag-over' : ''}"
+    class="tree-item {node.id === activeId ? 'active' : ''} {dropZone === 'inside' ? 'drag-over' : ''} {dropZone === 'before' ? 'drop-before' : ''} {dropZone === 'after' ? 'drop-after' : ''}"
     style="padding-left: {0.75 + depth * 1}rem"
     onclick={navigate}
     draggable="true"
@@ -172,5 +185,7 @@
   .row-btn-relate:hover { color: var(--accent); }
   .row-btn-relate.adding { opacity: .5; cursor: default; }
 
-  .drag-over { background: var(--bg-active); outline: 2px dashed var(--accent); }
+  .drag-over  { background: var(--bg-active); outline: 2px dashed var(--accent); }
+  .drop-before { box-shadow: 0 -2px 0 0 var(--accent); }
+  .drop-after  { box-shadow: 0  2px 0 0 var(--accent); }
 </style>
