@@ -13,6 +13,9 @@ export const activeDocId = writable(null)
 /** Tag filter applied to the tree. Array of tag names. */
 export const tagFilter = writable([])
 
+/** Whether the tree is filtered to show only favorites. */
+export const favoriteFilter = writable(false)
+
 /** Whether any data is loading. */
 export const loading = writable(false)
 
@@ -22,13 +25,26 @@ export const treeExpansionSignal = writable(null)
 /** Incremented whenever a link is created from the sidebar, so Editor reloads. */
 export const linksRefreshSignal = writable(0)
 
-/** Load the document tree, optionally filtered by tags. */
-export async function loadTree(tags = get(tagFilter)) {
+/** Load the document tree, optionally filtered by tags and/or favorites. */
+export async function loadTree(tags = get(tagFilter), favorites = get(favoriteFilter)) {
   tagFilter.set(tags)
+  favoriteFilter.set(favorites)
   const params = new URLSearchParams()
   tags.forEach(t => params.append('tag', t))
-  const url = '/api/tree' + (tags.length ? '?' + params : '')
-  tree.set(await apiGet(url))
+  if (favorites) params.set('favorite', '1')
+  const qs = params.toString()
+  tree.set(await apiGet('/api/tree' + (qs ? '?' + qs : '')))
+}
+
+/** Toggle the favorite state of a document. */
+export async function toggleFavorite(id) {
+  const doc = await apiPost(`/api/documents/${id}/favorite`, {})
+  if (get(favoriteFilter)) {
+    await loadTree()
+  } else {
+    tree.update(nodes => updateTreeNode(nodes, id, { is_favorite: doc.is_favorite }))
+  }
+  return doc
 }
 
 /** Load a single document by ID. */

@@ -1,5 +1,5 @@
 <script>
-  import { createDoc, trashDoc, moveDoc, reorderDoc, findNextSiblingId, loadTree, treeExpansionSignal, linksRefreshSignal } from '../stores/documents.js'
+  import { createDoc, trashDoc, moveDoc, reorderDoc, findNextSiblingId, treeExpansionSignal, linksRefreshSignal, toggleFavorite } from '../stores/documents.js'
   import { apiPost } from '../api.js'
 
   let {
@@ -33,6 +33,11 @@
     if (confirm(`Mover "${node.title}" para a lixeira?`)) {
       await trashDoc(node.id)
     }
+  }
+
+  async function handleToggleFavorite(e) {
+    e.stopPropagation()
+    await toggleFavorite(node.id)
   }
 
   async function handleRelate(e) {
@@ -119,6 +124,13 @@
     <span class="icon">{node.icon || '📄'}</span>
     <span class="label">{node.title || 'Sem título'}</span>
 
+    <button
+      class="star-btn {node.is_favorite ? 'is-favorite' : ''}"
+      onclick={handleToggleFavorite}
+      title={node.is_favorite ? 'Remover dos favoritos' : 'Marcar como favorito'}
+      aria-label={node.is_favorite ? 'Remover dos favoritos' : 'Marcar como favorito'}
+    >{node.is_favorite ? '⭐' : '☆'}</button>
+
     <!-- Actions (shown on hover) -->
     <span class="row-actions">
       {#if activeId && activeId !== node.id}
@@ -184,6 +196,21 @@
   .row-btn-del:hover { color: var(--danger); }
   .row-btn-relate:hover { color: var(--accent); }
   .row-btn-relate.adding { opacity: .5; cursor: default; }
+
+  .star-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: .8rem;
+    opacity: 0;
+    padding: 0 2px;
+    line-height: 1;
+    color: var(--text-muted);
+  }
+  .tree-item:hover .star-btn { opacity: .6; }
+  .star-btn.is-favorite { opacity: 1; color: #f5c518; }
+  .star-btn:hover { opacity: 1 !important; }
 
   .drag-over  { background: var(--bg-active); outline: 2px dashed var(--accent); }
   .drop-before { box-shadow: 0 -2px 0 0 var(--accent); }

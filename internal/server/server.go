@@ -109,6 +109,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/documents/{id}/move", s.handleMoveDocument())
 		r.Post("/api/documents/{id}/reorder", s.handleReorderDocument())
 		r.Post("/api/documents/{id}/restore", s.handleRestoreDocument())
+		r.Post("/api/documents/{id}/favorite", s.handleToggleFavorite())
 			r.Get("/api/documents/{id}/children", s.handleListChildren())
 
 		// Tree

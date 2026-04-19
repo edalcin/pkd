@@ -132,6 +132,20 @@ func (s *DocumentStore) UpdateAndSync(id int64, clientVersion int64, title, body
 	return &doc, nil
 }
 
+// ToggleFavorite flips the is_favorite flag on a document and returns the updated doc.
+func (s *DocumentStore) ToggleFavorite(id int64) (*model.Document, error) {
+	res, err := s.db.Exec(
+		`UPDATE documents SET is_favorite = 1 - is_favorite WHERE id = ? AND trashed_at IS NULL`, id)
+	if err != nil {
+		return nil, err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return nil, ErrNotFound
+	}
+	return s.GetByID(id)
+}
+
 // SoftDelete moves a document to the trash by setting trashed_at and saving
 // original_parent_id. Its children are NOT trashed — the caller should check.
 func (s *DocumentStore) SoftDelete(id int64) error {
@@ -357,16 +371,21 @@ func (s *DocumentStore) Move(id int64, newParentID *int64) error {
 }
 
 // ListTree returns all non-trashed documents. If tagFilter is non-empty, only
-// documents that carry ALL specified tags are included.
+// documents that carry ALL specified tags are included. If favoriteOnly is true,
+// only documents with is_favorite = 1 are returned.
 // The returned slice is a flat list; callers build the tree structure.
-func (s *DocumentStore) ListTree(tagFilter []string) ([]*model.Document, error) {
+func (s *DocumentStore) ListTree(tagFilter []string, favoriteOnly bool) ([]*model.Document, error) {
 	if len(tagFilter) > 0 {
-		return s.listByTags(tagFilter)
+		return s.listByTags(tagFilter, favoriteOnly)
+	}
+	extra := ""
+	if favoriteOnly {
+		extra = " AND is_favorite = 1"
 	}
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, created_at, updated_at
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
 		FROM documents
-		WHERE trashed_at IS NULL
+		WHERE trashed_at IS NULL` + extra + `
 		ORDER BY position ASC, id ASC`)
 	if err != nil {
 		return nil, err
@@ -378,7 +397,7 @@ func (s *DocumentStore) ListTree(tagFilter []string) ([]*model.Document, error) 
 // ListTrash returns all trashed documents.
 func (s *DocumentStore) ListTrash() ([]*model.Document, error) {
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, created_at, updated_at
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
 		FROM documents
 		WHERE trashed_at IS NOT NULL
 		ORDER BY trashed_at DESC`)
@@ -419,7 +438,7 @@ func (s *DocumentStore) EmptyTrash() error {
 // ListChildren returns all non-trashed direct children of parentID, ordered by position then id.
 func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) {
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, created_at, updated_at
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
 		FROM documents
 		WHERE parent_id = ? AND trashed_at IS NULL
 		ORDER BY position ASC, id ASC`, parentID)
@@ -431,12 +450,16 @@ func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) 
 }
 
 // listByTags returns documents that carry ALL tags in the filter (AND semantics).
-func (s *DocumentStore) listByTags(tags []string) ([]*model.Document, error) {
+func (s *DocumentStore) listByTags(tags []string, favoriteOnly bool) ([]*model.Document, error) {
 	// Build: WHERE id IN (SELECT document_id FROM document_tags JOIN tags ... GROUP BY HAVING count = len(tags))
+	extra := ""
+	if favoriteOnly {
+		extra = " AND d.is_favorite = 1"
+	}
 	query := `
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.created_at, d.updated_at
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.created_at, d.updated_at
 		FROM documents d
-		WHERE d.trashed_at IS NULL
+		WHERE d.trashed_at IS NULL` + extra + `
 		  AND d.id IN (
 			SELECT dt.document_id
 			FROM document_tags dt
@@ -488,7 +511,7 @@ func checkCircular(tx *sql.Tx, sourceID, targetID int64) error {
 
 func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 	row := db.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, created_at, updated_at
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
 		FROM documents WHERE id = ? AND trashed_at IS NULL`, id)
 	if err := scanDocRow(row, doc); err != nil {
 		return err
@@ -500,7 +523,7 @@ func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 
 func scanDocFromTx(tx *sql.Tx, id int64, doc *model.Document) error {
 	row := tx.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, created_at, updated_at
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
 		FROM documents WHERE id = ?`, id)
 	if err := scanDocRow(row, doc); err != nil {
 		return err
@@ -518,6 +541,7 @@ func scanDocRow(row *sql.Row, doc *model.Document) error {
 		&doc.ID, &parentID, &doc.Title,
 		&bodyHTML, &bodyText, &icon,
 		&doc.Position, &doc.Version,
+		&doc.IsFavorite,
 		&createdStr, &updatedStr,
 	)
 	if err != nil {
@@ -615,6 +639,7 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 			&doc.ID, &parentID, &doc.Title,
 			&bodyHTML, &bodyText, &icon,
 			&doc.Position, &doc.Version,
+			&doc.IsFavorite,
 			&createdStr, &updatedStr,
 		); err != nil {
 			return nil, err

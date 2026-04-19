@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import TreeNode from './TreeNode.svelte'
-  import { tree, loadTree, createDoc, sortTree, treeExpansionSignal } from '../stores/documents.js'
+  import { tree, loadTree, createDoc, sortTree, treeExpansionSignal, favoriteFilter } from '../stores/documents.js'
   import { tags, loadTags } from '../stores/tags.js'
   import { apiGet } from '../api.js'
 
@@ -107,6 +107,7 @@
       <button class="expand-btn" onclick={collapseAll} title="Recolher tudo" aria-label="Recolher tudo">▸</button>
       <button class="expand-btn" onclick={() => sortTree('alpha')} title="Ordenar A-Z">A-Z</button>
       <button class="expand-btn" onclick={() => sortTree('created')} title="Ordenar por data de criação">📅</button>
+      <button class="expand-btn {$favoriteFilter ? 'fav-active' : ''}" onclick={() => loadTree(selectedTags, !$favoriteFilter)} title={$favoriteFilter ? 'Mostrar todos' : 'Somente favoritos'} aria-label="Filtrar favoritos">⭐</button>
     {/if}
   </div>
 
@@ -226,6 +227,7 @@
   }
 
   .expand-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .expand-btn.fav-active { color: #f5c518; }
 
   .tag-filter {
     display: flex;

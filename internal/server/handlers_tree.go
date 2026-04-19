@@ -9,8 +9,9 @@ import (
 func (s *Server) handleTree() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tagFilter := r.URL.Query()["tag"]
+		favoriteOnly := r.URL.Query().Get("favorite") == "1"
 
-		docs, err := s.docs.ListTree(tagFilter)
+		docs, err := s.docs.ListTree(tagFilter, favoriteOnly)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
@@ -27,14 +28,15 @@ func buildTree(docs []*model.Document) []*model.DocumentTreeNode {
 	nodes := make(map[int64]*model.DocumentTreeNode, len(docs))
 	for _, d := range docs {
 		nodes[d.ID] = &model.DocumentTreeNode{
-			ID:       d.ID,
-			ParentID: d.ParentID,
-			Title:    d.Title,
-			Icon:     d.Icon,
-			Position: d.Position,
-			Version:  d.Version,
-			Tags:     d.Tags,
-			Children: []*model.DocumentTreeNode{},
+			ID:         d.ID,
+			ParentID:   d.ParentID,
+			Title:      d.Title,
+			Icon:       d.Icon,
+			Position:   d.Position,
+			Version:    d.Version,
+			IsFavorite: d.IsFavorite,
+			Tags:       d.Tags,
+			Children:   []*model.DocumentTreeNode{},
 		}
 	}
 

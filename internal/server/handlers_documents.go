@@ -243,6 +243,26 @@ func (s *Server) handleRestoreDocument() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleToggleFavorite() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		doc, err := s.docs.ToggleFavorite(id)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, doc)
+	}
+}
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 func parseID(r *http.Request, param string) (int64, error) {

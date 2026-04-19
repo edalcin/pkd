@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS documents (
     icon                TEXT,
     position            INTEGER NOT NULL DEFAULT 0,
     version             INTEGER NOT NULL DEFAULT 1,
+    is_favorite         INTEGER NOT NULL DEFAULT 0,
     trashed_at          TEXT,
     original_parent_id  INTEGER REFERENCES documents(id) ON DELETE SET NULL,
     created_at          TEXT    NOT NULL,
