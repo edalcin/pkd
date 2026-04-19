@@ -274,6 +274,8 @@
 
   async function performSave() {
     if (!doc || !editorInstance) return
+    if (saving) { scheduleAutoSave(); return }
+    if (conflictData) return
     const html = editorInstance.getHTML()
     const text = editorInstance.getText()
     saving = true
