@@ -33,6 +33,7 @@ O usuário cria documentos com título, corpo rico (formatação, imagens, tabel
 2. **Given** um documento existente, **When** o usuário edita título/corpo e para de digitar por 2 segundos, **Then** o conteúdo é salvo automaticamente e a versão incrementada.
 3. **Given** um documento com filhos, **When** o usuário arrasta um documento para outra pasta na árvore, **Then** a hierarquia é atualizada sem perda de conteúdo.
 4. **Given** o usuário cola uma imagem no editor, **When** o upload completa, **Then** a imagem aparece inline e pode ser redimensionada por alças de arrastar.
+5. **Given** um documento aberto no editor, **When** o usuário clica em **⬇ .md** no toolbar, **Then** o browser baixa um arquivo `<título>.md` com o conteúdo convertido para Markdown (headings ATX, code fenced, links `[[Documento]]` preservados).
 
 ---
 
@@ -173,6 +174,8 @@ Interface com alternância claro/escuro, layout responsivo (mobile-first), insta
 - **FR-004**: Documentos excluídos DEVEM ir para uma Lixeira e permanecer recuperáveis indefinidamente até exclusão permanente manual.
 - **FR-005**: O sistema DEVE prevenir movimentos circulares na hierarquia (mover documento para dentro de um descendente seu).
 - **FR-006**: Cada save DEVE incrementar uma versão monotônica. Saves com versão desatualizada DEVEM ser rejeitados com possibilidade de overwrite ou reload.
+- **FR-007**: O editor DEVE permitir redimensionar imagens inline por alça de arrastar (canto inferior direito); a largura em pixels DEVE persistir no HTML do documento.
+- **FR-008**: O editor DEVE oferecer exportação do documento como arquivo Markdown (`.md`) com download direto no browser, sem chamada ao servidor.
 
 #### Links Bidirecionais
 - **FR-010**: O sistema DEVE suportar links simples entre documentos (A→B), sem rótulo ou tipo — apenas source e target. O contexto do link é dado pelo texto ao redor da sintaxe `[[nome do documento]]` no corpo.
@@ -291,7 +294,7 @@ Interface com alternância claro/escuro, layout responsivo (mobile-first), insta
 - Edição colaborativa em tempo real (multi-cursor / CRDT)
 - Múltiplos usuários com permissões diferenciadas
 - Integração com AI/LLM para sugestões de conexões
-- Exportação para PDF ou outros formatos
+- Exportação para PDF ou formatos binários (exportação Markdown .md é suportada)
 - Versionamento de documentos com diff (apenas versão monotônica para conflito)
 - Sincronização com serviços de nuvem (Google Drive, Dropbox)
 

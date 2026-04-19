@@ -23,6 +23,8 @@
 | 📁 **Hierarquia ilimitada** | Documentos dentro de documentos, arrastar e soltar para reorganizar |
 | ✏️ **Editor rico** | TipTap v2 — negrito, itálico, títulos, listas, código, citações, imagens inline |
 | 📐 **Barra de ferramentas completa** | Tabelas, imagem por URL, alinhamento de parágrafo, destaque de texto com cor personalizável |
+| 🖼️ **Redimensionamento de imagens** | Passe o mouse sobre uma imagem e arraste a alça (canto inferior direito) para redimensioná-la; largura persiste no documento |
+| ⬇️ **Exportar como Markdown** | Botão `⬇ .md` no toolbar converte o documento para Markdown e baixa o arquivo `.md` no browser |
 | 🔗 **Links bidirecionais** | Relacione documentos pelo painel "Notas relacionadas"; backlinks aparecem automaticamente em "Referenciado por" |
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
 | 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
@@ -172,6 +174,14 @@ Arraste um arquivo ou clique em **"+ Anexar arquivo"**. Imagens exibem thumbnail
 - **Áudio** → player HTML5
 - **Vídeo** → player HTML5
 - **Outros** → tela de download
+
+### Redimensionar imagens
+
+Insira uma imagem no editor (upload, URL ou colar). Passe o mouse sobre ela — uma alça azul aparece no canto inferior direito. Clique e arraste horizontalmente para ajustar a largura. Ao soltar, a nova largura é salva no documento automaticamente.
+
+### Exportar como Markdown
+
+Clique no botão **⬇ .md** na barra de ferramentas. O browser baixa imediatamente o arquivo `<título>.md` com o conteúdo do documento convertido para Markdown (headings `#`, código em triple-backtick, links `[[Documento]]` preservados).
 
 ### Destaque de texto
 

@@ -46,7 +46,15 @@ Veja o documento **[UNRAID.md](../../UNRAID.md)** na raiz do repositório para i
 
 ---
 
-## 4. Funcionalidades novas no v2
+## 4. Funcionalidades
+
+### Redimensionar imagens
+
+Insira uma imagem no editor (upload, URL ou colar da área de transferência). Passe o mouse sobre ela — uma alça azul aparece no canto inferior direito. Clique e arraste para ajustar a largura. Ao soltar, a nova largura é salva no documento.
+
+### Exportar como Markdown
+
+Clique no botão **⬇ .md** na barra de ferramentas. O browser baixa imediatamente o arquivo `<título>.md` com o conteúdo do documento convertido para Markdown (headings `#`, código em triple-backtick, links `[[Documento]]` preservados).
 
 ### Links bidirecionais (`[[nome do documento]]`)
 
@@ -93,15 +101,17 @@ curl -X POST http://localhost:8080/api/capture \
 Após instalar, verifique em ordem:
 
 1. **Criar documento** — clique `+`, dê título, digite conteúdo. Recarregue — persiste.
-2. **Link bidirecional** — abra um documento, digite `[[` e selecione outro. Abra o outro — veja "Referenciado por".
-3. **Graph View** — abra o grafo. Os dois documentos linkados aparecem como nós conectados.
-4. **Busca** — busque por substring de título e corpo. Resultados com snippet.
-5. **Tags** — adicione tags. Filtre a árvore por tag.
-6. **Captura** — no celular, compartilhe um link com o PKD (requer PWA instalado).
-7. **Compartilhar** — gere link público. Abra em janela privada. Revogue. Confirme 404.
-8. **Backup/Restore** — faça backup, altere algo, restaure.
-9. **Tema** — alterne claro/escuro. Persiste após reload.
-10. **Mobile** — abra no celular. Tudo funcional com touch.
+2. **Redimensionar imagem** — cole ou faça upload de uma imagem; passe o mouse e arraste a alça azul (canto inferior direito) para redimensionar.
+3. **Exportar Markdown** — clique em **⬇ .md** no toolbar; o browser baixa `<título>.md` com o conteúdo convertido.
+4. **Link bidirecional** — abra um documento, digite `[[` e selecione outro. Abra o outro — veja "Referenciado por".
+5. **Graph View** — abra o grafo. Os dois documentos linkados aparecem como nós conectados.
+6. **Busca** — busque por substring de título e corpo. Resultados com snippet.
+7. **Tags** — adicione tags. Filtre a árvore por tag.
+8. **Captura** — no celular, compartilhe um link com o PKD (requer PWA instalado).
+9. **Compartilhar** — gere link público. Abra em janela privada. Revogue. Confirme 404.
+10. **Backup/Restore** — faça backup, altere algo, restaure.
+11. **Tema** — alterne claro/escuro. Persiste após reload.
+12. **Mobile** — abra no celular. Tudo funcional com touch.
 
 ---
 
