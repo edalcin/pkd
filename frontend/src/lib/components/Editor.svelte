@@ -11,6 +11,7 @@
   import TextAlign from '@tiptap/extension-text-align'
   import Link from '@tiptap/extension-link'
   import { DocLink } from '../editor/doclink-extension.js'
+  import TurndownService from 'turndown'
   import { saveDoc, loadDoc, linksRefreshSignal } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiDelete } from '../api.js'
@@ -298,6 +299,24 @@
     } finally {
       saving = false
     }
+  }
+
+  function exportMarkdown() {
+    if (!editorInstance || !doc) return
+    const td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' })
+    td.addRule('docLink', {
+      filter: node => node.nodeName === 'SPAN' && node.hasAttribute('data-doc-link'),
+      replacement: (content) => `[[${content}]]`,
+    })
+    const md = td.turndown(editorInstance.getHTML())
+    const filename = (doc.title || 'documento').replace(/[/\\?%*:|"<>]/g, '-') + '.md'
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   async function handleConflictOverwrite() {
@@ -685,6 +704,9 @@
         <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.redo()) }} title="Refazer (Ctrl+Y)">↪</button>
 
         <div class="tb-spacer"></div>
+
+        <!-- Export Markdown -->
+        <button class="tb-btn" onclick={exportMarkdown} title="Exportar como Markdown (.md)">⬇ .md</button>
 
         <!-- Save -->
         <button class="tb-btn tb-save {saving ? 'saving' : ''}"
