@@ -1,6 +1,6 @@
 # pkd Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-16
+Auto-generated from all feature plans. Last updated: 2026-04-19 — **v1.0 released**
 
 ## Active Technologies
 - Go 1.25 (backend, CGO disabled), JavaScript/Svelte 5 (frontend) + chi (router), modernc.org/sqlite (database driver), bluemonday (HTML sanitizer), TipTap v2 (rich text editor), D3.js (graph visualization), Svelte 5 + Vite (frontend build) (003-pkm-refactor)

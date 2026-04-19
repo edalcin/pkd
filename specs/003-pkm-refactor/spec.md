@@ -2,7 +2,7 @@
 
 **Feature**: `003-pkm-refactor`
 **Created**: 2026-04-16
-**Status**: Draft
+**Status**: Released — v1.0 (2026-04-19)
 **Input**: Refatoração completa do PKD em um sistema PKM com links bidirecionais, visualização em grafo, captura de conteúdo externo, documentação C4 Model, e interface moderna e criativa.
 
 ---

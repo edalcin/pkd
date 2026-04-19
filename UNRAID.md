@@ -2,9 +2,9 @@
 
 Este guia mostra como instalar o PKD no UNRAID usando a interface gráfica **Docker → Add Container**. Nenhum terminal é necessário.
 
-> **Imagem Docker:** `ghcr.io/edalcin/pkd:latest`
-> **Versão atual:** v2 (PKM Refactor — 003-pkm-refactor)  
-> Novidades: links bidirecionais (`[[documento]]`), Graph View (D3.js), captura de conteúdo externo, interface Svelte reescrita, suporte a PWA share target mobile.
+> **Imagem Docker:** `ghcr.io/edalcin/pkd:v1.0` (ou `:latest`)
+> **Versão atual:** 1.0 — primeira versão estável
+> Inclui: editor rico TipTap, links bidirecionais (`[[documento]]`), Graph View (D3.js), redimensionamento de imagens, exportação Markdown, captura externa, PWA, backup/restore, lixeira, administração completa.
 
 ---
 
@@ -45,7 +45,7 @@ Na barra superior do UNRAID, vá em **Docker → Add Container**.
 | Campo | Valor |
 |---|---|
 | **Name** | `pkd` |
-| **Repository** | `ghcr.io/edalcin/pkd:latest` |
+| **Repository** | `ghcr.io/edalcin/pkd:v1.0` |
 | **Network Type** | `Bridge` |
 | **WebUI** | `http://[IP]:[PORT:8080]` |
 

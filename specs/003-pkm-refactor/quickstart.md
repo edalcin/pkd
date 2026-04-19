@@ -1,7 +1,7 @@
-# Quickstart: PKD v2 — Personal Knowledge Management (003-pkm-refactor)
+# Quickstart: PKD v1.0 — Personal Knowledge Management
 
-**Feature**: `003-pkm-refactor`
-**Goal**: Instalar e começar a usar o PKD v2 com links bidirecionais, graph view e captura de conteúdo externo.
+**Versão**: 1.0 (2026-04-19)
+**Goal**: Instalar e começar a usar o PKD v1.0 — editor rico, links bidirecionais, graph view, captura externa, exportação Markdown.
 
 > Todos os valores neste documento são **placeholders**. Nunca use senhas de exemplo em produção.
 
@@ -33,7 +33,7 @@ docker run -d \
   -e PKD_DB_PATH=/data/db/pkd.sqlite \
   -e PKD_ATTACHMENTS_PATH=/data/attachments \
   -e PKD_BASE_URL='https://pkd.dalc.in/' \
-  ghcr.io/edalcin/pkd:latest
+  ghcr.io/edalcin/pkd:v1.0
 ```
 
 Abra `http://localhost:8080`, digite a senha.
@@ -96,7 +96,7 @@ curl -X POST http://localhost:8080/api/capture \
 
 ---
 
-## 6. Smoke test (v2)
+## 6. Smoke test (v1.0)
 
 Após instalar, verifique em ordem:
 

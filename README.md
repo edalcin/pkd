@@ -4,6 +4,7 @@
   <p>Base de conhecimento pessoal auto-hospedada, focada em organização, conexões e recuperação rápida de informações.</p>
 
   <p>
+    <img alt="Versão" src="https://img.shields.io/badge/versão-1.0-blue" />
     <img alt="Go 1.25" src="https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white" />
     <img alt="Svelte 5" src="https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white" />
     <img alt="SQLite" src="https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white" />
@@ -89,7 +90,7 @@ docker run -d \
   -e PKD_PASSWORD='SUBSTITUA_POR_UMA_SENHA_FORTE' \
   -e PKD_DB_PATH=/data/db/pkd.sqlite \
   -e PKD_ATTACHMENTS_PATH=/data/attachments \
-  ghcr.io/edalcin/pkd:latest
+  ghcr.io/edalcin/pkd:v1.0
 ```
 
 Acesse `http://localhost:8080` e digite a senha mestra.
@@ -107,7 +108,7 @@ Guia completo em português (sem terminal): **[UNRAID.md](UNRAID.md)**
 ```yaml
 services:
   pkd:
-    image: ghcr.io/edalcin/pkd:latest
+    image: ghcr.io/edalcin/pkd:v1.0
     container_name: pkd
     restart: unless-stopped
     ports:
@@ -279,6 +280,33 @@ graph TD
 | [docs/c4/code.md](docs/c4/code.md) | 🇺🇸 EN | C4 Level 4 — Structs e fluxos de código |
 | [docs/security.md](docs/security.md) | 🇺🇸 EN | Referência de segurança |
 | [docs/operations.md](docs/operations.md) | 🇺🇸 EN | Guia de operações e backup |
+
+---
+
+## Changelog
+
+### v1.0 — 2026-04-19
+
+Primeira versão estável e completa do PKD.
+
+**Editor**
+- Redimensionamento de imagens inline por alça de arrastar
+- Exportação de documentos como Markdown (`.md`) com download direto no browser
+- Correção de race condition que causava documento vazio ao navegar rapidamente entre documentos
+- Prevenção de conflito de versão espúrio causado por saves concorrentes no auto-save
+
+**Organização**
+- Reordenação manual de documentos por drag-and-drop na árvore lateral
+- Ordenação A-Z e cronológica na árvore
+- Filtro por documentos favoritos (⭐)
+- Marcar/desmarcar documentos como favoritos
+
+**Compartilhamento**
+- Redesign da view pública de documentos compartilhados
+- `PKD_BASE_URL` para geração correta de links atrás de proxy reverso
+
+**Segurança**
+- Sanitização de URLs relativas no HTML (correção de regressão)
 
 ---
 
