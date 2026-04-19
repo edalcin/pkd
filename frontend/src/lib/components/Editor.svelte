@@ -664,7 +664,6 @@
         <!-- Image: URL + upload -->
         <button class="tb-btn {imgUrlOpen ? 'active' : ''}" onmousedown={toggleImgUrl} title="Inserir imagem por URL">🖼</button>
         <button class="tb-btn" onmousedown={triggerImageUpload} title={imgUploading ? 'Enviando…' : 'Fazer upload de imagem'}>{imgUploading ? '⏳' : '📤'}</button>
-        <input bind:this={uploadImgInputEl} type="file" accept="image/*" class="sr-only" onchange={handleImageUploadInline} disabled={imgUploading} />
 
         <!-- Table -->
         <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }} title="Inserir tabela">⊞</button>
@@ -692,6 +691,10 @@
         </button>
       </div>
     {/key}
+
+    <!-- File input lives outside {#key editorTick} so it survives editor transactions
+         (opening the file dialog causes a blur transaction that would otherwise destroy it) -->
+    <input bind:this={uploadImgInputEl} type="file" accept="image/*" class="sr-only" onchange={handleImageUploadInline} disabled={imgUploading} />
 
     <!-- Inline panels that must live outside the overflow:auto toolbar -->
     {#if linkOpen}
