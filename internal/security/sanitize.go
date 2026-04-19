@@ -29,6 +29,7 @@ func init() {
 	)
 	editorPolicy.AllowAttrs("href", "rel", "target").OnElements("a")
 	editorPolicy.AllowURLSchemes("http", "https", "mailto")
+	editorPolicy.AllowRelativeURLs(true)
 	editorPolicy.AllowAttrs("src", "alt", "width", "height").OnElements("img")
 	// Allow width/height style properties on img/figure (CKEditor sets "width:Xpx" for resize)
 	editorPolicy.AllowStyles("width", "height").
@@ -55,6 +56,7 @@ func init() {
 	)
 	publicSharePolicy.AllowAttrs("href", "rel").OnElements("a")
 	publicSharePolicy.AllowURLSchemes("http", "https", "mailto")
+	publicSharePolicy.AllowRelativeURLs(true)
 	publicSharePolicy.AllowAttrs("src", "alt", "width", "height").OnElements("img")
 }
 
