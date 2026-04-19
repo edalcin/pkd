@@ -2,7 +2,7 @@
   import { onDestroy } from 'svelte'
   import { Editor } from '@tiptap/core'
   import StarterKit from '@tiptap/starter-kit'
-  import Image from '@tiptap/extension-image'
+  import { ResizableImage } from '../editor/resizable-image-extension.js'
   import Table from '@tiptap/extension-table'
   import TableRow from '@tiptap/extension-table-row'
   import TableCell from '@tiptap/extension-table-cell'
@@ -499,7 +499,7 @@
       element: node,
       extensions: [
         StarterKit,
-        Image.configure({ inline: true, allowBase64: true }),
+        ResizableImage.configure({ inline: true, allowBase64: true }),
         Table.configure({ resizable: false }),
         TableRow,
         TableCell,
