@@ -161,7 +161,9 @@
       <!-- Main content area -->
       <main class="content-area">
         {#if route.view === 'doc' && route.id}
-          <Editor docId={route.id} />
+          {#key route.id}
+            <Editor docId={route.id} />
+          {/key}
         {:else if route.view === 'graph'}
           <GraphView />
         {:else if route.view === 'calendar'}

@@ -214,37 +214,49 @@
   })
 
   async function loadDocument() {
+    const targetId = Number(docId)  // snapshot: prevents reading stale reactive prop after awaits
     loading = true
     try {
-      doc = await loadDoc(Number(docId))
+      const loadedDoc = await loadDoc(targetId)
+      if (Number(docId) !== targetId) return  // navigation changed mid-flight, abort
+      doc = loadedDoc
       titleValue = doc.title
       docTags = doc.tags || []
-      loadTags()   // populate allTags store for autocomplete (fire-and-forget)
-      await loadLinks()
+      loadTags()
+      await loadLinks(targetId)
+      if (Number(docId) !== targetId) return
       try {
-        const atts = await apiGet(`/api/documents/${docId}/attachments`)
+        const atts = await apiGet(`/api/documents/${targetId}/attachments`)
+        if (Number(docId) !== targetId) return
         attachments = atts || []
       } catch {
         attachments = doc?.attachment_ids?.map(id => ({ id })) || []
       }
       try {
-        docUrls = await apiGet(`/api/documents/${docId}/urls`)
+        const urls = await apiGet(`/api/documents/${targetId}/urls`)
+        if (Number(docId) !== targetId) return
+        docUrls = urls || []
       } catch {
         docUrls = []
       }
       try {
-        children = await apiGet(`/api/documents/${docId}/children`) || []
+        const ch = await apiGet(`/api/documents/${targetId}/children`) || []
+        if (Number(docId) !== targetId) return
+        children = ch
       } catch {
         children = []
       }
     } finally {
-      loading = false
+      // Only clear loading if we're still the current document.
+      // A newer loadDocument() in flight will clear it when it finishes.
+      if (Number(docId) === targetId) loading = false
     }
   }
 
-  async function loadLinks() {
+  async function loadLinks(id) {
+    const targetId = id ?? Number(docId)
     try {
-      const resp = await apiGet(`/api/documents/${docId}/links`)
+      const resp = await apiGet(`/api/documents/${targetId}/links`)
       backlinks = resp.incoming || []
       outgoingLinks = resp.outgoing || []
     } catch {
@@ -264,7 +276,7 @@
 
   // Reload links when a relationship is created from the sidebar
   $effect(() => {
-    if ($linksRefreshSignal && doc) loadLinks()
+    if ($linksRefreshSignal && doc) loadLinks(doc.id)
   })
 
   // Auto-save: 2 seconds after user stops typing
