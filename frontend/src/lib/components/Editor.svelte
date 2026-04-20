@@ -35,6 +35,8 @@
   let urlTitleInput = $state('')
   let urlAdding = $state(false)
 
+  let focusMode = $state(false)
+
   // Map tag name → color, derived from the global tags store
   const tagColorMap = $derived(
     Object.fromEntries(($allTags || []).map(t => [t.name, t.color || '']))
@@ -524,6 +526,9 @@
     if (e.key === 'Escape' && previewAtt) {
       closePreview()
     }
+    if (e.key === 'Escape' && focusMode) {
+      focusMode = false
+    }
   }
 
   // Svelte action: mounts the TipTap editor on the DOM node
@@ -574,7 +579,7 @@
     <div class="empty-state"><div class="spinner"></div></div>
   </div>
 {:else if doc}
-  <div class="editor-area" onkeydown={handleKeydown} role="region" aria-label="Editor de documento" tabindex="-1">
+  <div class="editor-area {focusMode ? 'focus-mode' : ''}" onkeydown={handleKeydown} role="region" aria-label="Editor de documento" tabindex="-1">
     <!-- Title -->
     <div class="doc-header">
       <input
@@ -725,6 +730,15 @@
           onclick={performSave} disabled={saving} title="Salvar (Ctrl+S)">
           {saving ? '⏳' : '💾'} Salvar
         </button>
+
+        <div class="tb-sep" role="separator"></div>
+
+        <!-- Focus mode -->
+        <button class="tb-btn {focusMode ? 'active' : ''}"
+          onclick={() => focusMode = !focusMode}
+          title={focusMode ? 'Sair do modo foco (Esc)' : 'Modo foco (sem distrações)'}>
+          {focusMode ? '⊠' : '⛶'}
+        </button>
       </div>
     {/key}
 
@@ -782,7 +796,7 @@
     <div class="tiptap-editor" use:mountEditor></div>
 
     <!-- ── Sub-documentos ────────────────────────────────────────── -->
-    {#if children.length > 0}
+    {#if children.length > 0 && !focusMode}
       <div class="children-area">
         <div class="children-header">
           <span class="children-label">Sub-documentos</span>
@@ -813,6 +827,7 @@
     {/if}
 
     <!-- ── Área de associações ───────────────────────────────────── -->
+    {#if !focusMode}
     <div class="assoc-area">
       <div class="assoc-divider">
         <span class="assoc-divider-label">Associações</span>
@@ -976,6 +991,7 @@
 
       </div>
     </div>
+    {/if}
   </div>
 
   <!-- Attachment preview modal -->
