@@ -137,319 +137,178 @@ const sharePageHTML = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}} — PKD</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Crimson+Pro:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:         #FAF7F0;
-      --surface:    #FFFFFF;
-      --text:       #1C1917;
-      --text-muted: #78716C;
-      --text-faint: #A8A29E;
-      --accent:     #B45309;
-      --accent-mid: #D97706;
-      --accent-lt:  #FEF3C7;
-      --accent-bd:  #FDE68A;
-      --border:     #E7E5E4;
-      --code-bg:    #F5F0E8;
-      --code-bd:    #EDE9DF;
-      --pre-bg:     #1C1917;
-      --pre-text:   #E7E5E4;
-      --quote-bg:   #FDFAF5;
+      --bg:      #f8f7f4;
+      --surface: #fff;
+      --text:    #1c1917;
+      --muted:   #78716c;
+      --border:  #e7e5e4;
+      --accent:  #6366f1;
+      --radius:  10px;
     }
-
-    ::selection { background: #FDE68A; color: #78350F; }
-
-    html { font-size: 18px; scroll-behavior: smooth; }
-
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:      #1c1917;
+        --surface: #292524;
+        --text:    #e7e5e4;
+        --muted:   #a8a29e;
+        --border:  #3d3835;
+        --accent:  #818cf8;
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Crimson Pro', Georgia, 'Times New Roman', serif;
-      background-color: var(--bg);
-      background-image:
-        radial-gradient(at 12% 18%, rgba(251,191,36,.13) 0, transparent 52%),
-        radial-gradient(at 88% 82%, rgba(234,88,12,.09) 0, transparent 52%);
-      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      font-size: 15px;
+      background: var(--bg);
       color: var(--text);
-      line-height: 1.75;
-      padding: 3rem 1.25rem 5rem;
+      line-height: 1.6;
+      padding: 24px 16px 48px;
     }
+    .page { max-width: 720px; margin: 0 auto; }
 
-    /* ── Container ───────────────────────────── */
-    .wrap { max-width: 740px; margin: 0 auto; }
-
-    /* ── Card ────────────────────────────────── */
-    .card {
-      background: var(--surface);
-      border-radius: 4px;
-      padding: 3.5rem 4rem;
-      border-top: 3px solid var(--accent-mid);
-      box-shadow:
-        0 0 0 1px rgba(0,0,0,.03),
-        0 4px 16px rgba(0,0,0,.05),
-        0 24px 64px rgba(0,0,0,.07);
-      animation: rise .55s cubic-bezier(.22,1,.36,1) both;
-    }
-
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(22px); }
-      to   { opacity: 1; transform: translateY(0);    }
-    }
-
-    /* ── Header ──────────────────────────────── */
-    .doc-header { margin-bottom: 2.75rem; }
-
-    .eyebrow {
+    /* ── Page header ─────────────────────────── */
+    .page-header {
       display: flex;
       align-items: center;
-      gap: .75rem;
-      margin-bottom: 1.25rem;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
     }
-
-    .doc-icon { font-size: 1.75rem; line-height: 1; flex-shrink: 0; }
-
-    .doc-date {
-      font-family: 'Crimson Pro', Georgia, serif;
-      font-style: italic;
-      font-size: .85rem;
-      color: var(--text-faint);
-      letter-spacing: .03em;
+    .page-brand {
+      font-size: 14px;
+      color: var(--muted);
+      text-decoration: none;
     }
+    .page-brand:hover { color: var(--accent); }
+    .note-date { font-size: 13px; color: var(--muted); }
 
-    .doc-title {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(1.85rem, 4.5vw, 2.9rem);
+    /* ── Note card ───────────────────────────── */
+    .note-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 28px 32px;
+    }
+    .note-header {
+      padding-bottom: 18px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .note-meta {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .note-icon { font-size: 1.4em; line-height: 1.25; flex-shrink: 0; }
+    .note-title {
+      font-size: 1.5em;
       font-weight: 700;
-      line-height: 1.18;
+      line-height: 1.25;
       letter-spacing: -.02em;
-      color: var(--text);
-      margin-bottom: 1.4rem;
     }
-
-    .title-rule {
-      width: 42px;
-      height: 3px;
-      background: linear-gradient(90deg, var(--accent), var(--accent-mid));
-      border-radius: 2px;
-      margin-bottom: 1.25rem;
-    }
-
-    .doc-tags { display: flex; flex-wrap: wrap; gap: .35rem; }
-
+    .note-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
     .tag {
-      font-family: 'Crimson Pro', Georgia, serif;
-      font-style: italic;
-      font-size: .78rem;
-      color: var(--accent);
-      background: var(--accent-lt);
-      border: 1px solid var(--accent-bd);
-      border-radius: 20px;
-      padding: .18em .65em;
-      letter-spacing: .02em;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 7px;
     }
 
     /* ── Prose ───────────────────────────────── */
-    .prose {
-      font-size: 1rem;
-      line-height: 1.8;
-      color: #292524;
-      font-weight: 300;
-    }
-
-    .prose > * + * { margin-top: 1.2rem; }
-
     .prose h1, .prose h2, .prose h3,
-    .prose h4, .prose h5, .prose h6 {
-      font-family: 'Playfair Display', Georgia, serif;
-      color: var(--text);
-      line-height: 1.25;
-      letter-spacing: -.015em;
-      margin-top: 2.25rem;
-      margin-bottom: .4rem;
-    }
-    .prose h1 { font-size: 1.85rem; font-weight: 700; }
-    .prose h2 { font-size: 1.45rem; font-weight: 700; }
-    .prose h3 { font-size: 1.2rem;  font-weight: 600; }
-    .prose h4 { font-size: 1.05rem; font-weight: 600; font-style: italic; }
-
-    .prose p { margin-top: 1.1rem; }
-
-    .prose a {
-      color: var(--accent);
-      text-decoration: underline;
-      text-decoration-thickness: 1px;
-      text-underline-offset: 3px;
-    }
-    .prose a:hover { color: #92400E; }
-
-    .prose strong { font-weight: 600; color: var(--text); }
-
-    .prose ul, .prose ol { padding-left: 1.5rem; margin-top: 1.1rem; }
-    .prose li { margin-top: .35rem; }
-    .prose li::marker { color: var(--accent-mid); }
-
-    .prose hr {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 2.5rem 0;
-    }
-
+    .prose h4, .prose h5, .prose h6 { margin: 0.75em 0 0.25em; font-weight: 700; }
+    .prose h1 { font-size: 1.35em; }
+    .prose h2 { font-size: 1.2em; }
+    .prose h3 { font-size: 1.05em; }
+    .prose p { margin: 0.5em 0; }
+    .prose a { color: var(--accent); }
+    .prose strong { font-weight: 600; }
+    .prose ul, .prose ol { padding-left: 1.5em; margin: 0.5em 0; }
+    .prose li { margin: 0.25em 0; }
+    .prose li::marker { color: var(--muted); }
+    .prose hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
     .prose blockquote {
-      position: relative;
-      margin: 1.75rem 0;
-      padding: 1rem 1.5rem 1rem 2.75rem;
-      background: var(--quote-bg);
-      border-left: 3px solid var(--accent-mid);
-      border-radius: 0 4px 4px 0;
+      border-left: 3px solid var(--border);
+      margin: 0.75em 0;
+      padding: 0 0.75em;
+      color: var(--muted);
+      font-style: italic;
     }
-    .prose blockquote::before {
-      content: '\201C';
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 4rem;
-      color: var(--accent-mid);
-      position: absolute;
-      left: .45rem;
-      top: -.6rem;
-      line-height: 1;
-      opacity: .35;
-    }
-    .prose blockquote p { margin-top: 0; font-style: italic; color: #44403C; font-size: 1.05em; }
-
+    .prose blockquote p { margin: 0; }
     .prose code {
-      font-family: 'JetBrains Mono', 'Courier New', monospace;
-      font-size: .8em;
-      background: var(--code-bg);
-      color: var(--accent);
-      padding: .15em .4em;
-      border-radius: 3px;
-      border: 1px solid var(--code-bd);
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.875em;
     }
-
+    .prose p code, .prose li code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
     .prose pre {
-      background: var(--pre-bg);
-      color: var(--pre-text);
-      padding: 1.4rem 1.6rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: 6px;
+      padding: 14px 16px;
       overflow-x: auto;
-      margin: 1.75rem 0;
-      font-size: .82em;
-      line-height: 1.65;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      font-size: 13px;
+      margin: 0.75em 0;
+      line-height: 1.55;
     }
-    .prose pre code {
-      background: none; color: inherit;
-      padding: 0; border: none; font-size: 1em;
-    }
-
-    .prose img {
-      max-width: 100%; height: auto;
-      border-radius: 6px;
-      margin: 1.5rem 0;
-      box-shadow: 0 2px 14px rgba(0,0,0,.1);
-    }
-
-    .prose figure { margin: 1.75rem 0; }
-    .prose figcaption {
-      margin-top: .5rem;
-      font-size: .82em;
-      font-style: italic;
-      color: var(--text-faint);
-      text-align: center;
-    }
-
-    .prose table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1.75rem 0;
-      font-size: .9em;
-    }
-    .prose thead tr { border-bottom: 2px solid var(--border); }
+    .prose pre code { background: none; border: none; padding: 0; font-size: 1em; }
+    .prose img { max-width: 100%; border-radius: 6px; margin: 0.5em 0; }
+    .prose figure { margin: 0.75em 0; }
+    .prose figcaption { font-size: 0.85em; color: var(--muted); text-align: center; margin-top: 4px; }
+    .prose table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin: 0.75em 0; }
     .prose th {
-      padding: .55rem 1rem;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 10px;
       text-align: left;
-      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 0.8em;
       font-weight: 600;
-      font-size: .88em;
-      color: #44403C;
-      letter-spacing: .02em;
-    }
-    .prose td {
-      padding: .55rem 1rem;
-      border-bottom: 1px solid #F5F0E8;
-      vertical-align: top;
-    }
-    .prose tbody tr:last-child td { border-bottom: none; }
-    .prose tbody tr:hover td { background: #FDFAF5; }
-
-    /* ── Footer ──────────────────────────────── */
-    .doc-footer {
-      margin-top: 4rem;
-      padding-top: 2rem;
-      border-top: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: .75rem;
-    }
-
-    .footer-ornament {
-      color: var(--accent-mid);
-      font-size: 1rem;
-      opacity: .45;
-      letter-spacing: .4em;
-    }
-
-    .footer-brand {
-      font-family: 'Crimson Pro', Georgia, serif;
-      font-style: italic;
-      font-size: .8rem;
-      color: var(--text-faint);
-    }
-    .footer-brand strong {
-      font-style: normal;
-      font-weight: 600;
-      color: var(--text-muted);
+      color: var(--muted);
+      text-transform: uppercase;
       letter-spacing: .04em;
     }
+    .prose td { border-bottom: 1px solid var(--border); padding: 6px 10px; vertical-align: top; }
+    .prose tbody tr:last-child td { border-bottom: none; }
 
-    /* ── Responsive ──────────────────────────── */
     @media (max-width: 600px) {
-      body  { padding: 1rem .75rem 3rem; }
-      .card { padding: 2rem 1.5rem; }
-      .doc-title { font-size: 1.75rem; }
+      .note-card { padding: 20px 18px; }
+      .note-title { font-size: 1.25em; }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <article class="card">
+  <div class="page">
 
-      <header class="doc-header">
-        <div class="eyebrow">
-          <span class="doc-icon">{{.Icon}}</span>
-          <time class="doc-date">{{.Date}}</time>
+    <header class="page-header">
+      <a href="/" class="page-brand">📄 PKD</a>
+      <time class="note-date">{{.Date}}</time>
+    </header>
+
+    <article class="note-card">
+      <header class="note-header">
+        <div class="note-meta">
+          <span class="note-icon">{{.Icon}}</span>
+          <h1 class="note-title">{{.Title}}</h1>
         </div>
-        <h1 class="doc-title">{{.Title}}</h1>
-        <div class="title-rule"></div>
         {{if .Tags}}
-        <div class="doc-tags">
+        <div class="note-tags">
           {{range .Tags}}<span class="tag">#{{.}}</span>{{end}}
         </div>
         {{end}}
       </header>
-
       <div class="prose">{{.Body}}</div>
-
-      <footer class="doc-footer">
-        <span class="footer-ornament">✦ ✦ ✦</span>
-        <p class="footer-brand">Compartilhado via <strong>PKD</strong></p>
-      </footer>
-
     </article>
+
   </div>
 </body>
 </html>`

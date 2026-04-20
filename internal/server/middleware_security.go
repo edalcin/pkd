@@ -43,7 +43,6 @@ const cspSPA = "default-src 'self'; " +
 const cspPublicShare = "default-src 'none'; " +
 	"script-src 'none'; " +
 	"img-src 'self' data: https: http:; " +
-	"style-src 'unsafe-inline' https://fonts.googleapis.com; " +
-	"font-src 'self' https://fonts.gstatic.com; " +
+	"style-src 'unsafe-inline'; " +
 	"frame-ancestors 'none'; " +
 	"base-uri 'none'"
