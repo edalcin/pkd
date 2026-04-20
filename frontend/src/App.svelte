@@ -17,6 +17,7 @@
   window.addEventListener('hashchange', () => { hash = window.location.hash.slice(1) || '/' })
 
   function getRoute() {
+    if (hash.startsWith('/focus/')) return { view: 'focus', id: hash.split('/')[2] }
     if (hash.startsWith('/doc/')) return { view: 'doc', id: hash.split('/')[2] }
     if (hash.startsWith('/search')) return { view: 'search' }
     if (hash === '/graph') return { view: 'graph' }
@@ -95,6 +96,13 @@
 
 {:else if $authenticated === false}
   <LoginPage />
+
+{:else if route.view === 'focus' && route.id}
+  <div class="focus-layout">
+    {#key route.id}
+      <Editor docId={route.id} focusMode={true} />
+    {/key}
+  </div>
 
 {:else}
   <div id="app">
@@ -188,6 +196,14 @@
 {/if}
 
 <style>
+  .focus-layout {
+    width: 100dvw;
+    height: 100dvh;
+    display: flex;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
   .app-logo {
     font-size: .9rem;
     font-weight: 700;

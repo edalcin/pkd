@@ -243,16 +243,6 @@ input:focus, textarea:focus, select:focus {
   width: 100%;
 }
 
-.editor-area.focus-mode {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: var(--bg);
-  max-width: 860px;
-  padding: 2rem 3rem;
-  overflow: hidden;
-}
-
 .doc-title {
   font-size: 1.75rem;
   font-weight: 700;

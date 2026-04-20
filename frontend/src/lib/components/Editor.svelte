@@ -16,7 +16,7 @@
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiDelete } from '../api.js'
 
-  let { docId } = $props()
+  let { docId, focusMode = false } = $props()
 
   let doc = $state(null)
   let titleValue = $state('')
@@ -34,8 +34,6 @@
   let urlInput = $state('')
   let urlTitleInput = $state('')
   let urlAdding = $state(false)
-
-  let focusMode = $state(false)
 
   // Map tag name → color, derived from the global tags store
   const tagColorMap = $derived(
@@ -527,7 +525,7 @@
       closePreview()
     }
     if (e.key === 'Escape' && focusMode) {
-      focusMode = false
+      window.close()
     }
   }
 
@@ -579,7 +577,7 @@
     <div class="empty-state"><div class="spinner"></div></div>
   </div>
 {:else if doc}
-  <div class="editor-area {focusMode ? 'focus-mode' : ''}" onkeydown={handleKeydown} role="region" aria-label="Editor de documento" tabindex="-1">
+  <div class="editor-area" onkeydown={handleKeydown} role="region" aria-label="Editor de documento" tabindex="-1">
     <!-- Title -->
     <div class="doc-header">
       <input
@@ -735,9 +733,9 @@
 
         <!-- Focus mode -->
         <button class="tb-btn {focusMode ? 'active' : ''}"
-          onclick={() => focusMode = !focusMode}
-          title={focusMode ? 'Sair do modo foco (Esc)' : 'Modo foco (sem distrações)'}>
-          {focusMode ? '⊠' : '⛶'}
+          onclick={() => focusMode ? window.close() : window.open(`#/focus/${docId}`, '_blank', 'width=960,height=720,resizable=yes')}
+          title={focusMode ? 'Fechar janela (Esc)' : 'Abrir em modo foco'}>
+          {focusMode ? '✕' : '⛶'}
         </button>
       </div>
     {/key}
