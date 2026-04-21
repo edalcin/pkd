@@ -69,7 +69,6 @@
   }
 
   function onDragLeave(e) {
-    // Only clear if leaving the row itself (not entering a child element)
     if (!e.currentTarget.contains(e.relatedTarget)) {
       dropZone = null
     }
@@ -97,7 +96,7 @@
   <!-- Row -->
   <div
     class="tree-item {node.id === activeId ? 'active' : ''} {dropZone === 'inside' ? 'drag-over' : ''} {dropZone === 'before' ? 'drop-before' : ''} {dropZone === 'after' ? 'drop-after' : ''}"
-    style="padding-left: {0.75 + depth * 1}rem"
+    style="padding-left: {0.4 + depth * 0.75}rem"
     onclick={navigate}
     draggable="true"
     ondragstart={onDragStart}
@@ -121,7 +120,7 @@
       {/if}
     </button>
 
-    <span class="icon">{node.icon || '📄'}</span>
+    <i class="bx {node.icon || 'bx-file-blank'} icon"></i>
     <span class="label">{node.title || 'Sem título'}</span>
 
     <button
@@ -163,20 +162,21 @@
 
 <style>
   .toggle-btn {
-    width: 16px;
-    font-size: .7rem;
+    width: 14px;
+    font-size: .65rem;
     color: var(--text-muted);
     flex-shrink: 0;
     cursor: pointer;
     background: none;
     border: none;
     padding: 0;
+    line-height: 1;
   }
 
   .row-actions {
     display: none;
     margin-left: auto;
-    gap: 2px;
+    gap: 1px;
   }
 
   .tree-item:hover .row-actions { display: flex; }
@@ -185,10 +185,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-radius: 3px;
-    font-size: .85rem;
+    font-size: .8rem;
     color: var(--text-muted);
     cursor: pointer;
   }
@@ -202,7 +202,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: .8rem;
+    font-size: .75rem;
     opacity: 0;
     padding: 0 2px;
     line-height: 1;

@@ -162,20 +162,20 @@ input:focus, textarea:focus, select:focus {
 .tree-item {
   display: flex;
   align-items: center;
-  gap: .375rem;
-  padding: .3rem .75rem;
+  gap: .2rem;
+  padding: .15rem .5rem;
   border-radius: 0;
   cursor: pointer;
-  font-size: .9rem;
+  font-size: .8rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-height: 32px;
+  min-height: 24px;
   user-select: none;
 }
 .tree-item:hover { background: var(--bg-hover); }
 .tree-item.active { background: var(--bg-active); color: var(--text-active); font-weight: 500; }
-.tree-item .icon { flex-shrink: 0; font-size: .95rem; }
+.tree-item .icon { flex-shrink: 0; font-size: .85rem; line-height: 1; }
 .tree-item .label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
 /* ─── Tags ───────────────────────────────────────────────────────────────── */
@@ -249,9 +249,10 @@ input:focus, textarea:focus, select:focus {
   border: none;
   background: transparent;
   color: var(--text);
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 0 0 .5rem;
-  margin-bottom: .75rem;
+  margin-bottom: 0;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
 }
@@ -571,6 +572,6 @@ input:focus, textarea:focus, select:focus {
 
   /* Larger touch targets on mobile */
   .icon-btn { width: 44px; height: 44px; }
-  .tree-item { min-height: 44px; }
+  .tree-item { min-height: 36px; }
   .btn { padding: .55rem 1rem; }
 }

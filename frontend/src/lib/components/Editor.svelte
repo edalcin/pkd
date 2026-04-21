@@ -15,6 +15,7 @@
   import { saveDoc, loadDoc, linksRefreshSignal } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiDelete } from '../api.js'
+  import IconPicker from './IconPicker.svelte'
 
   let { docId, focusMode = false } = $props()
 
@@ -34,6 +35,7 @@
   let urlInput = $state('')
   let urlTitleInput = $state('')
   let urlAdding = $state(false)
+  let iconPickerOpen = $state(false)
 
   // Map tag name → color, derived from the global tags store
   const tagColorMap = $derived(
@@ -283,6 +285,12 @@
   function scheduleAutoSave() {
     clearTimeout(autoSaveTimer)
     autoSaveTimer = setTimeout(performSave, 2000)
+  }
+
+  function handleIconSelect(icon) {
+    doc = { ...doc, icon }
+    iconPickerOpen = false
+    scheduleAutoSave()
   }
 
   async function performSave() {
@@ -580,14 +588,33 @@
   <div class="editor-area" onkeydown={handleKeydown} role="region" aria-label="Editor de documento" tabindex="-1">
     <!-- Title -->
     <div class="doc-header">
-      <input
-        class="doc-title"
-        type="text"
-        bind:value={titleValue}
-        oninput={scheduleAutoSave}
-        placeholder="Título do documento"
-        aria-label="Título"
-      />
+      <div class="title-row">
+        <div class="doc-icon-wrap">
+          <button
+            class="doc-icon-btn"
+            onclick={() => iconPickerOpen = !iconPickerOpen}
+            title="Definir ícone do documento"
+            aria-label="Ícone"
+          >
+            <i class="bx {doc.icon || 'bx-file-blank'}" style={doc.icon ? '' : 'opacity:.25'}></i>
+          </button>
+          {#if iconPickerOpen}
+            <IconPicker
+              value={doc.icon || ''}
+              onSelect={handleIconSelect}
+              onClose={() => iconPickerOpen = false}
+            />
+          {/if}
+        </div>
+        <input
+          class="doc-title"
+          type="text"
+          bind:value={titleValue}
+          oninput={scheduleAutoSave}
+          placeholder="Título do documento"
+          aria-label="Título"
+        />
+      </div>
       <div class="doc-meta">
         {#each docTags as tag}
           {@const c = tagColorMap[tag] || ''}
@@ -1195,6 +1222,35 @@
   }
 
   .doc-header { margin-bottom: .75rem; }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .5rem;
+  }
+
+  .doc-icon-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .doc-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    font-size: 1.75rem;
+    cursor: pointer;
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text);
+    transition: background .15s, border-color .15s;
+    flex-shrink: 0;
+  }
+  .doc-icon-btn:hover { background: var(--bg-hover); border-color: var(--border); }
 
   .tag-input-wrap {
     position: relative;

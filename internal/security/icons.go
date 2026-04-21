@@ -1,19 +1,13 @@
 package security
 
-// validIcons is the whitelist of icon keys the server accepts.
-// Matches the files in internal/server/web/icons/*.svg.
-var validIcons = map[string]struct{}{
-	"document": {}, "folder": {}, "star": {}, "bookmark": {},
-	"tag": {}, "image": {}, "link": {}, "code": {}, "book": {},
-	"idea": {}, "note": {}, "calendar": {}, "task": {}, "archive": {},
-	"heart": {}, "flag": {},
-}
+import "regexp"
 
-// ValidateIcon returns true if icon is empty (no icon) or is a known icon key.
+var iconPattern = regexp.MustCompile(`^bx[sl]?-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
+
+// ValidateIcon returns true if icon is empty or is a valid Boxicons class name.
 func ValidateIcon(icon string) bool {
 	if icon == "" {
 		return true
 	}
-	_, ok := validIcons[icon]
-	return ok
+	return len(icon) <= 60 && iconPattern.MatchString(icon)
 }

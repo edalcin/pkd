@@ -149,7 +149,7 @@
             tabindex="0"
             onkeydown={e => e.key === 'Enter' && selectResult(result.id)}
           >
-            <span class="icon">📄</span>
+            <i class="bx bx-file-blank icon"></i>
             <span class="label">{result.title || 'Sem título'}</span>
           </div>
         {/each}
