@@ -1,8 +1,10 @@
+<script module>
+  // True module-level cache: survives component unmount/remount within the page.
+  let iconCache = null
+</script>
+
 <script>
   import { onMount } from 'svelte'
-
-  // Module-level cache so the Boxicons CSS is only fetched once per page load.
-  let iconCache = null
 
   const ICONS = [
     'bx-file-blank', 'bxs-file', 'bx-file',
@@ -98,7 +100,7 @@
       const res = await fetch('https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css')
       const css = await res.text()
       const matches = []
-      const re = /\.(bx[sl]?-[\w-]+)::before/g
+      const re = /\.(bx[sl]?-[\w-]+):before/g
       let m
       while ((m = re.exec(css)) !== null) {
         matches.push(m[1])
