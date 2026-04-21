@@ -1,4 +1,9 @@
 <script>
+  import { onMount } from 'svelte'
+
+  // Module-level cache so the Boxicons CSS is only fetched once per page load.
+  let iconCache = null
+
   const ICONS = [
     'bx-file-blank', 'bxs-file', 'bx-file',
     'bx-note', 'bxs-note',
@@ -76,15 +81,40 @@
     'bx-car', 'bxs-car',
     'bx-plane', 'bxs-plane',
     'bx-train', 'bxs-train',
+    'bx-dock-top',
   ]
 
   let { value = '', onSelect, onClose } = $props()
   let query = $state('')
   let customIcon = $state('')
+  let allIcons = $state(ICONS)
+
+  onMount(async () => {
+    if (iconCache) {
+      allIcons = iconCache
+      return
+    }
+    try {
+      const res = await fetch('https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css')
+      const css = await res.text()
+      const matches = []
+      const re = /\.(bx[sl]?-[\w-]+)::before/g
+      let m
+      while ((m = re.exec(css)) !== null) {
+        matches.push(m[1])
+      }
+      if (matches.length > 0) {
+        iconCache = [...new Set(matches)]
+        allIcons = iconCache
+      }
+    } catch {
+      // Network unavailable — keep the curated list
+    }
+  })
 
   const filtered = $derived(
     query.trim()
-      ? ICONS.filter(ic => ic.includes(query.trim().toLowerCase()))
+      ? allIcons.filter(ic => ic.includes(query.trim().toLowerCase()))
       : ICONS
   )
 

@@ -22,6 +22,12 @@ var ErrCircularMove = errors.New("circular move: cannot move a node under its ow
 
 const nowISO = "strftime('%Y-%m-%dT%H:%M:%fZ','now')"
 
+// iconLeaf is the default icon for documents with no children.
+const iconLeaf = "bx-dock-top"
+
+// iconFolder is the default icon for documents that have children.
+const iconFolder = "bxs-folder"
+
 // DocumentStore provides all document persistence operations.
 type DocumentStore struct {
 	db *sql.DB
@@ -30,6 +36,40 @@ type DocumentStore struct {
 // NewDocumentStore wraps db.
 func NewDocumentStore(db *sql.DB) *DocumentStore {
 	return &DocumentStore{db: db}
+}
+
+// syncParentIcon updates the parent's icon based on whether it has remaining
+// non-trashed children. Only modifies icons that were auto-assigned (empty,
+// iconLeaf, or iconFolder) — user-set custom icons are never touched.
+func syncParentIcon(tx *sql.Tx, parentID *int64) error {
+	if parentID == nil {
+		return nil
+	}
+	var nullIcon sql.NullString
+	if err := tx.QueryRow(`SELECT icon FROM documents WHERE id = ?`, *parentID).Scan(&nullIcon); err != nil {
+		return err
+	}
+	currentIcon := nullIcon.String
+	if currentIcon != "" && currentIcon != iconLeaf && currentIcon != iconFolder {
+		return nil // user-set icon, leave it alone
+	}
+	var childCount int
+	if err := tx.QueryRow(
+		`SELECT COUNT(*) FROM documents WHERE parent_id = ? AND trashed_at IS NULL`, *parentID,
+	).Scan(&childCount); err != nil {
+		return err
+	}
+	newIcon := iconLeaf
+	if childCount > 0 {
+		newIcon = iconFolder
+	}
+	if newIcon == currentIcon {
+		return nil
+	}
+	_, err := tx.Exec(
+		`UPDATE documents SET icon = ?, updated_at = `+nowISO+` WHERE id = ?`,
+		newIcon, *parentID)
+	return err
 }
 
 // Create inserts a new document and returns it with server-assigned fields.
@@ -60,15 +100,18 @@ func (s *DocumentStore) Create(parentID *int64, title string) (*model.Document, 
 		}
 
 		res, err := tx.Exec(`
-			INSERT INTO documents (parent_id, title, position, created_at, updated_at)
-			VALUES (?, ?, ?, `+nowISO+`, `+nowISO+`)`,
-			parentArg, title, pos)
+			INSERT INTO documents (parent_id, title, icon, position, created_at, updated_at)
+			VALUES (?, ?, ?, ?, `+nowISO+`, `+nowISO+`)`,
+			parentArg, title, iconLeaf, pos)
 		if err != nil {
 			return fmt.Errorf("insert: %w", err)
 		}
 		id, _ := res.LastInsertId()
 		doc.ID = id
-		return scanDocFromTx(tx, id, &doc)
+		if err := scanDocFromTx(tx, id, &doc); err != nil {
+			return err
+		}
+		return syncParentIcon(tx, parentID)
 	})
 	if err != nil {
 		return nil, err
@@ -157,11 +200,17 @@ func (s *DocumentStore) SoftDelete(id int64) error {
 			}
 			return err
 		}
-		_, err := tx.Exec(`
+		if _, err := tx.Exec(`
 			UPDATE documents
 			SET trashed_at = `+nowISO+`, original_parent_id = parent_id, parent_id = NULL
-			WHERE id = ?`, id)
-		return err
+			WHERE id = ?`, id); err != nil {
+			return err
+		}
+		if parentID.Valid {
+			v := parentID.Int64
+			return syncParentIcon(tx, &v)
+		}
+		return nil
 	})
 }
 
@@ -202,6 +251,10 @@ func (s *DocumentStore) Reorder(id int64, newParentID *int64, beforeID *int64) e
 		return ErrCircularMove
 	}
 	return WithTx(s.db, func(tx *sql.Tx) error {
+		var oldParentID sql.NullInt64
+		if err := tx.QueryRow(`SELECT parent_id FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&oldParentID); err != nil {
+			return err
+		}
 		if newParentID != nil {
 			if err := checkCircular(tx, id, *newParentID); err != nil {
 				return err
@@ -234,7 +287,16 @@ func (s *DocumentStore) Reorder(id int64, newParentID *int64, beforeID *int64) e
 			parentArg, id); err != nil {
 			return err
 		}
-		return reassignPositions(tx, ordered)
+		if err := reassignPositions(tx, ordered); err != nil {
+			return err
+		}
+		if oldParentID.Valid {
+			v := oldParentID.Int64
+			if err := syncParentIcon(tx, &v); err != nil {
+				return err
+			}
+		}
+		return syncParentIcon(tx, newParentID)
 	})
 }
 
@@ -352,8 +414,11 @@ func (s *DocumentStore) Move(id int64, newParentID *int64) error {
 		return ErrCircularMove
 	}
 	return WithTx(s.db, func(tx *sql.Tx) error {
+		var oldParentID sql.NullInt64
+		if err := tx.QueryRow(`SELECT parent_id FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&oldParentID); err != nil {
+			return err
+		}
 		if newParentID != nil {
-			// Verify newParent is not a descendant of id (circular check)
 			if err := checkCircular(tx, id, *newParentID); err != nil {
 				return err
 			}
@@ -362,11 +427,19 @@ func (s *DocumentStore) Move(id int64, newParentID *int64) error {
 		if newParentID != nil {
 			parentArg = *newParentID
 		}
-		_, err := tx.Exec(`
+		if _, err := tx.Exec(`
 			UPDATE documents
 			SET parent_id = ?, updated_at = `+nowISO+`
-			WHERE id = ? AND trashed_at IS NULL`, parentArg, id)
-		return err
+			WHERE id = ? AND trashed_at IS NULL`, parentArg, id); err != nil {
+			return err
+		}
+		if oldParentID.Valid {
+			v := oldParentID.Int64
+			if err := syncParentIcon(tx, &v); err != nil {
+				return err
+			}
+		}
+		return syncParentIcon(tx, newParentID)
 	})
 }
 
