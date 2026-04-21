@@ -9,13 +9,33 @@
     onNavigate,
   } = $props()
 
-  let expanded = $state(true)
+  const STORAGE_KEY = 'pkd-tree-collapsed'
+
+  function loadExpanded() {
+    try {
+      const ids = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+      return !ids.includes(node.id)
+    } catch {
+      return true
+    }
+  }
+
+  function persistExpanded(val) {
+    try {
+      const ids = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'))
+      if (val) ids.delete(node.id)
+      else ids.add(node.id)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]))
+    } catch {}
+  }
+
+  let expanded = $state(loadExpanded())
   let dropZone = $state(null) // 'before' | 'inside' | 'after'
   let linkAdding = $state(false)
 
   $effect(() => {
-    if ($treeExpansionSignal === 'expand') expanded = true
-    else if ($treeExpansionSignal === 'collapse') expanded = false
+    if ($treeExpansionSignal === 'expand') { expanded = true; persistExpanded(true) }
+    else if ($treeExpansionSignal === 'collapse') { expanded = false; persistExpanded(false) }
   })
 
   function navigate() {
@@ -110,7 +130,7 @@
     <!-- Toggle -->
     <button
       class="toggle-btn"
-      onclick={e => { e.stopPropagation(); expanded = !expanded }}
+      onclick={e => { e.stopPropagation(); expanded = !expanded; persistExpanded(expanded) }}
       aria-label={expanded ? 'Recolher' : 'Expandir'}
     >
       {#if node.children?.length}
@@ -148,7 +168,7 @@
   <!-- Children -->
   {#if expanded && node.children?.length}
     <div>
-      {#each node.children as child}
+      {#each node.children as child (child.id)}
         <svelte:self
           node={child}
           {activeId}

@@ -124,7 +124,7 @@
 
   <!-- Document tree (always shown; filtered when query is active) -->
   <nav aria-label={sidebarQuery ? 'Resultados do filtro' : 'Árvore de documentos'} class="tree-nav">
-    {#each $tree as node}
+    {#each $tree as node (node.id)}
       <TreeNode {node} activeId={getActiveId()} {navigate} onNavigate={navigate} />
     {/each}
     {#if $tree.length === 0}
