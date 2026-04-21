@@ -4,7 +4,6 @@
   <p>Base de conhecimento pessoal auto-hospedada, focada em organização, conexões e recuperação rápida de informações.</p>
 
   <p>
-    <img alt="Versão" src="https://img.shields.io/badge/versão-1.0-blue" />
     <img alt="Go 1.25" src="https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white" />
     <img alt="Svelte 5" src="https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white" />
     <img alt="SQLite" src="https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white" />
@@ -26,10 +25,19 @@
 | 📐 **Barra de ferramentas completa** | Tabelas, imagem por URL, alinhamento de parágrafo, destaque de texto com cor personalizável |
 | 🖼️ **Redimensionamento de imagens** | Passe o mouse sobre uma imagem e arraste a alça (canto inferior direito) para redimensioná-la; largura persiste no documento |
 | ⬇️ **Exportar como Markdown** | Botão `⬇ .md` no toolbar converte o documento para Markdown e baixa o arquivo `.md` no browser |
+| 🎯 **Modo foco** | Botão de tela cheia abre o editor em uma janela separada, sem distrações; estado de conteúdo sincronizado ao fechar |
 | 🔗 **Links bidirecionais** | Relacione documentos pelo painel "Notas relacionadas"; backlinks aparecem automaticamente em "Referenciado por" |
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
 | 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
 | 📅 **Calendário** | Navegue pelos documentos pela data de criação |
+
+### Árvore lateral
+
+| | |
+|---|---|
+| 🔎 **Filtro unificado** | Campo de busca na sidebar filtra a árvore em tempo real por título; pesquisa e navegação integradas em um único controle |
+| 🎨 **Ícones Boxicons** | Cada documento tem um ícone Boxicons selecionável; pasta ganha ícone de pasta automaticamente ao receber filhos; folha volta ao ícone padrão ao ficar sem filhos |
+| 🗂️ **Estado persistido** | Nós expandidos e colapsados na árvore são lembrados entre sessões |
 
 ### Associações por documento
 
@@ -72,7 +80,14 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 🌙 **Tema claro / escuro** | Alternância persistida no `localStorage` |
 | 📱 **Responsivo** | Layout mobile-first, alvos de toque ≥ 44 px |
 | 📲 **PWA** | Instalável como app; share target no celular; offline somente leitura |
-| 🧠 **Favicon** | Ícone personalizado do cérebro em todos os tamanhos (16 → 512 px) |
+
+### Integração com Notas
+
+O PKD expõe um endpoint de importação para receber notas do app [Notas](https://github.com/edalcin/notas):
+
+- **Endpoint**: `POST /api/import` — autenticado via Bearer token (sem necessidade de sessão de login)
+- **O que faz**: cria um documento com o título, conteúdo HTML e tags da nota de origem; aplica automaticamente a tag `notas` para identificar a procedência
+- **Ativação**: defina `PKD_IMPORT_TOKEN` no container (ver [Variáveis de ambiente](#variáveis-de-ambiente)); o endpoint é desativado quando a variável está ausente
 
 ---
 
@@ -90,7 +105,7 @@ docker run -d \
   -e PKD_PASSWORD='SUBSTITUA_POR_UMA_SENHA_FORTE' \
   -e PKD_DB_PATH=/data/db/pkd.sqlite \
   -e PKD_ATTACHMENTS_PATH=/data/attachments \
-  ghcr.io/edalcin/pkd:v1.0
+  ghcr.io/edalcin/pkd:latest
 ```
 
 Acesse `http://localhost:8080` e digite a senha mestra.
@@ -108,7 +123,7 @@ Guia completo em português (sem terminal): **[UNRAID.md](UNRAID.md)**
 ```yaml
 services:
   pkd:
-    image: ghcr.io/edalcin/pkd:v1.0
+    image: ghcr.io/edalcin/pkd:latest
     container_name: pkd
     restart: unless-stopped
     ports:
@@ -117,6 +132,8 @@ services:
       PKD_PASSWORD: ${PKD_PASSWORD:?PKD_PASSWORD is required}
       PKD_DB_PATH: /data/db/pkd.sqlite
       PKD_ATTACHMENTS_PATH: /data/attachments
+      # Opcional: ativa importação de notas externas (ex: app Notas)
+      PKD_IMPORT_TOKEN: ${PKD_IMPORT_TOKEN}
     volumes:
       - ./data/db:/data/db
       - ./data/attachments:/data/attachments
@@ -128,8 +145,9 @@ services:
 ```
 
 ```bash
-export PKD_PASSWORD='SUBSTITUA_POR_UMA_SENHA_FORTE'
-docker compose up -d
+# .env — nunca versione este arquivo
+PKD_PASSWORD=senha-forte-aqui
+PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 ```
 
 ---
@@ -147,6 +165,7 @@ docker compose up -d
 | `PKD_MAX_ATTACHMENT_MB` | não | `100` | Tamanho máximo de arquivo anexado (MB) |
 | `PKD_TRUST_PROXY_HEADERS` | não | `0` | Defina como `1` apenas atrás de proxy reverso confiável |
 | `PKD_BASE_URL` | não | *(host da request)* | URL pública base para links de compartilhamento (ex: `https://pkd.exemplo.com/`) |
+| `PKD_IMPORT_TOKEN` | não | *(desativado)* | Token secreto para o endpoint `POST /api/import`. Se vazio, o endpoint não existe. Gere com `openssl rand -hex 32` |
 
 ---
 
@@ -161,6 +180,14 @@ Use o campo **"Buscar nota para relacionar…"** na coluna _Notas relacionadas_ 
 Digite no campo `+ tag` no cabeçalho do documento. Ao digitar, um dropdown sugere as tags já existentes no sistema — selecione ou continue digitando para criar uma nova. Confirme com `Enter` ou `,`.
 
 Para personalizar a cor de uma tag, acesse **Administração → Tags**, clique no seletor de cor ao lado da tag desejada e confirme. A cor propaga imediatamente para os chips de tag na sidebar e no editor.
+
+### Ícones dos documentos
+
+Cada documento na árvore lateral possui um ícone [Boxicons](https://boxicons.com/) selecionável. Clique no ícone ao lado do título para abrir o seletor — há busca dinâmica por nome. Documentos com filhos ganham automaticamente um ícone de pasta; ao perder todos os filhos, voltam ao ícone padrão.
+
+### Modo foco
+
+Clique no botão de modo foco (⛶) na barra de ferramentas. O editor abre em uma janela separada sem sidebar, tags ou cabeçalho — apenas o conteúdo. Ao fechar a janela, o conteúdo editado é sincronizado de volta ao documento principal.
 
 ### Sub-documentos
 
@@ -183,14 +210,6 @@ Insira uma imagem no editor (upload, URL ou colar). Passe o mouse sobre ela — 
 ### Exportar como Markdown
 
 Clique no botão **⬇ .md** na barra de ferramentas. O browser baixa imediatamente o arquivo `<título>.md` com o conteúdo do documento convertido para Markdown (headings `#`, código em triple-backtick, links `[[Documento]]` preservados).
-
-### Destaque de texto
-
-Na barra de ferramentas do editor, o botão de destaque (🖊) aplica cor de fundo ao texto selecionado. Clique no quadrado de cor ao lado para escolher a cor antes de aplicar. O texto destacado mantém legibilidade tanto no tema claro quanto no escuro.
-
-### Links externos
-
-Na coluna _Links externos_ do rodapé, adicione URLs com título opcional. No painel de **Administração > Links**, teste a validade de todos os links externos cadastrados e exclua os quebrados em lote.
 
 ### Graph View
 
@@ -238,12 +257,24 @@ go run ./cmd/pkd
 
 ---
 
+## CI/CD
+
+Todo push para o branch `main` dispara o workflow do GitHub Actions que:
+1. Executa `go test ./...`
+2. Builda a imagem Docker (linux/amd64)
+3. Publica em `ghcr.io/edalcin/pkd:latest` e `ghcr.io/edalcin/pkd:<sha>`
+
+Nenhuma credencial é armazenada no repositório — o workflow usa o `GITHUB_TOKEN` automático do GitHub Actions.
+
+---
+
 ## Arquitetura
 
 ```mermaid
 graph TD
     User(["👤 Usuário"]) -->|"HTTPS / Browser"| App
     Mobile(["📱 Mobile OS"]) -->|"PWA Share Target"| App
+    Notas(["📝 Notas app"]) -->|"Bearer token\nPOST /api/import"| App
 
     subgraph Container ["🐳 Docker Container"]
         App["⚙️ Go HTTP Server\n(chi router · handlers · middleware)"]
@@ -284,6 +315,25 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-04-21
+
+**Integração com Notas**
+- Endpoint `POST /api/import` autenticado via Bearer token (`PKD_IMPORT_TOKEN`); cria documento com conteúdo HTML, tags da nota de origem e tag `notas`; desativado quando a variável não está configurada
+- CSRF middleware atualizado para ignorar requisições com `Authorization: Bearer` — chamadas server-to-server não são vulneráveis a CSRF e não precisam de cookie
+
+**Árvore lateral**
+- Filtro unificado: campo de busca integrado à árvore, substituindo os dois controles anteriores (busca e filtro separados)
+- Ícones Boxicons para cada documento: seletor dinâmico com busca por nome; ícone de pasta atribuído automaticamente a documentos com filhos
+- Estado expandido/colapsado da árvore persistido no `localStorage` entre sessões
+
+**Editor**
+- Modo foco abre o editor em uma janela separada (popup) sem a interface principal; conteúdo sincronizado de volta ao fechar
+
+**CI/CD**
+- Workflow GitHub Actions adicionado: build e push automático de `ghcr.io/edalcin/pkd:latest` a cada push no `main`
+
+---
 
 ### v1.0 — 2026-04-19
 
