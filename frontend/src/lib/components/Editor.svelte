@@ -837,7 +837,7 @@
               onkeydown={e => e.key === 'Enter' && (window.location.hash = `/doc/${child.id}`)}
             >
               <div class="child-card-title">
-                {#if child.icon}<span class="child-card-icon">{child.icon}</span>{/if}
+                <i class="bx {child.icon || 'bx-file-blank'} child-card-icon"></i>
                 <span class="child-card-name">{child.title || 'Sem título'}</span>
               </div>
               {#if child.body_text}
