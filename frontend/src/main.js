@@ -1,3 +1,4 @@
+import 'boxicons/css/boxicons.min.css'
 import './styles/app.css'
 import App from './App.svelte'
 import { mount } from 'svelte'

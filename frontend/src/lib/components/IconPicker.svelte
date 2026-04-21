@@ -1,12 +1,10 @@
 <script module>
-  // True module-level cache: survives component unmount/remount within the page.
-  let iconCache = null
+  import { BOXICON_NAMES } from '../utils/boxicons-names.js'
 </script>
 
 <script>
-  import { onMount } from 'svelte'
-
-  const ICONS = [
+  const CURATED = [
+    'bx-dock-top',
     'bx-file-blank', 'bxs-file', 'bx-file',
     'bx-note', 'bxs-note',
     'bx-clipboard', 'bxs-clipboard',
@@ -72,52 +70,23 @@
     'bx-trophy', 'bxs-trophy',
     'bx-gift', 'bxs-gift',
     'bx-restaurant',
-    'bx-dish',
-    'bx-basket', 'bxs-basket',
     'bx-dollar-circle', 'bxs-dollar-circle',
     'bx-trending-up',
-    'bx-paint', 'bxs-paint',
-    'bx-run',
-    'bx-walk',
-    'bx-dumbbell',
     'bx-car', 'bxs-car',
     'bx-plane', 'bxs-plane',
     'bx-train', 'bxs-train',
-    'bx-dock-top',
   ]
 
   let { value = '', onSelect, onClose } = $props()
   let query = $state('')
   let customIcon = $state('')
-  let allIcons = $state(ICONS)
 
-  onMount(async () => {
-    if (iconCache) {
-      allIcons = iconCache
-      return
-    }
-    try {
-      const res = await fetch('https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css')
-      const css = await res.text()
-      const matches = []
-      const re = /\.(bx[sl]?-[\w-]+):before/g
-      let m
-      while ((m = re.exec(css)) !== null) {
-        matches.push(m[1])
-      }
-      if (matches.length > 0) {
-        iconCache = [...new Set(matches)]
-        allIcons = iconCache
-      }
-    } catch {
-      // Network unavailable — keep the curated list
-    }
-  })
+  const searchList = BOXICON_NAMES.length > 0 ? BOXICON_NAMES : CURATED
 
   const filtered = $derived(
     query.trim()
-      ? allIcons.filter(ic => ic.includes(query.trim().toLowerCase()))
-      : ICONS
+      ? searchList.filter(ic => ic.includes(query.trim().toLowerCase()))
+      : CURATED
   )
 
   function select(icon) {
@@ -141,7 +110,7 @@
       <input
         class="icon-search"
         type="text"
-        placeholder="Buscar ícone…"
+        placeholder="Buscar em {searchList.length} ícones…"
         bind:value={query}
         autofocus
         onkeydown={e => e.key === 'Escape' && onClose()}

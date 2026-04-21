@@ -26,6 +26,7 @@
     "@tiptap/extension-text-align": "^2.27.2",
     "@tiptap/starter-kit": "^2.11.0",
     "@tiptap/suggestion": "^2.11.0",
+    "boxicons": "^2.1.4",
     "d3-drag": "^3.0.0",
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",

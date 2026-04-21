@@ -99,5 +99,22 @@ func Open(dbPath string) (*sql.DB, error) {
 		}
 	}
 
+	// Data migration: assign default icons to existing documents that have none.
+	// Documents with children get the folder icon; leaves get the leaf icon.
+	// Runs at every startup but only touches rows with empty/null icon.
+	if _, err := db.Exec(`
+		UPDATE documents
+		SET icon = CASE
+			WHEN (SELECT COUNT(*) FROM documents c
+			      WHERE c.parent_id = documents.id AND c.trashed_at IS NULL) > 0
+			THEN 'bxs-folder'
+			ELSE 'bx-dock-top'
+		END
+		WHERE trashed_at IS NULL AND (icon IS NULL OR icon = '')
+	`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open icon data migration: %w", err)
+	}
+
 	return db, nil
 }
