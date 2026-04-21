@@ -3,16 +3,13 @@
   import TreeNode from './TreeNode.svelte'
   import { tree, loadTree, createDoc, sortTree, treeExpansionSignal, favoriteFilter } from '../stores/documents.js'
   import { tags, loadTags } from '../stores/tags.js'
-  import { apiGet } from '../api.js'
 
   let { onNavigate } = $props()
 
   let selectedTags = $state([])
   let currentHash = $state(window.location.hash)
   let sidebarQuery = $state('')
-  let sidebarResults = $state([])
-  let sidebarSearching = $state(false)
-  let searchTimer = null
+  let filterTimer = null
 
   onMount(() => {
     loadTree()
@@ -31,12 +28,12 @@
     } else {
       selectedTags = [...selectedTags, name]
     }
-    loadTree(selectedTags)
+    loadTree(selectedTags, $favoriteFilter, sidebarQuery)
   }
 
   async function handleNewRoot() {
     const doc = await createDoc(null)
-    onNavigate?.(doc.id)
+    navigate(doc.id)
   }
 
   function navigate(id) {
@@ -44,34 +41,18 @@
     onNavigate?.(id)
   }
 
-  function onSearchInput(e) {
+  function onFilterInput(e) {
     sidebarQuery = e.target.value
-    clearTimeout(searchTimer)
-    if (!sidebarQuery.trim()) {
-      sidebarResults = []
-      return
-    }
-    searchTimer = setTimeout(async () => {
-      sidebarSearching = true
-      try {
-        sidebarResults = await apiGet(`/api/search?q=${encodeURIComponent(sidebarQuery)}`)
-      } catch {
-        sidebarResults = []
-      } finally {
-        sidebarSearching = false
-      }
+    clearTimeout(filterTimer)
+    filterTimer = setTimeout(() => {
+      loadTree(selectedTags, $favoriteFilter, sidebarQuery)
     }, 200)
   }
 
-  function clearSidebarSearch() {
+  function clearFilter() {
     sidebarQuery = ''
-    sidebarResults = []
-    clearTimeout(searchTimer)
-  }
-
-  function selectResult(id) {
-    navigate(id)
-    clearSidebarSearch()
+    clearTimeout(filterTimer)
+    loadTree(selectedTags, $favoriteFilter, '')
   }
 
   function expandAll() {
@@ -86,7 +67,7 @@
 </script>
 
 <div class="sidebar-inner">
-  <!-- Search + expand/collapse toolbar -->
+  <!-- Filter + expand/collapse toolbar -->
   <div class="sidebar-toolbar">
     <div class="search-wrap">
       <input
@@ -95,11 +76,11 @@
         placeholder="Filtrar documentos…"
         autocomplete="off"
         value={sidebarQuery}
-        oninput={onSearchInput}
+        oninput={onFilterInput}
         aria-label="Filtrar documentos"
       />
       {#if sidebarQuery}
-        <button class="clear-btn" onclick={clearSidebarSearch} aria-label="Limpar">×</button>
+        <button class="clear-btn" onclick={clearFilter} aria-label="Limpar">×</button>
       {/if}
     </div>
     {#if !sidebarQuery}
@@ -107,11 +88,11 @@
       <button class="expand-btn" onclick={collapseAll} title="Recolher tudo" aria-label="Recolher tudo">▸</button>
       <button class="expand-btn" onclick={() => sortTree('alpha')} title="Ordenar A-Z">A-Z</button>
       <button class="expand-btn" onclick={() => sortTree('created')} title="Ordenar por data de criação">📅</button>
-      <button class="expand-btn {$favoriteFilter ? 'fav-active' : ''}" onclick={() => loadTree(selectedTags, !$favoriteFilter)} title={$favoriteFilter ? 'Mostrar todos' : 'Somente favoritos'} aria-label="Filtrar favoritos">⭐</button>
+      <button class="expand-btn {$favoriteFilter ? 'fav-active' : ''}" onclick={() => loadTree(selectedTags, !$favoriteFilter, sidebarQuery)} title={$favoriteFilter ? 'Mostrar todos' : 'Somente favoritos'} aria-label="Filtrar favoritos">⭐</button>
     {/if}
   </div>
 
-  <!-- Tag filters (hidden while searching) -->
+  <!-- Tag filters (hidden while text filter is active) -->
   {#if !sidebarQuery && $tags.length > 0}
     <div class="tag-filter" aria-label="Filtrar por tag">
       {#each $tags as tag}
@@ -133,38 +114,27 @@
     </div>
   {/if}
 
-  <!-- Document tree or search results -->
+  <!-- Filter active banner -->
   {#if sidebarQuery}
-    <nav aria-label="Resultados da busca" class="tree-nav">
-      {#if sidebarSearching}
-        <div class="tree-empty"><div class="spinner" style="width:16px;height:16px;margin:auto"></div></div>
-      {:else if sidebarResults.length === 0}
+    <div class="filter-banner">
+      <span class="filter-label">"{sidebarQuery}"</span>
+      <button class="filter-clear-link" onclick={clearFilter}>Todos os documentos</button>
+    </div>
+  {/if}
+
+  <!-- Document tree (always shown; filtered when query is active) -->
+  <nav aria-label={sidebarQuery ? 'Resultados do filtro' : 'Árvore de documentos'} class="tree-nav">
+    {#each $tree as node}
+      <TreeNode {node} activeId={getActiveId()} {navigate} onNavigate={navigate} />
+    {/each}
+    {#if $tree.length === 0}
+      {#if sidebarQuery}
         <p class="tree-empty">Sem resultados para "{sidebarQuery}"</p>
       {:else}
-        {#each sidebarResults as result}
-          <div
-            class="tree-item search-hit {result.id === getActiveId() ? 'active' : ''}"
-            onclick={() => selectResult(result.id)}
-            role="button"
-            tabindex="0"
-            onkeydown={e => e.key === 'Enter' && selectResult(result.id)}
-          >
-            <i class="bx bx-file-blank icon"></i>
-            <span class="label">{result.title || 'Sem título'}</span>
-          </div>
-        {/each}
-      {/if}
-    </nav>
-  {:else}
-    <nav aria-label="Árvore de documentos" class="tree-nav">
-      {#each $tree as node}
-        <TreeNode {node} activeId={getActiveId()} {navigate} onNavigate={navigate} />
-      {/each}
-      {#if $tree.length === 0}
         <p class="tree-empty">Nenhum documento ainda.</p>
       {/if}
-    </nav>
-  {/if}
+    {/if}
+  </nav>
 
   <!-- New root document -->
   <div class="new-root">
@@ -237,6 +207,38 @@
     border-bottom: 1px solid var(--border);
   }
 
+  .filter-banner {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem .75rem;
+    background: var(--bg-hover);
+    border-bottom: 1px solid var(--border);
+    font-size: .75rem;
+  }
+
+  .filter-label {
+    flex: 1;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-style: italic;
+  }
+
+  .filter-clear-link {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: .75rem;
+    padding: 0;
+    text-decoration: underline;
+  }
+
+  .filter-clear-link:hover { opacity: .8; }
+
   .tree-nav { flex: 1; overflow-y: auto; }
 
   .tree-empty {
@@ -244,22 +246,6 @@
     color: var(--text-muted);
     font-size: .875rem;
   }
-
-  .search-hit {
-    padding: .4rem .75rem;
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    cursor: pointer;
-    font-size: .875rem;
-    border-radius: var(--radius);
-    margin: .1rem .25rem;
-  }
-
-  .search-hit .icon { flex-shrink: 0; }
-  .search-hit .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .search-hit:hover { background: var(--bg-hover); }
-  .search-hit.active { background: var(--bg-active); color: var(--accent); font-weight: 500; }
 
   .new-root {
     border-top: 1px solid var(--border);

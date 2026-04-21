@@ -16,6 +16,9 @@ export const tagFilter = writable([])
 /** Whether the tree is filtered to show only favorites. */
 export const favoriteFilter = writable(false)
 
+/** Text filter applied to the tree (searches title, body, external link titles). */
+export const textFilter = writable('')
+
 /** Whether any data is loading. */
 export const loading = writable(false)
 
@@ -25,13 +28,15 @@ export const treeExpansionSignal = writable(null)
 /** Incremented whenever a link is created from the sidebar, so Editor reloads. */
 export const linksRefreshSignal = writable(0)
 
-/** Load the document tree, optionally filtered by tags and/or favorites. */
-export async function loadTree(tags = get(tagFilter), favorites = get(favoriteFilter)) {
+/** Load the document tree, optionally filtered by tags, favorites, and/or text query. */
+export async function loadTree(tags = get(tagFilter), favorites = get(favoriteFilter), q = get(textFilter)) {
   tagFilter.set(tags)
   favoriteFilter.set(favorites)
+  textFilter.set(q)
   const params = new URLSearchParams()
   tags.forEach(t => params.append('tag', t))
   if (favorites) params.set('favorite', '1')
+  if (q) params.set('q', q)
   const qs = params.toString()
   tree.set(await apiGet('/api/tree' + (qs ? '?' + qs : '')))
 }

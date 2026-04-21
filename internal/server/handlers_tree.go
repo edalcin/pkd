@@ -10,8 +10,9 @@ func (s *Server) handleTree() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tagFilter := r.URL.Query()["tag"]
 		favoriteOnly := r.URL.Query().Get("favorite") == "1"
+		q := r.URL.Query().Get("q")
 
-		docs, err := s.docs.ListTree(tagFilter, favoriteOnly)
+		docs, err := s.docs.ListTree(tagFilter, favoriteOnly, q)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return

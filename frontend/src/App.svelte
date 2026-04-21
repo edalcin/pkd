@@ -9,7 +9,6 @@
   import GraphView from './lib/components/GraphView.svelte'
   import Calendar from './lib/components/Calendar.svelte'
   import Admin from './lib/components/Admin.svelte'
-  import Search from './lib/components/Search.svelte'
   import ShareDialog from './lib/components/ShareDialog.svelte'
 
   // ─── Routing ─────────────────────────────────────────────
@@ -19,7 +18,6 @@
   function getRoute() {
     if (hash.startsWith('/focus/')) return { view: 'focus', id: hash.split('/')[2] }
     if (hash.startsWith('/doc/')) return { view: 'doc', id: hash.split('/')[2] }
-    if (hash.startsWith('/search')) return { view: 'search' }
     if (hash === '/graph') return { view: 'graph' }
     if (hash === '/calendar') return { view: 'calendar' }
     if (hash === '/admin') return { view: 'admin' }
@@ -115,9 +113,6 @@
 
       <!-- Logo / home link -->
       <a href="#/" class="app-logo" onclick={closeSidebar}>PKD</a>
-
-      <!-- Search -->
-      <Search />
 
       <!-- Nav icons -->
       <a href="#/graph" class="icon-btn" title="Grafo" onclick={closeSidebar}>🕸️</a>

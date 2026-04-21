@@ -445,9 +445,13 @@ func (s *DocumentStore) Move(id int64, newParentID *int64) error {
 
 // ListTree returns all non-trashed documents. If tagFilter is non-empty, only
 // documents that carry ALL specified tags are included. If favoriteOnly is true,
-// only documents with is_favorite = 1 are returned.
-// The returned slice is a flat list; callers build the tree structure.
-func (s *DocumentStore) ListTree(tagFilter []string, favoriteOnly bool) ([]*model.Document, error) {
+// only documents with is_favorite = 1 are returned. If q is non-empty, only
+// documents whose title, body_text, or associated external link titles match are
+// returned. The returned slice is a flat list; callers build the tree structure.
+func (s *DocumentStore) ListTree(tagFilter []string, favoriteOnly bool, q string) ([]*model.Document, error) {
+	if q != "" {
+		return s.listByQuery(tagFilter, favoriteOnly, q)
+	}
 	if len(tagFilter) > 0 {
 		return s.listByTags(tagFilter, favoriteOnly)
 	}
@@ -460,6 +464,43 @@ func (s *DocumentStore) ListTree(tagFilter []string, favoriteOnly bool) ([]*mode
 		FROM documents
 		WHERE trashed_at IS NULL` + extra + `
 		ORDER BY position ASC, id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDocRows(rows)
+}
+
+// listByQuery returns documents matching q across title, body_text, and external
+// link titles. Optional tagFilter and favoriteOnly further narrow the results.
+func (s *DocumentStore) listByQuery(tagFilter []string, favoriteOnly bool, q string) ([]*model.Document, error) {
+	pattern := "%" + q + "%"
+	cond := `d.trashed_at IS NULL AND (d.title LIKE ? OR d.body_text LIKE ? OR EXISTS (
+		SELECT 1 FROM document_urls u WHERE u.document_id = d.id AND u.title LIKE ?
+	))`
+	args := []interface{}{pattern, pattern, pattern}
+	if favoriteOnly {
+		cond += " AND d.is_favorite = 1"
+	}
+	if len(tagFilter) > 0 {
+		ph := ""
+		for i, t := range tagFilter {
+			if i > 0 {
+				ph += ","
+			}
+			ph += "?"
+			args = append(args, t)
+		}
+		cond += fmt.Sprintf(` AND d.id IN (
+			SELECT dt.document_id FROM document_tags dt JOIN tags t ON t.id = dt.tag_id
+			WHERE t.name IN (%s) GROUP BY dt.document_id HAVING COUNT(DISTINCT t.id) = %d
+		)`, ph, len(tagFilter))
+	}
+	rows, err := s.db.Query(`
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.created_at, d.updated_at
+		FROM documents d
+		WHERE `+cond+`
+		ORDER BY d.position ASC, d.id ASC`, args...)
 	if err != nil {
 		return nil, err
 	}
