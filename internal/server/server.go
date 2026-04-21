@@ -84,6 +84,12 @@ func (s *Server) buildRouter() http.Handler {
 	// Public share view (unauthenticated but stricter CSP)
 	r.With(PublicShareCSP).Get("/public/{token}", s.handlePublicShare())
 
+	// Token-authenticated import endpoint for external apps (e.g. notas).
+	// Disabled when PKD_IMPORT_TOKEN is not set.
+	if s.cfg.ImportToken != "" {
+		r.With(ImportTokenAuth(s.cfg.ImportToken)).Post("/api/import", s.handleImport())
+	}
+
 	// Static assets (unauthenticated).
 	// Svelte build outputs to /assets/ with hashed filenames; legacy paths kept.
 	sf := staticFileServer()

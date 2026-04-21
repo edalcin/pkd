@@ -26,6 +26,10 @@ type Config struct {
 	// (e.g. "https://pkd.dalc.in/"). If empty, the server derives it from the
 	// incoming request's Host header, which may be incorrect behind a proxy.
 	BaseURL string
+
+	// ImportToken is the pre-shared secret for the /api/import endpoint used by
+	// external apps (e.g. notas). If empty, the endpoint is disabled.
+	ImportToken string
 }
 
 // Load reads configuration from environment variables. It returns an error
@@ -97,6 +101,10 @@ func Load() (*Config, error) {
 	if v := os.Getenv("PKD_BASE_URL"); v != "" {
 		// Ensure it ends with a trailing slash for consistent URL construction
 		cfg.BaseURL = strings.TrimRight(v, "/") + "/"
+	}
+
+	if v := os.Getenv("PKD_IMPORT_TOKEN"); v != "" {
+		cfg.ImportToken = v
 	}
 
 	return cfg, nil
