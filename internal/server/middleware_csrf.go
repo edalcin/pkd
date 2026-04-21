@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/edalcin/pkd/internal/security"
@@ -19,6 +20,13 @@ const (
 // A mismatch returns 403.
 func CSRF(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Bearer token requests (server-to-server API calls) are not subject to
+		// CSRF because they cannot be triggered by a cross-origin page passively
+		// — the caller must explicitly know and set the token.
+		if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+			next.ServeHTTP(w, r)
+			return
+		}
 		switch r.Method {
 		case http.MethodGet, http.MethodHead, http.MethodOptions:
 			ensureCSRFCookie(w, r)
