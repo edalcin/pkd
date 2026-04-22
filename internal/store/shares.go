@@ -153,6 +153,20 @@ func (s *ShareStore) ListAllActive() ([]*model.ShareWithDoc, error) {
 	return links, rows.Err()
 }
 
+// GetActiveShareForDocument returns the plaintext token of an existing active
+// share for docID, or empty string if none exists. It never creates a share.
+func (s *ShareStore) GetActiveShareForDocument(docID int64) (string, error) {
+	var tok string
+	err := s.db.QueryRow(`
+		SELECT token_plain FROM share_links
+		WHERE document_id = ? AND revoked_at IS NULL AND token_plain != ''
+		ORDER BY created_at DESC LIMIT 1`, docID).Scan(&tok)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return tok, err
+}
+
 // GetOrCreateActiveShare returns the plaintext token for an existing active
 // share on docID, or creates a new one if none exists.
 func (s *ShareStore) GetOrCreateActiveShare(docID int64) (plaintext string, shareID int64, err error) {

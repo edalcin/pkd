@@ -166,13 +166,14 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 			})
 		}
 
-		// Resolve parent link if this document has a parent.
+		// Resolve parent link only if the parent already has an active share.
+		// Never auto-create a share for a parent document.
 		var parentTitle, parentURL string
 		if doc.ParentID != nil {
 			if parent, perr := s.docs.GetByID(*doc.ParentID); perr == nil {
-				if parentToken, _, perr := s.shares.GetOrCreateActiveShare(parent.ID); perr == nil {
+				if tok, perr := s.shares.GetActiveShareForDocument(parent.ID); perr == nil && tok != "" {
 					parentTitle = parent.Title
-					parentURL = base + "public/" + parentToken
+					parentURL = base + "public/" + tok
 				}
 			}
 		}
