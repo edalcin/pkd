@@ -1,5 +1,5 @@
 <script>
-  import { createDoc, trashDoc, moveDoc, reorderDoc, findNextSiblingId, treeExpansionSignal, linksRefreshSignal, toggleFavorite } from '../stores/documents.js'
+  import { createDoc, trashDoc, moveDoc, reorderDoc, findNextSiblingId, treeExpansionSignal, linksRefreshSignal, toggleFavorite, revealActiveSignal } from '../stores/documents.js'
   import { apiPost } from '../api.js'
 
   let {
@@ -32,10 +32,32 @@
   let expanded = $state(loadExpanded())
   let dropZone = $state(null) // 'before' | 'inside' | 'after'
   let linkAdding = $state(false)
+  let itemEl
+
+  function containsActiveId(children, id) {
+    for (const c of children ?? []) {
+      if (c.id === id || containsActiveId(c.children, id)) return true
+    }
+    return false
+  }
 
   $effect(() => {
     if ($treeExpansionSignal === 'expand') { expanded = true; persistExpanded(true) }
     else if ($treeExpansionSignal === 'collapse') { expanded = false; persistExpanded(false) }
+  })
+
+  // When filter is cleared, expand ancestors of the active doc and scroll it into view
+  $effect(() => {
+    if ($revealActiveSignal && activeId && node.children?.length && containsActiveId(node.children, activeId)) {
+      expanded = true
+      persistExpanded(true)
+    }
+  })
+
+  $effect(() => {
+    if ($revealActiveSignal && activeId === node.id && itemEl) {
+      itemEl.scrollIntoView({ block: 'nearest' })
+    }
   })
 
   function navigate() {
@@ -115,6 +137,7 @@
 <div>
   <!-- Row -->
   <div
+    bind:this={itemEl}
     class="tree-item {node.id === activeId ? 'active' : ''} {dropZone === 'inside' ? 'drag-over' : ''} {dropZone === 'before' ? 'drop-before' : ''} {dropZone === 'after' ? 'drop-after' : ''}"
     style="padding-left: {0.4 + depth * 0.75}rem"
     onclick={navigate}

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { authenticated, checkSession, logout } from './lib/stores/auth.js'
-  import { loadTree } from './lib/stores/documents.js'
+  import { loadTree, textFilter, revealActiveSignal } from './lib/stores/documents.js'
   import { loadTags } from './lib/stores/tags.js'
   import LoginPage from './lib/components/LoginPage.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
@@ -63,6 +63,23 @@
     document.removeEventListener('mouseup', onResizeEnd)
   }
 
+  // ─── Document filter ──────────────────────────────────────
+  let filterTimer = null
+
+  function onFilterInput(e) {
+    const val = e.target.value
+    textFilter.set(val)
+    clearTimeout(filterTimer)
+    filterTimer = setTimeout(() => loadTree(undefined, undefined, val), 200)
+  }
+
+  async function clearFilter() {
+    clearTimeout(filterTimer)
+    textFilter.set('')
+    await loadTree(undefined, undefined, '')
+    revealActiveSignal.update(n => n + 1)
+  }
+
   // ─── Share dialog ─────────────────────────────────────────
   let shareDocId = $state(null)
   function openShare(id) { shareDocId = id }
@@ -114,6 +131,17 @@
       <!-- Logo / home link -->
       <a href="#/" class="app-logo" onclick={closeSidebar}>PKD</a>
 
+      <!-- Document filter -->
+      <input
+        class="topbar-search"
+        type="search"
+        placeholder="Filtrar…"
+        autocomplete="off"
+        value={$textFilter}
+        oninput={onFilterInput}
+        aria-label="Filtrar documentos"
+      />
+
       <!-- Nav icons -->
       <a href="#/graph" class="icon-btn" title="Grafo" onclick={closeSidebar}>🕸️</a>
       <a href="#/calendar" class="icon-btn" title="Calendário" onclick={closeSidebar}>📅</a>
@@ -137,7 +165,7 @@
     <div class="app-layout">
       <!-- Sidebar with mobile overlay -->
       <aside class="sidebar {sidebarOpen ? 'open' : ''}" style="width:{sidebarWidth}px" aria-label="Navegação">
-        <Sidebar onNavigate={() => sidebarOpen = false} />
+        <Sidebar onNavigate={() => sidebarOpen = false} onClearFilter={clearFilter} />
       </aside>
       <!-- Drag handle for desktop resize -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -191,6 +219,19 @@
 {/if}
 
 <style>
+  .topbar-search {
+    flex: 1;
+    min-width: 0;
+    max-width: 200px;
+    padding: .2rem .45rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: .8rem;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .topbar-search:focus { outline: none; border-color: var(--accent); }
+
   .focus-layout {
     width: 100dvw;
     height: 100dvh;

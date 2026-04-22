@@ -25,6 +25,9 @@ export const loading = writable(false)
 /** Controls expand/collapse of all tree nodes. 'expand' | 'collapse' | null */
 export const treeExpansionSignal = writable(null)
 
+/** Incremented when the text filter is cleared, to reveal and scroll to the active node. */
+export const revealActiveSignal = writable(0)
+
 /** Incremented whenever a link is created from the sidebar, so Editor reloads. */
 export const linksRefreshSignal = writable(0)
 
