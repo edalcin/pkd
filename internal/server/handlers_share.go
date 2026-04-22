@@ -31,6 +31,8 @@ type sharePageData struct {
 	Date         string
 	Body         template.HTML // pre-sanitized by SanitizePublicHTML — safe to skip escaping
 	Children     []shareChildData
+	ParentTitle  string
+	ParentURL    string
 }
 
 var sharePageTmpl = template.Must(template.New("share").Parse(sharePageHTML))
@@ -164,6 +166,17 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 			})
 		}
 
+		// Resolve parent link if this document has a parent.
+		var parentTitle, parentURL string
+		if doc.ParentID != nil {
+			if parent, perr := s.docs.GetByID(*doc.ParentID); perr == nil {
+				if parentToken, _, perr := s.shares.GetOrCreateActiveShare(parent.ID); perr == nil {
+					parentTitle = parent.Title
+					parentURL = base + "public/" + parentToken
+				}
+			}
+		}
+
 		data := sharePageData{
 			Title:        doc.Title,
 			Icon:         icon,
@@ -172,6 +185,8 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 			Date:         date,
 			Body:         template.HTML(security.SanitizePublicHTML(doc.BodyHTML)),
 			Children:     childData,
+			ParentTitle:  parentTitle,
+			ParentURL:    parentURL,
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -327,19 +342,25 @@ const sharePageHTML = `<!DOCTYPE html>
     .prose td { border-bottom: 1px solid var(--border); padding: 6px 10px; vertical-align: top; }
     .prose tbody tr:last-child td { border-bottom: none; }
 
+    /* ── Parent breadcrumb ───────────────────── */
+    .parent-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      margin-bottom: 16px;
+      transition: color 0.15s;
+    }
+    .parent-back:hover { color: var(--accent); }
+    .parent-back .bx { font-size: 1.1em; }
+
     /* ── Children list ───────────────────────── */
     .children-section {
       margin-top: 20px;
       padding-top: 18px;
       border-top: 1px solid var(--border);
-    }
-    .children-label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: var(--muted);
-      margin-bottom: 10px;
     }
     .children-list {
       list-style: none;
@@ -375,6 +396,12 @@ const sharePageHTML = `<!DOCTYPE html>
       <time class="note-date">{{.Date}}</time>
     </header>
 
+    {{if .ParentURL}}
+    <a href="{{.ParentURL}}" class="parent-back">
+      <i class="bx bx-arrow-back"></i> {{.ParentTitle}}
+    </a>
+    {{end}}
+
     <article class="note-card">
       <header class="note-header">
         <div class="note-meta">
@@ -390,7 +417,6 @@ const sharePageHTML = `<!DOCTYPE html>
       <div class="prose">{{.Body}}</div>
       {{if .Children}}
       <div class="children-section">
-        <p class="children-label">Documentos relacionados</p>
         <ul class="children-list">
           {{range .Children}}
           <li>
