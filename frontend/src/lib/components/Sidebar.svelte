@@ -1,13 +1,16 @@
 <script>
   import { onMount } from 'svelte'
   import TreeNode from './TreeNode.svelte'
-  import { tree, loadTree, createDoc, sortTree, treeExpansionSignal, favoriteFilter, textFilter } from '../stores/documents.js'
+  import { tree, loadTree, createDoc, sortTree, treeExpansionSignal, tagFilter, favoriteFilter, textFilter } from '../stores/documents.js'
   import { tags, loadTags } from '../stores/tags.js'
 
   let { onNavigate, onClearFilter } = $props()
 
   let selectedTags = $state([])
   let currentHash = $state(window.location.hash)
+
+  // Keep selectedTags in sync when tagFilter is reset externally (e.g. topbar reset button)
+  $effect(() => { selectedTags = [...$tagFilter] })
 
   onMount(() => {
     loadTree()

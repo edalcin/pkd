@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { authenticated, checkSession, logout } from './lib/stores/auth.js'
-  import { loadTree, textFilter, revealActiveSignal } from './lib/stores/documents.js'
+  import { loadTree, textFilter, tagFilter, favoriteFilter, revealActiveSignal } from './lib/stores/documents.js'
   import { loadTags } from './lib/stores/tags.js'
   import LoginPage from './lib/components/LoginPage.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
@@ -66,6 +66,8 @@
   // ─── Document filter ──────────────────────────────────────
   let filterTimer = null
 
+  const hasActiveFilters = $derived($textFilter.length > 0 || $tagFilter.length > 0 || $favoriteFilter)
+
   function onFilterInput(e) {
     const val = e.target.value
     textFilter.set(val)
@@ -78,6 +80,12 @@
     textFilter.set('')
     await loadTree(undefined, undefined, '')
     revealActiveSignal.update(n => n + 1)
+  }
+
+  async function resetFilters() {
+    clearTimeout(filterTimer)
+    textFilter.set('')
+    await loadTree([], false, '')
   }
 
   // ─── Share dialog ─────────────────────────────────────────
@@ -141,6 +149,9 @@
         oninput={onFilterInput}
         aria-label="Filtrar documentos"
       />
+      {#if hasActiveFilters}
+        <button class="topbar-reset-btn" onclick={resetFilters} title="Limpar todos os filtros" aria-label="Limpar todos os filtros">×</button>
+      {/if}
 
       <!-- Nav icons -->
       <a href="#/graph" class="icon-btn" title="Grafo" onclick={closeSidebar}>🕸️</a>
@@ -231,6 +242,22 @@
     color: var(--text);
   }
   .topbar-search:focus { outline: none; border-color: var(--accent); }
+
+  .topbar-reset-btn {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius);
+    font-size: .95rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    margin-left: -.25rem;
+  }
+  .topbar-reset-btn:hover { background: var(--bg-active); color: var(--accent); border-color: var(--accent); }
 
   .focus-layout {
     width: 100dvw;
