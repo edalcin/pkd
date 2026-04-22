@@ -85,19 +85,61 @@ func (s *ShareStore) LookupByToken(plaintext string) (*model.ShareLink, error) {
 	return nil, ErrNotFound
 }
 
-// Revoke marks a share link as revoked by setting revoked_at.
-func (s *ShareStore) Revoke(shareID int64) error {
-	res, err := s.db.Exec(`
-		UPDATE share_links SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`,
-		time.Now().UTC().Format(time.RFC3339Nano), shareID)
-	if err != nil {
+// Revoke marks a share link as revoked. Returns the document ID so the caller
+// can cascade the revocation to auto-managed child shares.
+func (s *ShareStore) Revoke(shareID int64) (docID int64, err error) {
+	err = WithTx(s.db, func(tx *sql.Tx) error {
+		if qerr := tx.QueryRow(`
+			SELECT document_id FROM share_links WHERE id = ? AND revoked_at IS NULL`, shareID).Scan(&docID); errors.Is(qerr, sql.ErrNoRows) {
+			return ErrNotFound
+		} else if qerr != nil {
+			return qerr
+		}
+		res, err := tx.Exec(`
+			UPDATE share_links SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`,
+			time.Now().UTC().Format(time.RFC3339Nano), shareID)
+		if err != nil {
+			return err
+		}
+		n, _ := res.RowsAffected()
+		if n == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+	return docID, err
+}
+
+// CreateAuto creates an automatically-managed share for docID if no active auto
+// share already exists. Auto shares are invisible in the admin list and are
+// revoked automatically when their ancestor's manual share is revoked.
+func (s *ShareStore) CreateAuto(docID int64) error {
+	var count int
+	if err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM share_links
+		WHERE document_id = ? AND is_auto = 1 AND revoked_at IS NULL`, docID).Scan(&count); err != nil {
 		return err
 	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return ErrNotFound
+	if count > 0 {
+		return nil
 	}
-	return nil
+	plaintext := security.NewToken(32)
+	hash := security.HashSHA256(plaintext)
+	now := time.Now().UTC()
+	_, err := s.db.Exec(`
+		INSERT INTO share_links (document_id, token_hash, token_plain, is_auto, created_at)
+		VALUES (?, ?, ?, 1, ?)`,
+		docID, hash, plaintext, now.Format(time.RFC3339Nano))
+	return err
+}
+
+// RevokeAutoForDocument revokes all active auto shares for docID.
+func (s *ShareStore) RevokeAutoForDocument(docID int64) error {
+	_, err := s.db.Exec(`
+		UPDATE share_links SET revoked_at = ?
+		WHERE document_id = ? AND is_auto = 1 AND revoked_at IS NULL`,
+		time.Now().UTC().Format(time.RFC3339Nano), docID)
+	return err
 }
 
 // ListByDocument returns all share links for a document.
@@ -134,7 +176,7 @@ func (s *ShareStore) ListAllActive() ([]*model.ShareWithDoc, error) {
 		SELECT sl.id, sl.document_id, d.title, sl.created_at, sl.token_plain
 		FROM share_links sl
 		JOIN documents d ON d.id = sl.document_id
-		WHERE sl.revoked_at IS NULL AND d.trashed_at IS NULL
+		WHERE sl.revoked_at IS NULL AND d.trashed_at IS NULL AND sl.is_auto = 0
 		ORDER BY sl.created_at DESC`)
 	if err != nil {
 		return nil, err

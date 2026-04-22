@@ -37,6 +37,25 @@ type sharePageData struct {
 
 var sharePageTmpl = template.Must(template.New("share").Parse(sharePageHTML))
 
+// collectDescendantIDs returns all descendant document IDs of rootID (BFS, non-recursive).
+func (s *Server) collectDescendantIDs(rootID int64) []int64 {
+	var ids []int64
+	queue := []int64{rootID}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		children, err := s.docs.ListChildren(cur)
+		if err != nil {
+			break
+		}
+		for _, c := range children {
+			ids = append(ids, c.ID)
+			queue = append(queue, c.ID)
+		}
+	}
+	return ids
+}
+
 func (s *Server) handleCreateShare() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		docID, err := parseID(r, "id")
@@ -53,6 +72,11 @@ func (s *Server) handleCreateShare() http.HandlerFunc {
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
+		}
+
+		// Auto-create shares for all descendants so the public page can link them.
+		for _, id := range s.collectDescendantIDs(docID) {
+			_ = s.shares.CreateAuto(id)
 		}
 
 		base := s.baseURL(r)
@@ -73,12 +97,17 @@ func (s *Server) handleRevokeShare() http.HandlerFunc {
 			http.Error(w, "invalid share id", http.StatusBadRequest)
 			return
 		}
-		if err := s.shares.Revoke(shareID); errors.Is(err, store.ErrNotFound) {
+		docID, err := s.shares.Revoke(shareID)
+		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		} else if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
+		}
+		// Cascade: revoke auto shares for all descendants.
+		for _, id := range s.collectDescendantIDs(docID) {
+			_ = s.shares.RevokeAutoForDocument(id)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}

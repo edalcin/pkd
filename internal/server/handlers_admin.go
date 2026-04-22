@@ -370,12 +370,17 @@ func (s *Server) handleAdminRevokeShare() http.HandlerFunc {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
-		if err := s.shares.Revoke(shareID); errors.Is(err, store.ErrNotFound) {
+		docID, err := s.shares.Revoke(shareID)
+		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		} else if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
+		}
+		// Cascade: revoke auto shares for all descendants.
+		for _, id := range s.collectDescendantIDs(docID) {
+			_ = s.shares.RevokeAutoForDocument(id)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
