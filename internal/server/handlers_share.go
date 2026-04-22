@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -13,13 +14,23 @@ import (
 	"github.com/edalcin/pkd/internal/store"
 )
 
+// shareChildData holds display info for a child document on the public share page.
+type shareChildData struct {
+	Title        string
+	Icon         string
+	IconIsBoxicon bool
+	URL          string
+}
+
 // sharePageData holds the values rendered into sharePageTmpl.
 type sharePageData struct {
-	Title string
-	Icon  string
-	Tags  []string
-	Date  string
-	Body  template.HTML // pre-sanitized by SanitizePublicHTML — safe to skip escaping
+	Title        string
+	Icon         string
+	IconIsBoxicon bool
+	Tags         []string
+	Date         string
+	Body         template.HTML // pre-sanitized by SanitizePublicHTML — safe to skip escaping
+	Children     []shareChildData
 }
 
 var sharePageTmpl = template.Must(template.New("share").Parse(sharePageHTML))
@@ -42,16 +53,7 @@ func (s *Server) handleCreateShare() http.HandlerFunc {
 			return
 		}
 
-		var base string
-		if s.cfg.BaseURL != "" {
-			base = s.cfg.BaseURL
-		} else {
-			scheme := "http"
-			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
-				scheme = "https"
-			}
-			base = scheme + "://" + r.Host + "/"
-		}
+		base := s.baseURL(r)
 		shareURL := base + "public/" + plaintext
 
 		writeJSON(w, http.StatusCreated, model.ShareCreateResponse{
@@ -80,9 +82,25 @@ func (s *Server) handleRevokeShare() http.HandlerFunc {
 	}
 }
 
+// baseURL returns the base URL string (with trailing slash) to use for share links.
+func (s *Server) baseURL(r *http.Request) string {
+	if s.cfg.BaseURL != "" {
+		return s.cfg.BaseURL
+	}
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host + "/"
+}
+
 var ptMonths = [...]string{
 	"", "jan.", "fev.", "mar.", "abr.", "mai.", "jun.",
 	"jul.", "ago.", "set.", "out.", "nov.", "dez.",
+}
+
+func isBoxicon(icon string) bool {
+	return strings.HasPrefix(icon, "bx")
 }
 
 func (s *Server) handlePublicShare() http.HandlerFunc {
@@ -120,12 +138,40 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 		date := fmt.Sprintf("%d de %s de %d",
 			doc.CreatedAt.Day(), ptMonths[doc.CreatedAt.Month()], doc.CreatedAt.Year())
 
+		base := s.baseURL(r)
+
+		// Fetch children and ensure each has an active public share.
+		children, err := s.docs.ListChildren(doc.ID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		var childData []shareChildData
+		for _, child := range children {
+			childToken, _, cerr := s.shares.GetOrCreateActiveShare(child.ID)
+			if cerr != nil {
+				continue // skip on error rather than failing the whole page
+			}
+			childIcon := child.Icon
+			if childIcon == "" {
+				childIcon = "📄"
+			}
+			childData = append(childData, shareChildData{
+				Title:        child.Title,
+				Icon:         childIcon,
+				IconIsBoxicon: isBoxicon(childIcon),
+				URL:          base + "public/" + childToken,
+			})
+		}
+
 		data := sharePageData{
-			Title: doc.Title,
-			Icon:  icon,
-			Tags:  doc.Tags,
-			Date:  date,
-			Body:  template.HTML(security.SanitizePublicHTML(doc.BodyHTML)),
+			Title:        doc.Title,
+			Icon:         icon,
+			IconIsBoxicon: isBoxicon(icon),
+			Tags:         doc.Tags,
+			Date:         date,
+			Body:         template.HTML(security.SanitizePublicHTML(doc.BodyHTML)),
+			Children:     childData,
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -139,6 +185,7 @@ const sharePageHTML = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}} — PKD</title>
+  <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
   <style>
     :root {
       --bg:      #f8f7f4;
@@ -280,6 +327,40 @@ const sharePageHTML = `<!DOCTYPE html>
     .prose td { border-bottom: 1px solid var(--border); padding: 6px 10px; vertical-align: top; }
     .prose tbody tr:last-child td { border-bottom: none; }
 
+    /* ── Children list ───────────────────────── */
+    .children-section {
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+    .children-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .children-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .children-list li a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 14px;
+      transition: background 0.15s;
+    }
+    .children-list li a:hover { background: var(--bg); color: var(--accent); }
+    .child-icon { font-size: 1em; color: var(--muted); flex-shrink: 0; }
+
     @media (max-width: 600px) {
       .note-card { padding: 20px 18px; }
       .note-title { font-size: 1.25em; }
@@ -297,7 +378,7 @@ const sharePageHTML = `<!DOCTYPE html>
     <article class="note-card">
       <header class="note-header">
         <div class="note-meta">
-          <span class="note-icon">{{.Icon}}</span>
+          {{if .IconIsBoxicon}}<i class="bx {{.Icon}} note-icon"></i>{{else}}<span class="note-icon">{{.Icon}}</span>{{end}}
           <h1 class="note-title">{{.Title}}</h1>
         </div>
         {{if .Tags}}
@@ -307,6 +388,21 @@ const sharePageHTML = `<!DOCTYPE html>
         {{end}}
       </header>
       <div class="prose">{{.Body}}</div>
+      {{if .Children}}
+      <div class="children-section">
+        <p class="children-label">Documentos relacionados</p>
+        <ul class="children-list">
+          {{range .Children}}
+          <li>
+            <a href="{{.URL}}">
+              {{if .IconIsBoxicon}}<i class="bx {{.Icon}} child-icon"></i>{{else}}<span class="child-icon">{{.Icon}}</span>{{end}}
+              {{.Title}}
+            </a>
+          </li>
+          {{end}}
+        </ul>
+      </div>
+      {{end}}
     </article>
 
   </div>

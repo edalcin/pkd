@@ -43,6 +43,7 @@ const cspSPA = "default-src 'self'; " +
 const cspPublicShare = "default-src 'none'; " +
 	"script-src 'none'; " +
 	"img-src 'self' data: https: http:; " +
-	"style-src 'unsafe-inline'; " +
+	"style-src 'unsafe-inline' https://unpkg.com; " +
+	"font-src https://unpkg.com; " +
 	"frame-ancestors 'none'; " +
 	"base-uri 'none'"
