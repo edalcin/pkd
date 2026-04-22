@@ -150,19 +150,19 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 		}
 		var childData []shareChildData
 		for _, child := range children {
-			childToken, _, cerr := s.shares.GetOrCreateActiveShare(child.ID)
-			if cerr != nil {
-				continue // skip on error rather than failing the whole page
+			childToken, cerr := s.shares.GetActiveShareForDocument(child.ID)
+			if cerr != nil || childToken == "" {
+				continue // only list children that already have an explicit share
 			}
 			childIcon := child.Icon
 			if childIcon == "" {
 				childIcon = "📄"
 			}
 			childData = append(childData, shareChildData{
-				Title:        child.Title,
-				Icon:         childIcon,
+				Title:         child.Title,
+				Icon:          childIcon,
 				IconIsBoxicon: isBoxicon(childIcon),
-				URL:          base + "public/" + childToken,
+				URL:           base + "public/" + childToken,
 			})
 		}
 
