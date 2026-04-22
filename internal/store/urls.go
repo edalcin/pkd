@@ -68,6 +68,31 @@ func (s *URLStore) Create(docID int64, rawURL, title string) (*model.DocumentURL
 	}, nil
 }
 
+// Update changes the url and title of an existing DocumentURL.
+func (s *URLStore) Update(id int64, rawURL, title string) (*model.DocumentURL, error) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return nil, errors.New("url is required")
+	}
+	title = strings.TrimSpace(title)
+	res, err := s.db.Exec(`UPDATE document_urls SET url = ?, title = ? WHERE id = ?`, rawURL, title, id)
+	if err != nil {
+		return nil, fmt.Errorf("urls.Update: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, ErrNotFound
+	}
+	var u model.DocumentURL
+	var ts string
+	if err := s.db.QueryRow(
+		`SELECT id, document_id, url, title, created_at FROM document_urls WHERE id = ?`, id,
+	).Scan(&u.ID, &u.DocumentID, &u.URL, &u.Title, &ts); err != nil {
+		return nil, fmt.Errorf("urls.Update fetch: %w", err)
+	}
+	u.CreatedAt, _ = time.Parse(time.RFC3339Nano, ts)
+	return &u, nil
+}
+
 // Delete removes a URL by its ID.
 func (s *URLStore) Delete(id int64) error {
 	res, err := s.db.Exec(`DELETE FROM document_urls WHERE id = ?`, id)

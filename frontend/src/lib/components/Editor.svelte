@@ -14,7 +14,7 @@
   import TurndownService from 'turndown'
   import { saveDoc, loadDoc, linksRefreshSignal } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
-  import { apiFetch, apiGet, apiPost, apiDelete } from '../api.js'
+  import { apiFetch, apiGet, apiPost, apiPut, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
 
   let { docId, focusMode = false } = $props()
@@ -35,6 +35,9 @@
   let urlInput = $state('')
   let urlTitleInput = $state('')
   let urlAdding = $state(false)
+  let editingUrlId = $state(null)
+  let editUrlValue = $state('')
+  let editUrlTitle = $state('')
   let iconPickerOpen = $state(false)
 
   // Map tag name → color, derived from the global tags store
@@ -500,6 +503,30 @@
   async function deleteURL(id) {
     await apiDelete(`/api/documents/${doc.id}/urls/${id}`)
     docUrls = docUrls.filter(u => u.id !== id)
+  }
+
+  function startEditUrl(u) {
+    editingUrlId = u.id
+    editUrlValue = u.url
+    editUrlTitle = u.title
+  }
+
+  function cancelEditUrl() {
+    editingUrlId = null
+    editUrlValue = ''
+    editUrlTitle = ''
+  }
+
+  async function saveEditUrl() {
+    const url = editUrlValue.trim()
+    if (!url) return
+    try {
+      const updated = await apiPut(`/api/documents/${doc.id}/urls/${editingUrlId}`, { url, title: editUrlTitle.trim() })
+      docUrls = docUrls.map(u => u.id === editingUrlId ? updated : u)
+      cancelEditUrl()
+    } catch {
+      saveError = 'Erro ao editar link'
+    }
   }
 
   // Image paste from clipboard
@@ -979,12 +1006,38 @@
           <h4 class="assoc-col-title">🔗 Links externos</h4>
 
           {#each docUrls as u}
-            <div class="assoc-item">
-              <a href={u.url} target="_blank" rel="noopener noreferrer" class="assoc-item-label url-link" title={u.url}>
-                {u.title || u.url}
-              </a>
-              <button class="row-btn row-btn-del" onclick={() => deleteURL(u.id)} title="Remover">×</button>
-            </div>
+            {#if editingUrlId === u.id}
+              <div class="assoc-item url-edit-mode">
+                <input
+                  class="url-input"
+                  type="url"
+                  bind:value={editUrlValue}
+                  placeholder="https://…"
+                  aria-label="URL"
+                  onkeydown={e => { if (e.key === 'Enter') saveEditUrl(); if (e.key === 'Escape') cancelEditUrl() }}
+                />
+                <input
+                  class="url-title-input"
+                  type="text"
+                  bind:value={editUrlTitle}
+                  placeholder="Título (opcional)"
+                  aria-label="Título do link"
+                  onkeydown={e => { if (e.key === 'Enter') saveEditUrl(); if (e.key === 'Escape') cancelEditUrl() }}
+                />
+                <div class="url-edit-actions">
+                  <button class="url-edit-btn url-edit-btn-save" onclick={saveEditUrl} disabled={!editUrlValue.trim()}>✓ Salvar</button>
+                  <button class="url-edit-btn url-edit-btn-cancel" onclick={cancelEditUrl}>Cancelar</button>
+                </div>
+              </div>
+            {:else}
+              <div class="assoc-item">
+                <a href={u.url} target="_blank" rel="noopener noreferrer" class="assoc-item-label url-link" title={u.url}>
+                  {u.title || u.url}
+                </a>
+                <button class="row-btn row-btn-edit" onclick={() => startEditUrl(u)} title="Editar">✎</button>
+                <button class="row-btn row-btn-del" onclick={() => deleteURL(u.id)} title="Remover">×</button>
+              </div>
+            {/if}
           {/each}
 
           {#if docUrls.length === 0}
@@ -1479,6 +1532,51 @@
     color: var(--accent);
     cursor: pointer;
   }
+
+  .assoc-item .row-btn {
+    flex-shrink: 0;
+    opacity: 0;
+    font-size: .85rem;
+    color: var(--text-muted);
+    padding: .1rem .25rem;
+    border-radius: 3px;
+    transition: opacity .12s;
+  }
+  .assoc-item:hover .row-btn { opacity: 1; }
+  .assoc-item .row-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .assoc-item .row-btn-del:hover { color: var(--danger); }
+  .assoc-item .row-btn-edit:hover { color: var(--accent); }
+
+  .url-edit-mode {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .3rem;
+  }
+
+  .url-edit-actions {
+    display: flex;
+    gap: .25rem;
+    justify-content: flex-end;
+  }
+
+  .url-edit-btn {
+    padding: .2rem .55rem;
+    font-size: .8rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .url-edit-btn-save {
+    background: var(--accent);
+    color: #fff;
+    border: 1px solid var(--accent);
+  }
+  .url-edit-btn-save:disabled { opacity: .45; cursor: not-allowed; }
+  .url-edit-btn-cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .url-edit-btn-cancel:hover { color: var(--text); border-color: var(--text-muted); }
 
   .assoc-item-label.link-title:hover,
   .assoc-item-label.url-link:hover,

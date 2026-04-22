@@ -130,6 +130,7 @@ func (s *Server) buildRouter() http.Handler {
 			// External URLs
 			r.Get("/api/documents/{id}/urls", s.handleListURLs())
 			r.Post("/api/documents/{id}/urls", s.handleCreateURL())
+			r.Put("/api/documents/{id}/urls/{urlId}", s.handleUpdateURL())
 			r.Delete("/api/documents/{id}/urls/{urlId}", s.handleDeleteURL())
 
 			// Graph view (NEW — 003-pkm-refactor)
