@@ -104,7 +104,7 @@
         {:else}
           {#each docs as doc}
             <a class="day-doc-link" href="#{`/doc/${doc.id}`}">
-              {doc.icon || '📄'} {doc.title}
+              <i class="bx {doc.icon || 'bx-file-blank'}"></i> {doc.title}
             </a>
           {/each}
         {/if}
