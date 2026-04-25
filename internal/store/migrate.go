@@ -90,6 +90,9 @@ func Open(dbPath string) (*sql.DB, error) {
 		{`ALTER TABLE tags ADD COLUMN color TEXT NOT NULL DEFAULT ''`, "alter tags color"},
 		{`ALTER TABLE share_links ADD COLUMN token_plain TEXT NOT NULL DEFAULT ''`, "alter share_links token_plain"},
 		{`ALTER TABLE share_links ADD COLUMN is_auto INTEGER NOT NULL DEFAULT 0`, "alter share_links is_auto"},
+		{`ALTER TABLE documents ADD COLUMN assoc_year  INTEGER`, "alter documents assoc_year"},
+		{`ALTER TABLE documents ADD COLUMN assoc_month INTEGER`, "alter documents assoc_month"},
+		{`ALTER TABLE documents ADD COLUMN assoc_day   INTEGER`, "alter documents assoc_day"},
 	}
 	for _, m := range colMigrations {
 		if _, err := db.Exec(m.sql); err != nil {
@@ -98,6 +101,20 @@ func Open(dbPath string) (*sql.DB, error) {
 				return nil, fmt.Errorf("store.Open %s: %w", m.ctx, err)
 			}
 		}
+	}
+
+	// Data migration: backfill associated date from created_at for existing documents.
+	// Idempotent — only touches rows where assoc_year is still NULL.
+	if _, err := db.Exec(`
+		UPDATE documents
+		SET
+			assoc_year  = CAST(strftime('%Y', created_at) AS INTEGER),
+			assoc_month = CAST(strftime('%m', created_at) AS INTEGER),
+			assoc_day   = CAST(strftime('%d', created_at) AS INTEGER)
+		WHERE assoc_year IS NULL
+	`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open assoc_date backfill: %w", err)
 	}
 
 	// Data migration: assign default icons to existing documents that have none.

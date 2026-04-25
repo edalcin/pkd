@@ -189,6 +189,23 @@ func (s *DocumentStore) ToggleFavorite(id int64) (*model.Document, error) {
 	return s.GetByID(id)
 }
 
+// UpdateAssocDate sets the user-editable associated date on a document.
+// Pass nil for year/month/day to clear that field. Does not bump version.
+func (s *DocumentStore) UpdateAssocDate(id int64, year, month, day *int) (*model.Document, error) {
+	res, err := s.db.Exec(
+		`UPDATE documents SET assoc_year = ?, assoc_month = ?, assoc_day = ?
+		 WHERE id = ? AND trashed_at IS NULL`,
+		year, month, day, id)
+	if err != nil {
+		return nil, err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return nil, ErrNotFound
+	}
+	return s.GetByID(id)
+}
+
 // SoftDelete moves a document to the trash by setting trashed_at and saving
 // original_parent_id. Its children are NOT trashed — the caller should check.
 func (s *DocumentStore) SoftDelete(id int64) error {
@@ -460,7 +477,8 @@ func (s *DocumentStore) ListTree(tagFilter []string, favoriteOnly bool, q string
 		extra = " AND is_favorite = 1"
 	}
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite,
+		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents
 		WHERE trashed_at IS NULL` + extra + `
 		ORDER BY position ASC, id ASC`)
@@ -497,7 +515,8 @@ func (s *DocumentStore) listByQuery(tagFilter []string, favoriteOnly bool, q str
 		)`, ph, len(tagFilter))
 	}
 	rows, err := s.db.Query(`
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.created_at, d.updated_at
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite,
+		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
 		FROM documents d
 		WHERE `+cond+`
 		ORDER BY d.position ASC, d.id ASC`, args...)
@@ -569,7 +588,8 @@ func (s *DocumentStore) EmptyTrash() error {
 // ListChildren returns all non-trashed direct children of parentID, ordered by position then id.
 func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) {
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite,
+		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents
 		WHERE parent_id = ? AND trashed_at IS NULL
 		ORDER BY position ASC, id ASC`, parentID)
@@ -588,7 +608,8 @@ func (s *DocumentStore) listByTags(tags []string, favoriteOnly bool) ([]*model.D
 		extra = " AND d.is_favorite = 1"
 	}
 	query := `
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.created_at, d.updated_at
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite,
+		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
 		FROM documents d
 		WHERE d.trashed_at IS NULL` + extra + `
 		  AND d.id IN (
@@ -642,7 +663,8 @@ func checkCircular(tx *sql.Tx, sourceID, targetID int64) error {
 
 func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 	row := db.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite,
+		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents WHERE id = ? AND trashed_at IS NULL`, id)
 	if err := scanDocRow(row, doc); err != nil {
 		return err
@@ -654,7 +676,8 @@ func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 
 func scanDocFromTx(tx *sql.Tx, id int64, doc *model.Document) error {
 	row := tx.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite,
+		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents WHERE id = ?`, id)
 	if err := scanDocRow(row, doc); err != nil {
 		return err
@@ -668,12 +691,14 @@ func scanDocRow(row *sql.Row, doc *model.Document) error {
 	var parentID sql.NullInt64
 	var bodyHTML, bodyText, icon sql.NullString
 	var createdStr, updatedStr string
+	var assocYear, assocMonth, assocDay sql.NullInt64
 	err := row.Scan(
 		&doc.ID, &parentID, &doc.Title,
 		&bodyHTML, &bodyText, &icon,
 		&doc.Position, &doc.Version,
 		&doc.IsFavorite,
 		&createdStr, &updatedStr,
+		&assocYear, &assocMonth, &assocDay,
 	)
 	if err != nil {
 		return err
@@ -686,6 +711,18 @@ func scanDocRow(row *sql.Row, doc *model.Document) error {
 	doc.Icon = icon.String
 	doc.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
 	doc.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedStr)
+	if assocYear.Valid {
+		v := int(assocYear.Int64)
+		doc.AssocYear = &v
+	}
+	if assocMonth.Valid {
+		v := int(assocMonth.Int64)
+		doc.AssocMonth = &v
+	}
+	if assocDay.Valid {
+		v := int(assocDay.Int64)
+		doc.AssocDay = &v
+	}
 	return nil
 }
 
@@ -766,12 +803,14 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 		var parentID sql.NullInt64
 		var bodyHTML, bodyText, icon sql.NullString
 		var createdStr, updatedStr string
+		var assocYear, assocMonth, assocDay sql.NullInt64
 		if err := rows.Scan(
 			&doc.ID, &parentID, &doc.Title,
 			&bodyHTML, &bodyText, &icon,
 			&doc.Position, &doc.Version,
 			&doc.IsFavorite,
 			&createdStr, &updatedStr,
+			&assocYear, &assocMonth, &assocDay,
 		); err != nil {
 			return nil, err
 		}
@@ -783,6 +822,18 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 		doc.Icon = icon.String
 		doc.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
 		doc.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedStr)
+		if assocYear.Valid {
+			v := int(assocYear.Int64)
+			doc.AssocYear = &v
+		}
+		if assocMonth.Valid {
+			v := int(assocMonth.Int64)
+			doc.AssocMonth = &v
+		}
+		if assocDay.Valid {
+			v := int(assocDay.Int64)
+			doc.AssocDay = &v
+		}
 		docs = append(docs, &doc)
 	}
 	return docs, rows.Err()

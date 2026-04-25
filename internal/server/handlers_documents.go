@@ -114,6 +114,55 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleUpdateAssocDate() http.HandlerFunc {
+	type request struct {
+		Year  *int `json:"year"`
+		Month *int `json:"month"`
+		Day   *int `json:"day"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+
+		// Validate partial date combinations (FR-004, FR-005)
+		if req.Day != nil && req.Month == nil {
+			http.Error(w, "day requires month", http.StatusBadRequest)
+			return
+		}
+		if req.Month != nil && req.Year == nil {
+			http.Error(w, "month requires year", http.StatusBadRequest)
+			return
+		}
+		if req.Month != nil && (*req.Month < 1 || *req.Month > 12) {
+			http.Error(w, "month out of range", http.StatusBadRequest)
+			return
+		}
+		if req.Day != nil && (*req.Day < 1 || *req.Day > 31) {
+			http.Error(w, "day out of range", http.StatusBadRequest)
+			return
+		}
+
+		doc, err := s.docs.UpdateAssocDate(id, req.Year, req.Month, req.Day)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, doc)
+	}
+}
+
 func (s *Server) handleDeleteDocument() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseID(r, "id")

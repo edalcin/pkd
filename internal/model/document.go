@@ -19,6 +19,9 @@ type Document struct {
 	AttachmentIDs    []int64    `json:"attachment_ids,omitempty"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
+	AssocYear        *int       `json:"assoc_year,omitempty"`
+	AssocMonth       *int       `json:"assoc_month,omitempty"`
+	AssocDay         *int       `json:"assoc_day,omitempty"`
 }
 
 // DocumentTreeNode is the nested shape returned by GET /api/tree.

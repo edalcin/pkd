@@ -73,6 +73,17 @@ export async function apiPut(url, body) {
   return res.json()
 }
 
+/** Convenience: PATCH JSON body and parse JSON response. Throws on non-2xx. */
+export async function apiPatch(url, body) {
+  const res = await apiFetch(url, {
+    method: 'PATCH',
+    body: body != null ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) throw new ApiError(res.status, await res.text())
+  if (res.status === 204) return null
+  return res.json()
+}
+
 /** Convenience: DELETE request. Throws on non-2xx. */
 export async function apiDelete(url) {
   const res = await apiFetch(url, { method: 'DELETE' })

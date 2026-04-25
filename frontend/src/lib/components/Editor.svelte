@@ -14,7 +14,7 @@
   import TurndownService from 'turndown'
   import { saveDoc, loadDoc, linksRefreshSignal } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
-  import { apiFetch, apiGet, apiPost, apiPut, apiDelete } from '../api.js'
+  import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
 
   let { docId, focusMode = false } = $props()
@@ -31,6 +31,9 @@
   let outgoingLinks = $state([])
   let attachments = $state([])
   let docUrls = $state([])
+  let assocYear = $state(null)
+  let assocMonth = $state(null)
+  let assocDay = $state(null)
   let children = $state([])
   let urlInput = $state('')
   let urlTitleInput = $state('')
@@ -227,6 +230,16 @@
       doc = loadedDoc
       titleValue = doc.title
       docTags = doc.tags || []
+      if (doc.assoc_year != null) {
+        assocYear = doc.assoc_year
+        assocMonth = doc.assoc_month ?? null
+        assocDay = doc.assoc_day ?? null
+      } else {
+        const today = new Date()
+        assocYear = today.getFullYear()
+        assocMonth = today.getMonth() + 1
+        assocDay = today.getDate()
+      }
       loadTags()
       await loadLinks(targetId)
       if (Number(docId) !== targetId) return
@@ -394,6 +407,46 @@
   async function removeTag(name) {
     docTags = docTags.filter(t => t !== name)
     await setDocumentTags(doc.id, docTags)
+  }
+
+  // ── Associated date ───────────────────────────────────────────────────────
+
+  function daysInMonth(year, month) {
+    if (!year || !month) return 31
+    return new Date(year, month, 0).getDate()
+  }
+
+  $effect(() => {
+    if (!assocMonth) assocDay = null
+  })
+
+  async function saveAssocDate() {
+    if (!doc) return
+    try {
+      const updated = await apiPatch(`/api/documents/${doc.id}/associated-date`, {
+        year: assocYear ?? null,
+        month: assocMonth ?? null,
+        day: assocDay ?? null,
+      })
+      if (updated) {
+        doc = { ...doc, assoc_year: updated.assoc_year, assoc_month: updated.assoc_month, assoc_day: updated.assoc_day }
+      }
+    } catch { /* silent — user can retry */ }
+  }
+
+  function clearAssocDate() {
+    assocYear = null
+    assocMonth = null
+    assocDay = null
+    saveAssocDate()
+  }
+
+  function formatAssocDate() {
+    if (!assocYear) return ''
+    const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    if (!assocMonth) return `${assocYear}`
+    if (!assocDay) return `${months[assocMonth - 1]}/${assocYear}`
+    return `${String(assocDay).padStart(2,'0')}/${String(assocMonth).padStart(2,'0')}/${assocYear}`
   }
 
   // ── Related notes (outgoing links) ────────────────────────────────────────
@@ -1067,6 +1120,65 @@
           </div>
         </section>
 
+        <!-- Coluna 4: Data associada -->
+        <section class="assoc-col">
+          <h4 class="assoc-col-title">📅 Data associada</h4>
+
+          {#if doc}
+            <p class="assoc-date-created">
+              <span class="assoc-date-label">Criação:</span>
+              {new Date(doc.created_at).toLocaleString('pt-BR')}
+            </p>
+          {/if}
+
+          <div class="assoc-date-row">
+            <select
+              class="assoc-date-select"
+              bind:value={assocDay}
+              onchange={saveAssocDate}
+              disabled={!assocMonth}
+              aria-label="Dia"
+            >
+              <option value={null}>Dia</option>
+              {#each Array.from({length: daysInMonth(assocYear, assocMonth)}, (_, i) => i + 1) as d}
+                <option value={d}>{d}</option>
+              {/each}
+            </select>
+
+            <select
+              class="assoc-date-select"
+              bind:value={assocMonth}
+              onchange={saveAssocDate}
+              aria-label="Mês"
+            >
+              <option value={null}>Mês</option>
+              {#each ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'] as m, i}
+                <option value={i + 1}>{m}</option>
+              {/each}
+            </select>
+
+            <select
+              class="assoc-date-select assoc-date-year"
+              bind:value={assocYear}
+              onchange={saveAssocDate}
+              aria-label="Ano"
+            >
+              <option value={null}>Ano</option>
+              {#each Array.from({length: new Date().getFullYear() - 1900 + 11}, (_, i) => new Date().getFullYear() + 10 - i) as y}
+                <option value={y}>{y}</option>
+              {/each}
+            </select>
+          </div>
+
+          {#if assocYear || assocMonth || assocDay}
+            <p class="assoc-date-display">{formatAssocDate()}</p>
+          {/if}
+
+          <button class="assoc-clear-date-btn" onclick={clearAssocDate}>
+            Limpar data
+          </button>
+        </section>
+
       </div>
     </div>
     {/if}
@@ -1476,8 +1588,12 @@
 
   .assoc-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1.25rem 1.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .assoc-grid { grid-template-columns: repeat(2, 1fr); }
   }
 
   @media (max-width: 700px) {
@@ -1587,6 +1703,64 @@
     color: var(--text-muted);
     font-style: italic;
     padding: .2rem 0 .4rem;
+  }
+
+  .assoc-date-created {
+    font-size: .75rem;
+    color: var(--text-muted);
+    margin: 0 0 .5rem;
+  }
+
+  .assoc-date-label {
+    font-weight: 600;
+  }
+
+  .assoc-date-row {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    margin-bottom: .5rem;
+  }
+
+  .assoc-date-select {
+    font-size: .8rem;
+    padding: .25rem .4rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .assoc-date-select:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+  }
+
+  .assoc-date-display {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: .2rem 0 .5rem;
+  }
+
+  .assoc-clear-date-btn {
+    display: inline-flex;
+    align-items: center;
+    margin-top: .25rem;
+    padding: .25rem .55rem;
+    font-size: .75rem;
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: transparent;
+  }
+
+  .assoc-clear-date-btn:hover {
+    border-color: var(--text-muted);
+    color: var(--text);
   }
 
   .assoc-add-btn {
