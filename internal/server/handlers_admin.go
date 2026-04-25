@@ -317,21 +317,12 @@ func (s *Server) handleAdminDeleteTag() http.HandlerFunc {
 
 func (s *Server) handleAdminPruneTags() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		before, err := s.tags.ListWithCounts()
+		removed, err := s.tags.PruneZeroCount()
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		if err := s.tags.PruneUnused(); err != nil {
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-		after, err := s.tags.ListWithCounts()
-		if err != nil {
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]int{"removed": len(before) - len(after)})
+		writeJSON(w, http.StatusOK, map[string]int{"removed": int(removed)})
 	}
 }
 

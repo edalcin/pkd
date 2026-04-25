@@ -147,6 +147,23 @@ func (s *TagStore) PruneUnused() error {
 	return err
 }
 
+// PruneZeroCount deletes tags that have no active (non-trashed) document
+// associations. Used by the admin "prune orphan tags" action.
+func (s *TagStore) PruneZeroCount() (int64, error) {
+	res, err := s.db.Exec(`
+		DELETE FROM tags
+		WHERE id NOT IN (
+			SELECT DISTINCT dt.tag_id
+			FROM document_tags dt
+			JOIN documents d ON d.id = dt.document_id
+			WHERE d.trashed_at IS NULL
+		)`)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // ListForDocument returns the tag names for a given document.
 func (s *TagStore) ListForDocument(docID int64) ([]string, error) {
 	rows, err := s.db.Query(`
