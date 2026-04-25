@@ -365,7 +365,7 @@
       {:else}
         {#each trash as doc}
           <div class="trash-item">
-            <span class="trash-icon">{doc.icon || '📄'}</span>
+            <i class="bx {doc.icon || 'bx-file-blank'} trash-icon"></i>
             <span class="trash-title">{doc.title}</span>
             <span class="trash-date">{new Date(doc.trashed_at).toLocaleDateString('pt-BR')}</span>
             <button class="btn btn-ghost btn-sm" onclick={() => restoreFromTrash(doc.id)}>Restaurar</button>

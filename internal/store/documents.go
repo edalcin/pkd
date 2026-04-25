@@ -508,10 +508,10 @@ func (s *DocumentStore) listByQuery(tagFilter []string, favoriteOnly bool, q str
 	return scanDocRows(rows)
 }
 
-// ListTrash returns all trashed documents.
+// ListTrash returns all trashed documents with their trashed_at timestamp.
 func (s *DocumentStore) ListTrash() ([]*model.Document, error) {
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, created_at, updated_at
+		SELECT id, parent_id, title, icon, trashed_at
 		FROM documents
 		WHERE trashed_at IS NOT NULL
 		ORDER BY trashed_at DESC`)
@@ -519,7 +519,24 @@ func (s *DocumentStore) ListTrash() ([]*model.Document, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanDocRows(rows)
+	var docs []*model.Document
+	for rows.Next() {
+		var doc model.Document
+		var parentID sql.NullInt64
+		var icon sql.NullString
+		var trashedStr string
+		if err := rows.Scan(&doc.ID, &parentID, &doc.Title, &icon, &trashedStr); err != nil {
+			return nil, err
+		}
+		if parentID.Valid {
+			doc.ParentID = &parentID.Int64
+		}
+		doc.Icon = icon.String
+		t, _ := time.Parse(time.RFC3339Nano, trashedStr)
+		doc.TrashedAt = &t
+		docs = append(docs, &doc)
+	}
+	return docs, rows.Err()
 }
 
 // PermanentDelete hard-deletes a trashed document. Use EmptyTrash for bulk.
