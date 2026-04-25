@@ -649,6 +649,8 @@
 
 <style>
   .admin-wrap {
+    flex: 1;
+    overflow-y: auto;
     padding: 1.5rem 2rem;
     max-width: 800px;
     margin: 0 auto;
