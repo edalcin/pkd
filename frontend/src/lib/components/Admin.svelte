@@ -2,6 +2,14 @@
   import { onMount } from 'svelte'
   import { apiGet, apiPost, apiDelete, apiFetch } from '../api.js'
   import { loadTags, tags } from '../stores/tags.js'
+  import { autoSaveInterval } from '../stores/settings.js'
+
+  const AUTOSAVE_OPTIONS = [
+    { value: 5000,  label: '5 segundos' },
+    { value: 15000, label: '15 segundos' },
+    { value: 30000, label: '30 segundos' },
+    { value: 0,     label: 'Desligado' },
+  ]
 
   let trash = $state([])
   let renameOld = $state('')
@@ -324,7 +332,7 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links'], ['shares','🌐 Compartilhados']] as [id, label]}
+    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links'], ['shares','🌐 Compartilhados'], ['settings','⚙️ Preferências']] as [id, label]}
       <button
         class="tab-btn {activeTab === id ? 'active' : ''}"
         onclick={() => setTab(id)}
@@ -605,6 +613,28 @@
       {/if}
     </div>
   {/if}
+
+  <!-- Preferências -->
+  {#if activeTab === 'settings'}
+    <div class="admin-section">
+      <h3>Auto-save</h3>
+      <p class="muted" style="margin-bottom:1rem">Intervalo para salvar automaticamente o documento enquanto você edita.</p>
+      <div class="autosave-options">
+        {#each AUTOSAVE_OPTIONS as opt}
+          <label class="autosave-option {$autoSaveInterval === opt.value ? 'selected' : ''}">
+            <input
+              type="radio"
+              name="autosave"
+              value={opt.value}
+              checked={$autoSaveInterval === opt.value}
+              onchange={() => autoSaveInterval.set(opt.value)}
+            />
+            {opt.label}
+          </label>
+        {/each}
+      </div>
+    </div>
+  {/if}
 </div>
 
 <!-- Attachment preview modal (Admin) -->
@@ -655,6 +685,38 @@
     max-width: 800px;
     margin: 0 auto;
     width: 100%;
+  }
+
+  .autosave-options {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+
+  .autosave-option {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .45rem .9rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: .875rem;
+    transition: background .15s, border-color .15s;
+  }
+
+  .autosave-option:hover {
+    background: var(--hover-bg);
+  }
+
+  .autosave-option.selected {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    font-weight: 500;
+  }
+
+  .autosave-option input[type="radio"] {
+    accent-color: var(--accent);
   }
 
   .admin-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.25rem; }

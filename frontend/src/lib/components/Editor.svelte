@@ -16,6 +16,8 @@
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
+  import { get } from 'svelte/store'
+  import { autoSaveInterval } from '../stores/settings.js'
 
   let { docId, focusMode = false } = $props()
 
@@ -297,10 +299,12 @@
     if ($linksRefreshSignal && doc) loadLinks(doc.id)
   })
 
-  // Auto-save: 2 seconds after user stops typing
+  // Auto-save: interval configured by user (0 = disabled)
   function scheduleAutoSave() {
+    const interval = get(autoSaveInterval)
+    if (interval === 0) return
     clearTimeout(autoSaveTimer)
-    autoSaveTimer = setTimeout(performSave, 2000)
+    autoSaveTimer = setTimeout(performSave, interval)
   }
 
   function handleIconSelect(icon) {
