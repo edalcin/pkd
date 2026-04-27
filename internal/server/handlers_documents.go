@@ -98,12 +98,36 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		if errors.Is(err, store.ErrLocked) {
+			http.Error(w, "locked", http.StatusForbidden)
+			return
+		}
 		if errors.Is(err, store.ErrVersionConflict) {
 			stored, _ := s.docs.GetByID(id)
 			writeJSON(w, http.StatusConflict, model.VersionConflict{
 				StoredVersion: stored.Version,
 				Stored:        stored,
 			})
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, doc)
+	}
+}
+
+func (s *Server) handleToggleLock() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		doc, err := s.docs.ToggleLock(id)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		if err != nil {
@@ -170,10 +194,16 @@ func (s *Server) handleDeleteDocument() http.HandlerFunc {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
-		if err := s.docs.SoftDelete(id); errors.Is(err, store.ErrNotFound) {
+		err = s.docs.SoftDelete(id)
+		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
-		} else if err != nil {
+		}
+		if errors.Is(err, store.ErrLocked) {
+			http.Error(w, "locked", http.StatusForbidden)
+			return
+		}
+		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}

@@ -36,6 +36,7 @@ func buildTree(docs []*model.Document) []*model.DocumentTreeNode {
 			Position:   d.Position,
 			Version:    d.Version,
 			IsFavorite: d.IsFavorite,
+			Locked:     d.Locked,
 			Tags:       d.Tags,
 			Children:   []*model.DocumentTreeNode{},
 		}

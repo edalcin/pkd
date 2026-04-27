@@ -165,6 +165,9 @@
 
     <i class="bx {node.icon || 'bx-file-blank'} icon"></i>
     <span class="label">{node.title || 'Sem título'}</span>
+    {#if node.locked}
+      <i class="bx bx-lock lock-indicator" title="Documento trancado"></i>
+    {/if}
 
     <button
       class="star-btn {node.is_favorite ? 'is-favorite' : ''}"
@@ -184,7 +187,7 @@
         >→</button>
       {/if}
       <button class="row-btn" onclick={handleNewChild} title="Novo filho">+</button>
-      <button class="row-btn row-btn-del" onclick={handleDelete} title="Lixeira">×</button>
+      <button class="row-btn row-btn-del" onclick={handleDelete} title={node.locked ? 'Documento trancado' : 'Lixeira'} disabled={node.locked}>×</button>
     </span>
   </div>
 
@@ -258,4 +261,12 @@
   .drag-over  { background: var(--bg-active); outline: 2px dashed var(--accent); }
   .drop-before { box-shadow: 0 -2px 0 0 var(--accent); }
   .drop-after  { box-shadow: 0  2px 0 0 var(--accent); }
+
+  .lock-indicator {
+    flex-shrink: 0;
+    font-size: .7rem;
+    opacity: .45;
+    color: var(--text-muted);
+    margin-left: 2px;
+  }
 </style>

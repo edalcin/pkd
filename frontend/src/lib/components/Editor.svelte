@@ -12,7 +12,7 @@
   import Link from '@tiptap/extension-link'
   import { DocLink } from '../editor/doclink-extension.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
@@ -312,6 +312,18 @@
     iconPickerOpen = false
     scheduleAutoSave()
   }
+
+  async function handleToggleLock() {
+    const updated = await toggleLock(doc.id)
+    doc = updated
+  }
+
+  // Keep TipTap's editable flag in sync with doc.locked
+  $effect(() => {
+    if (editorReady && editorInstance) {
+      editorInstance.setEditable(!doc?.locked)
+    }
+  })
 
   async function performSave() {
     if (!doc || !editorInstance) return
@@ -679,6 +691,7 @@
             onclick={() => iconPickerOpen = !iconPickerOpen}
             title="Definir ícone do documento"
             aria-label="Ícone"
+            disabled={doc.locked}
           >
             <i class="bx {doc.icon || 'bx-file-blank'}" style={doc.icon ? '' : 'opacity:.25'}></i>
           </button>
@@ -697,7 +710,14 @@
           oninput={scheduleAutoSave}
           placeholder="Título do documento"
           aria-label="Título"
+          disabled={doc.locked}
         />
+        <button
+          class="lock-btn {doc.locked ? 'is-locked' : ''}"
+          onclick={handleToggleLock}
+          title={doc.locked ? 'Destrancar documento' : 'Trancar documento'}
+          aria-label={doc.locked ? 'Destrancar' : 'Trancar'}
+        ><i class="bx {doc.locked ? 'bx-lock' : 'bx-lock-open'}"></i></button>
       </div>
       <div class="doc-meta">
         {#each docTags as tag}
@@ -707,7 +727,7 @@
             style={c ? `background:${c}; border-color:${c}; color:#fff` : ''}
           >
             #{tag}
-            <button class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remover tag">×</button>
+            <button class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remover tag" disabled={doc.locked}>×</button>
           </span>
         {/each}
         <div class="tag-input-wrap">
@@ -722,6 +742,7 @@
             placeholder="+ tag"
             aria-label="Adicionar tag"
             autocomplete="off"
+            disabled={doc.locked}
           />
           {#if tagSuggestionsOpen}
             <div class="tag-dropdown" role="listbox" style={tagDropdownStyle}>
@@ -748,7 +769,7 @@
          {#key editorTick} forces re-evaluation of isActive() on every
          TipTap transaction (selection change, content edit). -->
     {#key editorTick}
-    <div class="toolbar" role="toolbar" aria-label="Formatação">
+    <div class="toolbar {doc.locked ? 'toolbar-locked' : ''}" role="toolbar" aria-label="Formatação">
         <!-- Headings -->
         <button class="tb-btn {isActive('heading', {level:1}) ? 'active' : ''}"
           onmousedown={e => { e.preventDefault(); fmt(c => c.toggleHeading({level:1})) }} title="Título 1" aria-pressed={isActive('heading',{level:1})}>H1</button>
@@ -1277,6 +1298,7 @@
     scrollbar-width: none; /* Firefox */
   }
   .toolbar::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+  .toolbar-locked { opacity: .35; pointer-events: none; }
 
   .tb-btn {
     display: inline-flex;
@@ -1420,6 +1442,26 @@
     flex-shrink: 0;
   }
   .doc-icon-btn:hover { background: var(--bg-hover); border-color: var(--border); }
+  .doc-icon-btn:disabled { opacity: .35; cursor: default; }
+
+  .lock-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    opacity: .4;
+    transition: opacity .15s, color .15s, background .15s;
+  }
+  .lock-btn:hover { opacity: 1; background: var(--bg-hover); }
+  .lock-btn.is-locked { opacity: 1; color: var(--accent); }
 
   .tag-input-wrap {
     position: relative;

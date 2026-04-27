@@ -55,6 +55,13 @@ export async function toggleFavorite(id) {
   return doc
 }
 
+/** Toggle the locked state of a document. */
+export async function toggleLock(id) {
+  const doc = await apiPost(`/api/documents/${id}/lock`, {})
+  tree.update(nodes => updateTreeNode(nodes, id, { locked: doc.locked }))
+  return doc
+}
+
 /** Load a single document by ID. */
 export async function loadDoc(id) {
   activeDocId.set(id)

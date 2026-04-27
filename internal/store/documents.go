@@ -20,6 +20,9 @@ var ErrNotFound = errors.New("not found")
 // ErrCircularMove is returned when a Move would create a cycle in the tree.
 var ErrCircularMove = errors.New("circular move: cannot move a node under its own descendant")
 
+// ErrLocked is returned when an operation is blocked because the document is locked.
+var ErrLocked = errors.New("document is locked")
+
 const nowISO = "strftime('%Y-%m-%dT%H:%M:%fZ','now')"
 
 // iconLeaf is the default icon for documents with no children.
@@ -143,11 +146,15 @@ func (s *DocumentStore) UpdateAndSync(id int64, clientVersion int64, title, body
 	var doc model.Document
 	err := WithTx(s.db, func(tx *sql.Tx) error {
 		var storedVersion int64
-		if err := tx.QueryRow(`SELECT version FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&storedVersion); err != nil {
+		var locked bool
+		if err := tx.QueryRow(`SELECT version, locked FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&storedVersion, &locked); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrNotFound
 			}
 			return fmt.Errorf("version check: %w", err)
+		}
+		if locked {
+			return ErrLocked
 		}
 		if storedVersion != clientVersion {
 			return ErrVersionConflict
@@ -189,6 +196,20 @@ func (s *DocumentStore) ToggleFavorite(id int64) (*model.Document, error) {
 	return s.GetByID(id)
 }
 
+// ToggleLock flips the locked flag on a document and returns the updated doc.
+func (s *DocumentStore) ToggleLock(id int64) (*model.Document, error) {
+	res, err := s.db.Exec(
+		`UPDATE documents SET locked = 1 - locked WHERE id = ? AND trashed_at IS NULL`, id)
+	if err != nil {
+		return nil, err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return nil, ErrNotFound
+	}
+	return s.GetByID(id)
+}
+
 // UpdateAssocDate sets the user-editable associated date on a document.
 // Pass nil for year/month/day to clear that field. Does not bump version.
 func (s *DocumentStore) UpdateAssocDate(id int64, year, month, day *int) (*model.Document, error) {
@@ -211,11 +232,15 @@ func (s *DocumentStore) UpdateAssocDate(id int64, year, month, day *int) (*model
 func (s *DocumentStore) SoftDelete(id int64) error {
 	return WithTx(s.db, func(tx *sql.Tx) error {
 		var parentID sql.NullInt64
-		if err := tx.QueryRow(`SELECT parent_id FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&parentID); err != nil {
+		var locked bool
+		if err := tx.QueryRow(`SELECT parent_id, locked FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&parentID, &locked); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrNotFound
 			}
 			return err
+		}
+		if locked {
+			return ErrLocked
 		}
 		if _, err := tx.Exec(`
 			UPDATE documents
@@ -477,7 +502,7 @@ func (s *DocumentStore) ListTree(tagFilter []string, favoriteOnly bool, q string
 		extra = " AND is_favorite = 1"
 	}
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents
 		WHERE trashed_at IS NULL` + extra + `
@@ -515,7 +540,7 @@ func (s *DocumentStore) listByQuery(tagFilter []string, favoriteOnly bool, q str
 		)`, ph, len(tagFilter))
 	}
 	rows, err := s.db.Query(`
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite,
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked,
 		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
 		FROM documents d
 		WHERE `+cond+`
@@ -588,7 +613,7 @@ func (s *DocumentStore) EmptyTrash() error {
 // ListChildren returns all non-trashed direct children of parentID, ordered by position then id.
 func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) {
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents
 		WHERE parent_id = ? AND trashed_at IS NULL
@@ -608,7 +633,7 @@ func (s *DocumentStore) listByTags(tags []string, favoriteOnly bool) ([]*model.D
 		extra = " AND d.is_favorite = 1"
 	}
 	query := `
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite,
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked,
 		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
 		FROM documents d
 		WHERE d.trashed_at IS NULL` + extra + `
@@ -663,7 +688,7 @@ func checkCircular(tx *sql.Tx, sourceID, targetID int64) error {
 
 func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 	row := db.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents WHERE id = ? AND trashed_at IS NULL`, id)
 	if err := scanDocRow(row, doc); err != nil {
@@ -676,7 +701,7 @@ func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 
 func scanDocFromTx(tx *sql.Tx, id int64, doc *model.Document) error {
 	row := tx.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents WHERE id = ?`, id)
 	if err := scanDocRow(row, doc); err != nil {
@@ -696,7 +721,7 @@ func scanDocRow(row *sql.Row, doc *model.Document) error {
 		&doc.ID, &parentID, &doc.Title,
 		&bodyHTML, &bodyText, &icon,
 		&doc.Position, &doc.Version,
-		&doc.IsFavorite,
+		&doc.IsFavorite, &doc.Locked,
 		&createdStr, &updatedStr,
 		&assocYear, &assocMonth, &assocDay,
 	)
@@ -808,7 +833,7 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 			&doc.ID, &parentID, &doc.Title,
 			&bodyHTML, &bodyText, &icon,
 			&doc.Position, &doc.Version,
-			&doc.IsFavorite,
+			&doc.IsFavorite, &doc.Locked,
 			&createdStr, &updatedStr,
 			&assocYear, &assocMonth, &assocDay,
 		); err != nil {

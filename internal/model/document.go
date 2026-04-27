@@ -15,6 +15,7 @@ type Document struct {
 	TrashedAt        *time.Time `json:"trashed_at,omitempty"`
 	OriginalParentID *int64     `json:"original_parent_id,omitempty"`
 	IsFavorite       bool       `json:"is_favorite"`
+	Locked           bool       `json:"locked"`
 	Tags             []string   `json:"tags,omitempty"`
 	AttachmentIDs    []int64    `json:"attachment_ids,omitempty"`
 	CreatedAt        time.Time  `json:"created_at"`
@@ -33,6 +34,7 @@ type DocumentTreeNode struct {
 	Position int                 `json:"position"`
 	Version  int64               `json:"version"`
 	IsFavorite bool                `json:"is_favorite"`
+	Locked     bool                `json:"locked"`
 	Tags       []string            `json:"tags,omitempty"`
 	Children   []*DocumentTreeNode `json:"children"`
 }
