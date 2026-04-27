@@ -2,11 +2,11 @@
 // Strategy:
 //   index.html (/) → network-first (picks up UI updates; cache fallback for offline)
 //   manifest.webmanifest + Vite assets → cache-first (content-hash filenames)
-//   GET /api/documents/:id → stale-while-revalidate (LRU of last 100 docs)
+//   GET /api/documents/:id → network-first (always fresh version; cache fallback offline)
 //   Mutating requests (POST/PUT/DELETE/PATCH) → network-only; offline → 503
 //   PWA share_target (POST /api/capture) → passes through to network (auth via cookie)
 const SHELL_CACHE = 'pkd-shell-v6';
-const DOC_CACHE   = 'pkd-docs-v5';
+const DOC_CACHE   = 'pkd-docs-v6';
 const DOC_MAX     = 100;
 
 // App shell: index.html + manifest.
@@ -58,8 +58,9 @@ self.addEventListener('fetch', event => {
     // When offline, return a structured 503 so the app can show an error.
     event.respondWith(networkOrOffline(request));
   } else if (isDocAPI) {
-    // Document GET: stale-while-revalidate for offline read-only access
-    event.respondWith(staleWhileRevalidate(request));
+    // Document GET: network-first so the client always loads the current version.
+    // Falls back to cache only when offline (read-only access).
+    event.respondWith(docNetworkFirst(request));
   } else if (isIndex) {
     // index.html: network-first so UI updates are picked up without CTRL+F5.
     // Falls back to cache only when offline.
@@ -98,19 +99,18 @@ async function networkFirst(request) {
   }
 }
 
-async function staleWhileRevalidate(request) {
+async function docNetworkFirst(request) {
   const cache = await caches.open(DOC_CACHE);
-  const cached = await cache.match(request);
-
-  const networkFetch = fetch(request).then(async res => {
+  try {
+    const res = await fetch(request);
     if (res.ok) {
       await evictLRU(cache, DOC_MAX - 1);
       await cache.put(request, res.clone());
     }
     return res;
-  }).catch(() => null);
-
-  return cached || (await networkFetch) || new Response('', { status: 503 });
+  } catch {
+    return (await cache.match(request)) || new Response('', { status: 503 });
+  }
 }
 
 async function cacheFirst(request) {

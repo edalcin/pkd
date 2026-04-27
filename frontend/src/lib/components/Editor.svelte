@@ -635,6 +635,7 @@
 
   // Svelte action: mounts the TipTap editor on the DOM node
   function mountEditor(node) {
+    let mounted = false
     editorInstance = new Editor({
       element: node,
       extensions: [
@@ -660,7 +661,8 @@
           'data-placeholder': 'Comece a escrever…',
         },
       },
-      onUpdate: () => scheduleAutoSave(),
+      onCreate: () => { mounted = true },
+      onUpdate: () => { if (mounted) scheduleAutoSave() },
       onTransaction: () => { editorTick++; editorReady = true },
     })
     editorReady = true
