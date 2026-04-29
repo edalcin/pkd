@@ -21,6 +21,10 @@
 
   let { docId, focusMode = false } = $props()
 
+  let mobileTab = $state('content')
+  let mobileEditMode = $state(false)
+  let isMobile = $state(false)
+
   let doc = $state(null)
   let titleValue = $state('')
   let tagInput = $state('')
@@ -223,8 +227,18 @@
     editorInstance?.destroy()
   })
 
+  $effect(() => {
+    const mq = window.matchMedia('(max-width: 640px)')
+    isMobile = mq.matches
+    const handler = (e) => { isMobile = e.matches }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  })
+
   async function loadDocument() {
-    const targetId = Number(docId)  // snapshot: prevents reading stale reactive prop after awaits
+    const targetId = Number(docId)
+    mobileEditMode = false
+    mobileTab = 'content'
     loading = true
     try {
       const loadedDoc = await loadDoc(targetId)
@@ -318,10 +332,9 @@
     doc = updated
   }
 
-  // Keep TipTap's editable flag in sync with doc.locked
   $effect(() => {
     if (editorReady && editorInstance) {
-      editorInstance.setEditable(!doc?.locked)
+      editorInstance.setEditable(!doc?.locked && !(isMobile && !focusMode && !mobileEditMode))
     }
   })
 
@@ -684,6 +697,7 @@
   </div>
 {:else if doc}
   <div class="editor-area" onkeydown={handleKeydown} role="region" aria-label="Editor de documento" tabindex="-1">
+    <div class="content-pane" class:mobile-pane-hidden={isMobile && mobileTab !== 'content'}>
     <!-- Title -->
     <div class="doc-header">
       <div class="title-row">
@@ -771,7 +785,11 @@
          {#key editorTick} forces re-evaluation of isActive() on every
          TipTap transaction (selection change, content edit). -->
     {#key editorTick}
-    <div class="toolbar {doc.locked ? 'toolbar-locked' : ''}" role="toolbar" aria-label="Formatação">
+    <div class="toolbar {doc.locked ? 'toolbar-locked' : ''} {isMobile && !mobileEditMode ? 'mobile-toolbar-hidden' : ''}" role="toolbar" aria-label="Formatação">
+        {#if isMobile && mobileEditMode}
+          <button class="tb-btn tb-done-mobile" onclick={() => { performSave(); mobileEditMode = false }} title="Salvar e sair">✓ Pronto</button>
+          <div class="tb-sep" role="separator"></div>
+        {/if}
         <!-- Headings -->
         <button class="tb-btn {isActive('heading', {level:1}) ? 'active' : ''}"
           onmousedown={e => { e.preventDefault(); fmt(c => c.toggleHeading({level:1})) }} title="Título 1" aria-pressed={isActive('heading',{level:1})}>H1</button>
@@ -958,8 +976,21 @@
       </div>
     {/if}
 
+    </div><!-- /content-pane -->
+
     <!-- ── Área de associações ───────────────────────────────────── -->
     {#if !focusMode}
+      {#if isMobile && !mobileEditMode && !doc.locked}
+        <button class="mobile-fab-edit" onclick={() => mobileEditMode = true} aria-label="Editar documento" title="Editar">✏️</button>
+      {/if}
+
+      <div class="assoc-pane" class:mobile-pane-hidden={isMobile && mobileTab !== 'assoc'}>
+        {#if isMobile}
+          <div class="mobile-assoc-header">
+            <i class="bx {doc.icon || 'bx-file-blank'}"></i>
+            <span class="mobile-assoc-title">{doc.title || 'Sem título'}</span>
+          </div>
+        {/if}
     <div class="assoc-area">
       <div class="assoc-divider">
         <span class="assoc-divider-label">Associações</span>
@@ -1207,7 +1238,21 @@
         </section>
 
       </div>
-    </div>
+    </div><!-- /assoc-area -->
+      </div><!-- /assoc-pane -->
+
+      {#if isMobile}
+      <nav class="mobile-tab-bar" aria-label="Navegação de seções">
+        <button class:active={mobileTab === 'content'} onclick={() => mobileTab = 'content'} aria-pressed={mobileTab === 'content'}>
+          <span class="tab-icon">📄</span>
+          <span class="tab-label">Conteúdo</span>
+        </button>
+        <button class:active={mobileTab === 'assoc'} onclick={() => { mobileTab = 'assoc'; mobileEditMode = false }} aria-pressed={mobileTab === 'assoc'}>
+          <span class="tab-icon">🔗</span>
+          <span class="tab-label">Associações</span>
+        </button>
+      </nav>
+      {/if}
     {/if}
   </div>
 
@@ -2116,4 +2161,105 @@
   }
 
   .att-del-btn:hover { color: var(--text); }
+
+  /* ── Mobile Tab Interface ──────────────────────────── */
+  .content-pane, .assoc-pane { display: contents; }
+  .mobile-tab-bar { display: none; }
+  .mobile-fab-edit { display: none; }
+  .mobile-assoc-header { display: none; }
+  .tb-done-mobile { color: var(--accent); font-weight: 700; }
+
+  @media (max-width: 640px) {
+    .content-pane {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+      padding: .75rem 1rem 1rem;
+    }
+
+    .assoc-pane {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+      padding: .75rem 1rem 64px;
+    }
+
+    .mobile-pane-hidden { display: none !important; }
+    .mobile-toolbar-hidden { display: none !important; }
+
+    .mobile-tab-bar {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 52px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      z-index: 30;
+      box-shadow: 0 -2px 8px rgba(0,0,0,.08);
+    }
+
+    .mobile-tab-bar button {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: color .15s;
+      height: 52px;
+    }
+
+    .mobile-tab-bar button.active { color: var(--accent); font-weight: 600; }
+    .tab-icon { font-size: 1.2rem; line-height: 1; }
+    .tab-label { font-size: .68rem; line-height: 1; }
+
+    .mobile-fab-edit {
+      display: flex;
+      position: fixed;
+      bottom: 64px;
+      right: 1rem;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.4rem;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 3px 14px rgba(0,0,0,.3);
+      align-items: center;
+      justify-content: center;
+      z-index: 29;
+      transition: transform .1s;
+    }
+    .mobile-fab-edit:active { transform: scale(.93); }
+
+    .mobile-assoc-header {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .25rem .25rem .75rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: .75rem;
+    }
+    .mobile-assoc-header i { font-size: 1.25rem; flex-shrink: 0; }
+    .mobile-assoc-title {
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
 </style>

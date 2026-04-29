@@ -567,8 +567,9 @@ input:focus, textarea:focus, select:focus {
   }
   .sidebar.open { transform: translateX(0); }
   .resize-handle { display: none; }
-  .editor-area { padding: 1rem; }
+  .editor-area { padding: 0; }
   .doc-title { font-size: 1.4rem; }
+  .tiptap-editor { flex: unset !important; overflow-y: visible !important; min-height: 200px; }
 
   /* Larger touch targets on mobile */
   .icon-btn { width: 44px; height: 44px; }
