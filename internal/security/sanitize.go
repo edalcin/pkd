@@ -26,6 +26,7 @@ func init() {
 		"table", "thead", "tbody", "tfoot", "tr", "th", "td",
 		"figure", "figcaption",
 		"div", "span",
+		"mark",
 	)
 	editorPolicy.AllowAttrs("href", "rel", "target").OnElements("a")
 	editorPolicy.AllowURLSchemes("http", "https", "mailto")
@@ -35,6 +36,10 @@ func init() {
 	editorPolicy.AllowStyles("width", "height").
 		Matching(regexp.MustCompile(`^\d+(%|px|em|rem|vw|vh)?$`)).
 		OnElements("img", "figure")
+	// Allow background-color on mark (TipTap highlight extension uses inline style)
+	editorPolicy.AllowStyles("background-color", "color").
+		Matching(regexp.MustCompile(`^#[0-9a-fA-F]{3,8}$|^rgb\(\d+,\s*\d+,\s*\d+\)$|^rgba\(\d+,\s*\d+,\s*\d+,\s*[\d.]+\)$|^inherit$|^transparent$`)).
+		OnElements("mark")
 	editorPolicy.AllowAttrs("class").OnElements(
 		"code", "pre", "span", "div", "table", "th", "td",
 	)
@@ -53,7 +58,11 @@ func init() {
 		"pre", "code",
 		"table", "thead", "tbody", "tfoot", "tr", "th", "td",
 		"figure", "figcaption",
+		"mark",
 	)
+	publicSharePolicy.AllowStyles("background-color", "color").
+		Matching(regexp.MustCompile(`^#[0-9a-fA-F]{3,8}$|^rgb\(\d+,\s*\d+,\s*\d+\)$|^rgba\(\d+,\s*\d+,\s*\d+,\s*[\d.]+\)$|^inherit$|^transparent$`)).
+		OnElements("mark")
 	publicSharePolicy.AllowAttrs("href", "rel").OnElements("a")
 	publicSharePolicy.AllowURLSchemes("http", "https", "mailto")
 	publicSharePolicy.AllowRelativeURLs(true)
