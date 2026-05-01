@@ -39,17 +39,19 @@ export const linksRefreshSignal = writable(0)
 
 /** Load the document tree, optionally filtered by tags, favorites, and/or text query. */
 export async function loadTree(tags = get(tagFilter), favorites = get(favoriteFilter), q = get(textFilter)) {
+  const prevQ = get(textFilter)
   tagFilter.set(tags)
   favoriteFilter.set(favorites)
   textFilter.set(q)
 
   // Search always spans all documents (active + archived).
-  // Save the current view before the first search and restore it when cleared.
+  // Save the current view before the first search; restore only when search
+  // is actually being cleared (prevQ was non-empty), not on every call with q=''.
   const currentView = get(viewMode)
   if (q && currentView !== 'all') {
     preSearchViewMode = currentView
     viewMode.set('all')
-  } else if (!q && currentView === 'all' && preSearchViewMode !== 'all') {
+  } else if (!q && prevQ && currentView === 'all' && preSearchViewMode !== 'all') {
     viewMode.set(preSearchViewMode)
   }
 

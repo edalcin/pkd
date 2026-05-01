@@ -566,10 +566,21 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 
 	switch view {
 	case "archived":
+		// Recursive CTE: start from explicitly-archived roots, then include all
+		// non-trashed descendants (children's archived_at may be NULL — they inherit
+		// visibility from the archived ancestor).
 		rows, err = s.db.Query(`
+			WITH RECURSIVE archived_subtree AS (
+			  SELECT id FROM documents
+			  WHERE archived_at IS NOT NULL AND trashed_at IS NULL`+favExtra+`
+			  UNION ALL
+			  SELECT d.id FROM documents d
+			  JOIN archived_subtree a ON d.parent_id = a.id
+			  WHERE d.trashed_at IS NULL
+			)
 			SELECT `+cols+`
 			FROM documents
-			WHERE trashed_at IS NULL AND archived_at IS NOT NULL`+favExtra+`
+			WHERE id IN (SELECT id FROM archived_subtree)
 			ORDER BY position ASC, id ASC`)
 	case "all":
 		rows, err = s.db.Query(`

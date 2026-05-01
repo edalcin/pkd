@@ -739,6 +739,9 @@
           title={doc.locked ? 'Destrancar documento' : 'Trancar documento'}
           aria-label={doc.locked ? 'Destrancar' : 'Trancar'}
         ><i class="bx {doc.locked ? 'bx-lock' : 'bx-lock-open'}"></i></button>
+        {#if doc.archived}
+          <span class="archive-badge" title="Documento arquivado"><i class="bx bx-archive"></i></span>
+        {/if}
       </div>
       <div class="doc-meta">
         {#each docTags as tag}
@@ -1563,6 +1566,19 @@
   }
   .lock-btn:hover { opacity: 1; background: var(--bg-hover); }
   .lock-btn.is-locked { opacity: 1; color: var(--accent); }
+
+  .archive-badge {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    opacity: .75;
+  }
 
   .tag-input-wrap {
     position: relative;
