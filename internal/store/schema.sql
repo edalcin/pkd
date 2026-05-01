@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS documents (
 
 CREATE INDEX IF NOT EXISTS idx_documents_parent_id   ON documents(parent_id)   WHERE trashed_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_documents_trashed_at  ON documents(trashed_at)  WHERE trashed_at IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_documents_archived_at ON documents(archived_at) WHERE archived_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_documents_updated_at  ON documents(updated_at);
 
 -- ---------------------------------------------------------------------------

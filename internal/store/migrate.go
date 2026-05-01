@@ -105,6 +105,15 @@ func Open(dbPath string) (*sql.DB, error) {
 		}
 	}
 
+	// Create index on archived_at after the column migration above ensures the
+	// column exists on both fresh installs and upgraded databases.
+	if _, err := db.Exec(
+		`CREATE INDEX IF NOT EXISTS idx_documents_archived_at ON documents(archived_at) WHERE archived_at IS NOT NULL`,
+	); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open idx_documents_archived_at: %w", err)
+	}
+
 	// Data migration: backfill associated date from created_at for existing documents.
 	// Idempotent — only touches rows where assoc_year is still NULL.
 	if _, err := db.Exec(`
