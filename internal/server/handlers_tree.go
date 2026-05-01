@@ -8,11 +8,12 @@ import (
 
 func (s *Server) handleTree() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		view := r.URL.Query().Get("view") // "active" | "archived" | "all" — empty defaults to "active"
 		tagFilter := r.URL.Query()["tag"]
 		favoriteOnly := r.URL.Query().Get("favorite") == "1"
 		q := r.URL.Query().Get("q")
 
-		docs, err := s.docs.ListTree(tagFilter, favoriteOnly, q)
+		docs, err := s.docs.ListTree(view, tagFilter, favoriteOnly, q)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
@@ -37,6 +38,8 @@ func buildTree(docs []*model.Document) []*model.DocumentTreeNode {
 			Version:    d.Version,
 			IsFavorite: d.IsFavorite,
 			Locked:     d.Locked,
+			Archived:   d.Archived,
+			ArchivedAt: d.ArchivedAt,
 			Tags:       d.Tags,
 			Children:   []*model.DocumentTreeNode{},
 		}

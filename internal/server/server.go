@@ -117,6 +117,8 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/documents/{id}/restore", s.handleRestoreDocument())
 		r.Post("/api/documents/{id}/favorite", s.handleToggleFavorite())
 		r.Post("/api/documents/{id}/lock", s.handleToggleLock())
+		r.Post("/api/documents/{id}/archive", s.handleArchiveDocument())
+		r.Post("/api/documents/{id}/unarchive", s.handleUnarchiveDocument())
 		r.Patch("/api/documents/{id}/associated-date", s.handleUpdateAssocDate())
 			r.Get("/api/documents/{id}/children", s.handleListChildren())
 

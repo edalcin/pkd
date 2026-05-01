@@ -16,15 +16,17 @@ CREATE TABLE IF NOT EXISTS documents (
     version             INTEGER NOT NULL DEFAULT 1,
     is_favorite         INTEGER NOT NULL DEFAULT 0,
     locked              INTEGER NOT NULL DEFAULT 0,
+    archived_at         TEXT,
     trashed_at          TEXT,
     original_parent_id  INTEGER REFERENCES documents(id) ON DELETE SET NULL,
     created_at          TEXT    NOT NULL,
     updated_at          TEXT    NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_documents_parent_id  ON documents(parent_id)  WHERE trashed_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_documents_trashed_at ON documents(trashed_at) WHERE trashed_at IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON documents(updated_at);
+CREATE INDEX IF NOT EXISTS idx_documents_parent_id   ON documents(parent_id)   WHERE trashed_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_trashed_at  ON documents(trashed_at)  WHERE trashed_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_archived_at ON documents(archived_at) WHERE archived_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_updated_at  ON documents(updated_at);
 
 -- ---------------------------------------------------------------------------
 -- FTS5 full-text search (contentless — maintained at the application layer)

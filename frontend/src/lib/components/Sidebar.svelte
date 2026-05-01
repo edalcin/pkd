@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import TreeNode from './TreeNode.svelte'
-  import { tree, loadTree, createDoc, sortTree, treeExpansionSignal, tagFilter, favoriteFilter, textFilter } from '../stores/documents.js'
+  import { tree, loadTree, createDoc, sortTree, treeExpansionSignal, tagFilter, favoriteFilter, textFilter, viewMode } from '../stores/documents.js'
   import { tags, loadTags } from '../stores/tags.js'
 
   let { onNavigate, onClearFilter } = $props()
@@ -32,6 +32,11 @@
     loadTree(selectedTags, $favoriteFilter)
   }
 
+  function setViewMode(mode) {
+    viewMode.set(mode)
+    loadTree()
+  }
+
   async function handleNewRoot() {
     const doc = await createDoc(null)
     navigate(doc.id)
@@ -54,6 +59,15 @@
 </script>
 
 <div class="sidebar-inner">
+  <!-- View mode toggle (hidden during search) -->
+  {#if !$textFilter}
+    <div class="view-toggle" role="group" aria-label="Modo de visualização">
+      <button class="view-btn {$viewMode === 'active' || !$viewMode ? 'active' : ''}" onclick={() => setViewMode('active')}>Ativos</button>
+      <button class="view-btn {$viewMode === 'archived' ? 'active' : ''}" onclick={() => setViewMode('archived')}>Arquivados</button>
+      <button class="view-btn {$viewMode === 'all' ? 'active' : ''}" onclick={() => setViewMode('all')}>Todos</button>
+    </div>
+  {/if}
+
   <!-- Expand/collapse toolbar (hidden while text filter is active) -->
   {#if !$textFilter}
     <div class="sidebar-toolbar">
@@ -103,6 +117,8 @@
     {#if $tree.length === 0}
       {#if $textFilter}
         <p class="tree-empty">Sem resultados para "{$textFilter}"</p>
+      {:else if $viewMode === 'archived'}
+        <p class="tree-empty">Nenhum documento arquivado.</p>
       {:else}
         <p class="tree-empty">Nenhum documento ainda.</p>
       {/if}
@@ -118,6 +134,28 @@
 </div>
 
 <style>
+  .view-toggle {
+    display: flex;
+    padding: .3rem .5rem;
+    gap: 2px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .view-btn {
+    flex: 1;
+    padding: .25rem .4rem;
+    font-size: .73rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+
+  .view-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .view-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
   .sidebar-toolbar {
     display: flex;
     align-items: center;

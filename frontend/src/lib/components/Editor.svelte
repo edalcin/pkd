@@ -12,7 +12,7 @@
   import Link from '@tiptap/extension-link'
   import { DocLink } from '../editor/doclink-extension.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, unarchiveDoc } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
@@ -332,9 +332,14 @@
     doc = updated
   }
 
+  async function handleUnarchive() {
+    const updated = await unarchiveDoc(doc.id)
+    doc = updated
+  }
+
   $effect(() => {
     if (editorReady && editorInstance) {
-      editorInstance.setEditable(!doc?.locked && !(isMobile && !focusMode && !mobileEditMode))
+      editorInstance.setEditable(!doc?.locked && !doc?.archived && !(isMobile && !focusMode && !mobileEditMode))
     }
   })
 
@@ -707,7 +712,7 @@
             onclick={() => iconPickerOpen = !iconPickerOpen}
             title="Definir ícone do documento"
             aria-label="Ícone"
-            disabled={doc.locked}
+            disabled={doc.locked || doc.archived}
           >
             <i class="bx {doc.icon || 'bx-file-blank'}" style={doc.icon ? '' : 'opacity:.25'}></i>
           </button>
@@ -726,7 +731,7 @@
           oninput={scheduleAutoSave}
           placeholder="Título do documento"
           aria-label="Título"
-          disabled={doc.locked}
+          disabled={doc.locked || doc.archived}
         />
         <button
           class="lock-btn {doc.locked ? 'is-locked' : ''}"
@@ -743,7 +748,7 @@
             style={c ? `background:${c}; border-color:${c}; color:#fff` : ''}
           >
             #{tag}
-            <button class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remover tag" disabled={doc.locked}>×</button>
+            <button class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remover tag" disabled={doc.locked || doc.archived}>×</button>
           </span>
         {/each}
         <div class="tag-input-wrap">
@@ -758,7 +763,7 @@
             placeholder="+ tag"
             aria-label="Adicionar tag"
             autocomplete="off"
-            disabled={doc.locked}
+            disabled={doc.locked || doc.archived}
           />
           {#if tagSuggestionsOpen}
             <div class="tag-dropdown" role="listbox" style={tagDropdownStyle}>
@@ -781,11 +786,20 @@
       </div>
     </div>
 
+    <!-- Archived banner -->
+    {#if doc.archived}
+      <div class="archived-banner">
+        <i class="bx bx-archive"></i>
+        <span>Este documento está arquivado e é somente leitura.</span>
+        <button class="archived-unarchive-btn" onclick={handleUnarchive}>Desarquivar</button>
+      </div>
+    {/if}
+
     <!-- Formatting toolbar — always visible when a document is open.
          {#key editorTick} forces re-evaluation of isActive() on every
          TipTap transaction (selection change, content edit). -->
     {#key editorTick}
-    <div class="toolbar {doc.locked ? 'toolbar-locked' : ''} {isMobile && !mobileEditMode ? 'mobile-toolbar-hidden' : ''}" role="toolbar" aria-label="Formatação">
+    <div class="toolbar {doc.locked || doc.archived ? 'toolbar-locked' : ''} {isMobile && !mobileEditMode ? 'mobile-toolbar-hidden' : ''}" role="toolbar" aria-label="Formatação">
         {#if isMobile && mobileEditMode}
           <button class="tb-btn tb-done-mobile" onclick={() => { performSave(); mobileEditMode = false }} title="Salvar e sair">✓ Pronto</button>
           <div class="tb-sep" role="separator"></div>
@@ -980,7 +994,7 @@
 
     <!-- ── Área de associações ───────────────────────────────────── -->
     {#if !focusMode}
-      {#if isMobile && !mobileEditMode && !doc.locked}
+      {#if isMobile && !mobileEditMode && !doc.locked && !doc.archived}
         <button class="mobile-fab-edit" onclick={() => mobileEditMode = true} aria-label="Editar documento" title="Editar">✏️</button>
       {/if}
 
@@ -1330,6 +1344,46 @@
 {/if}
 
 <style>
+  /* ── Archived banner ──────────────────────────── */
+  .archived-banner {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .45rem .75rem;
+    margin-bottom: .5rem;
+    background: color-mix(in srgb, var(--text-muted) 10%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: .82rem;
+    color: var(--text-muted);
+  }
+
+  .archived-banner i {
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .archived-banner span {
+    flex: 1;
+  }
+
+  .archived-unarchive-btn {
+    flex-shrink: 0;
+    padding: .2rem .6rem;
+    font-size: .8rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--accent);
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+
+  .archived-unarchive-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+  }
+
   /* ── Formatting toolbar ─────────────────────────── */
   .toolbar {
     display: flex;

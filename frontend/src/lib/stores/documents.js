@@ -4,6 +4,12 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../api.js'
 /** Full tree of DocumentTreeNode objects. */
 export const tree = writable([])
 
+/** Current document tree view mode: 'active' | 'archived' | 'all'. Resets to 'active' on page load. */
+export const viewMode = writable('active')
+
+/** View mode saved before a search is initiated; restored when search is cleared. */
+let preSearchViewMode = 'active'
+
 /** Currently open document (full Document object). */
 export const activeDoc = writable(null)
 
@@ -36,7 +42,20 @@ export async function loadTree(tags = get(tagFilter), favorites = get(favoriteFi
   tagFilter.set(tags)
   favoriteFilter.set(favorites)
   textFilter.set(q)
+
+  // Search always spans all documents (active + archived).
+  // Save the current view before the first search and restore it when cleared.
+  const currentView = get(viewMode)
+  if (q && currentView !== 'all') {
+    preSearchViewMode = currentView
+    viewMode.set('all')
+  } else if (!q && currentView === 'all' && preSearchViewMode !== 'all') {
+    viewMode.set(preSearchViewMode)
+  }
+
   const params = new URLSearchParams()
+  const view = get(viewMode)
+  if (view && view !== 'active') params.set('view', view)
   tags.forEach(t => params.append('tag', t))
   if (favorites) params.set('favorite', '1')
   if (q) params.set('q', q)
@@ -59,6 +78,20 @@ export async function toggleFavorite(id) {
 export async function toggleLock(id) {
   const doc = await apiPost(`/api/documents/${id}/lock`, {})
   tree.update(nodes => updateTreeNode(nodes, id, { locked: doc.locked }))
+  return doc
+}
+
+/** Archive a document. Triggers a tree reload so it disappears from the current view. */
+export async function archiveDoc(id) {
+  const doc = await apiPost(`/api/documents/${id}/archive`, {})
+  await loadTree()
+  return doc
+}
+
+/** Unarchive a document. Triggers a tree reload so it reappears in the active view. */
+export async function unarchiveDoc(id) {
+  const doc = await apiPost(`/api/documents/${id}/unarchive`, {})
+  await loadTree()
   return doc
 }
 

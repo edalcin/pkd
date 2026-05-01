@@ -1,5 +1,5 @@
 <script>
-  import { createDoc, trashDoc, moveDoc, reorderDoc, findNextSiblingId, treeExpansionSignal, linksRefreshSignal, toggleFavorite, revealActiveSignal } from '../stores/documents.js'
+  import { createDoc, trashDoc, moveDoc, reorderDoc, findNextSiblingId, treeExpansionSignal, linksRefreshSignal, toggleFavorite, revealActiveSignal, archiveDoc, unarchiveDoc } from '../stores/documents.js'
   import { apiPost } from '../api.js'
 
   let {
@@ -77,6 +77,16 @@
     }
   }
 
+  async function handleArchive(e) {
+    e.stopPropagation()
+    await archiveDoc(node.id)
+  }
+
+  async function handleUnarchive(e) {
+    e.stopPropagation()
+    await unarchiveDoc(node.id)
+  }
+
   async function handleToggleFavorite(e) {
     e.stopPropagation()
     await toggleFavorite(node.id)
@@ -138,7 +148,7 @@
   <!-- Row -->
   <div
     bind:this={itemEl}
-    class="tree-item {node.id === activeId ? 'active' : ''} {dropZone === 'inside' ? 'drag-over' : ''} {dropZone === 'before' ? 'drop-before' : ''} {dropZone === 'after' ? 'drop-after' : ''}"
+    class="tree-item {node.id === activeId ? 'active' : ''} {node.archived ? 'node-archived' : ''} {dropZone === 'inside' ? 'drag-over' : ''} {dropZone === 'before' ? 'drop-before' : ''} {dropZone === 'after' ? 'drop-after' : ''}"
     style="padding-left: {0.4 + depth * 0.75}rem"
     onclick={navigate}
     draggable="true"
@@ -168,6 +178,9 @@
     {#if node.locked}
       <i class="bx bx-lock lock-indicator" title="Documento trancado"></i>
     {/if}
+    {#if node.archived}
+      <i class="bx bx-archive archive-indicator" title="Documento arquivado"></i>
+    {/if}
 
     <button
       class="star-btn {node.is_favorite ? 'is-favorite' : ''}"
@@ -187,7 +200,12 @@
         >→</button>
       {/if}
       <button class="row-btn" onclick={handleNewChild} title="Novo filho">+</button>
-      <button class="row-btn row-btn-del" onclick={handleDelete} title={node.locked ? 'Documento trancado' : 'Lixeira'} disabled={node.locked}>×</button>
+      {#if node.archived}
+        <button class="row-btn row-btn-unarchive" onclick={handleUnarchive} title="Desarquivar"><i class="bx bx-undo"></i></button>
+      {:else}
+        <button class="row-btn row-btn-archive" onclick={handleArchive} title={node.locked ? 'Documento trancado' : 'Arquivar'} disabled={node.locked}><i class="bx bx-archive"></i></button>
+      {/if}
+      <button class="row-btn row-btn-del" onclick={handleDelete} title={node.locked || node.archived ? 'Não disponível' : 'Lixeira'} disabled={node.locked || node.archived}>×</button>
     </span>
   </div>
 
@@ -269,4 +287,24 @@
     color: var(--text-muted);
     margin-left: 2px;
   }
+
+  .archive-indicator {
+    flex-shrink: 0;
+    font-size: .7rem;
+    opacity: .5;
+    color: var(--text-muted);
+    margin-left: 2px;
+  }
+
+  .node-archived .label {
+    opacity: .55;
+    font-style: italic;
+  }
+
+  .node-archived .icon {
+    opacity: .45;
+  }
+
+  .row-btn-archive:hover { color: var(--text-muted); }
+  .row-btn-unarchive:hover { color: var(--accent); }
 </style>

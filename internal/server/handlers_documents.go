@@ -98,8 +98,12 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
+		if errors.Is(err, store.ErrArchived) {
+			writeJSON(w, http.StatusLocked, map[string]string{"error": "document is archived"})
+			return
+		}
 		if errors.Is(err, store.ErrLocked) {
-			http.Error(w, "locked", http.StatusForbidden)
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "document is locked"})
 			return
 		}
 		if errors.Is(err, store.ErrVersionConflict) {
@@ -330,6 +334,54 @@ func (s *Server) handleToggleFavorite() http.HandlerFunc {
 			return
 		}
 		doc, err := s.docs.ToggleFavorite(id)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, doc)
+	}
+}
+
+func (s *Server) handleArchiveDocument() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		doc, err := s.docs.Archive(id)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, store.ErrLocked) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "document is locked"})
+			return
+		}
+		if errors.Is(err, store.ErrArchived) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "document is already archived"})
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, doc)
+	}
+}
+
+func (s *Server) handleUnarchiveDocument() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		doc, err := s.docs.Unarchive(id)
 		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return

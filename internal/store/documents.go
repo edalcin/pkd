@@ -23,6 +23,9 @@ var ErrCircularMove = errors.New("circular move: cannot move a node under its ow
 // ErrLocked is returned when an operation is blocked because the document is locked.
 var ErrLocked = errors.New("document is locked")
 
+// ErrArchived is returned when an operation is blocked because the document is archived (read-only).
+var ErrArchived = errors.New("document is archived")
+
 const nowISO = "strftime('%Y-%m-%dT%H:%M:%fZ','now')"
 
 // iconLeaf is the default icon for documents with no children.
@@ -147,11 +150,15 @@ func (s *DocumentStore) UpdateAndSync(id int64, clientVersion int64, title, body
 	err := WithTx(s.db, func(tx *sql.Tx) error {
 		var storedVersion int64
 		var locked bool
-		if err := tx.QueryRow(`SELECT version, locked FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&storedVersion, &locked); err != nil {
+		var archivedAt sql.NullString
+		if err := tx.QueryRow(`SELECT version, locked, archived_at FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&storedVersion, &locked, &archivedAt); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrNotFound
 			}
 			return fmt.Errorf("version check: %w", err)
+		}
+		if archivedAt.Valid {
+			return ErrArchived
 		}
 		if locked {
 			return ErrLocked
@@ -200,6 +207,53 @@ func (s *DocumentStore) ToggleFavorite(id int64) (*model.Document, error) {
 func (s *DocumentStore) ToggleLock(id int64) (*model.Document, error) {
 	res, err := s.db.Exec(
 		`UPDATE documents SET locked = 1 - locked WHERE id = ? AND trashed_at IS NULL`, id)
+	if err != nil {
+		return nil, err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return nil, ErrNotFound
+	}
+	return s.GetByID(id)
+}
+
+// Archive marks a document as archived by setting archived_at to now.
+// Returns ErrNotFound if the document doesn't exist or is trashed.
+// Returns ErrLocked if the document is locked.
+// Returns ErrArchived if the document is already archived.
+func (s *DocumentStore) Archive(id int64) (*model.Document, error) {
+	err := WithTx(s.db, func(tx *sql.Tx) error {
+		var locked bool
+		var archivedAt sql.NullString
+		if err := tx.QueryRow(
+			`SELECT locked, archived_at FROM documents WHERE id = ? AND trashed_at IS NULL`, id,
+		).Scan(&locked, &archivedAt); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		if locked {
+			return ErrLocked
+		}
+		if archivedAt.Valid {
+			return ErrArchived
+		}
+		_, err := tx.Exec(`UPDATE documents SET archived_at = `+nowISO+` WHERE id = ?`, id)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return s.GetByID(id)
+}
+
+// Unarchive clears archived_at, restoring a document to active status.
+// Returns ErrNotFound if the document doesn't exist or is trashed.
+// Idempotent — no error if the document is already active.
+func (s *DocumentStore) Unarchive(id int64) (*model.Document, error) {
+	res, err := s.db.Exec(
+		`UPDATE documents SET archived_at = NULL WHERE id = ? AND trashed_at IS NULL`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +333,7 @@ func (s *DocumentStore) Restore(id int64) error {
 		}
 		_, err := tx.Exec(`
 			UPDATE documents
-			SET trashed_at = NULL, parent_id = ?, original_parent_id = NULL
+			SET trashed_at = NULL, archived_at = NULL, parent_id = ?, original_parent_id = NULL
 			WHERE id = ?`, parentArg, id)
 		return err
 	})
@@ -485,28 +539,61 @@ func (s *DocumentStore) Move(id int64, newParentID *int64) error {
 	})
 }
 
-// ListTree returns all non-trashed documents. If tagFilter is non-empty, only
-// documents that carry ALL specified tags are included. If favoriteOnly is true,
-// only documents with is_favorite = 1 are returned. If q is non-empty, only
-// documents whose title, body_text, or associated external link titles match are
-// returned. The returned slice is a flat list; callers build the tree structure.
-func (s *DocumentStore) ListTree(tagFilter []string, favoriteOnly bool, q string) ([]*model.Document, error) {
+// ListTree returns all non-trashed documents filtered by view mode.
+// view: "active" (default) = exclude archived; "archived" = only archived; "all" = no archived filter.
+// If tagFilter is non-empty, only documents carrying ALL specified tags are included.
+// If favoriteOnly is true, only is_favorite=1 documents are returned.
+// If q is non-empty, only documents matching the text are returned.
+// The returned slice is a flat list; callers build the tree structure.
+func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly bool, q string) ([]*model.Document, error) {
 	if q != "" {
-		return s.listByQuery(tagFilter, favoriteOnly, q)
+		return s.listByQuery(view, tagFilter, favoriteOnly, q)
 	}
 	if len(tagFilter) > 0 {
-		return s.listByTags(tagFilter, favoriteOnly)
+		return s.listByTags(view, tagFilter, favoriteOnly)
 	}
-	extra := ""
+
+	favExtra := ""
 	if favoriteOnly {
-		extra = " AND is_favorite = 1"
+		favExtra = " AND is_favorite = 1"
 	}
-	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked,
-		       created_at, updated_at, assoc_year, assoc_month, assoc_day
-		FROM documents
-		WHERE trashed_at IS NULL` + extra + `
-		ORDER BY position ASC, id ASC`)
+
+	const cols = `id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
+		       created_at, updated_at, assoc_year, assoc_month, assoc_day`
+
+	var rows *sql.Rows
+	var err error
+
+	switch view {
+	case "archived":
+		rows, err = s.db.Query(`
+			SELECT `+cols+`
+			FROM documents
+			WHERE trashed_at IS NULL AND archived_at IS NOT NULL`+favExtra+`
+			ORDER BY position ASC, id ASC`)
+	case "all":
+		rows, err = s.db.Query(`
+			SELECT `+cols+`
+			FROM documents
+			WHERE trashed_at IS NULL`+favExtra+`
+			ORDER BY position ASC, id ASC`)
+	default: // "active"
+		// Recursive CTE: traverse only non-archived nodes from non-archived roots.
+		// This naturally hides children of archived parents without promoting them.
+		rows, err = s.db.Query(`
+			WITH RECURSIVE active_ids AS (
+			  SELECT id FROM documents
+			  WHERE parent_id IS NULL AND trashed_at IS NULL AND archived_at IS NULL`+favExtra+`
+			  UNION ALL
+			  SELECT d.id FROM documents d
+			  JOIN active_ids a ON d.parent_id = a.id
+			  WHERE d.trashed_at IS NULL AND d.archived_at IS NULL
+			)
+			SELECT `+cols+`
+			FROM documents
+			WHERE id IN (SELECT id FROM active_ids)
+			ORDER BY position ASC, id ASC`)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -515,13 +602,21 @@ func (s *DocumentStore) ListTree(tagFilter []string, favoriteOnly bool, q string
 }
 
 // listByQuery returns documents matching q across title, body_text, and external
-// link titles. Optional tagFilter and favoriteOnly further narrow the results.
-func (s *DocumentStore) listByQuery(tagFilter []string, favoriteOnly bool, q string) ([]*model.Document, error) {
+// link titles. Optional view, tagFilter and favoriteOnly further narrow the results.
+func (s *DocumentStore) listByQuery(view string, tagFilter []string, favoriteOnly bool, q string) ([]*model.Document, error) {
 	pattern := "%" + q + "%"
 	cond := `d.trashed_at IS NULL AND (d.title LIKE ? OR d.body_text LIKE ? OR EXISTS (
 		SELECT 1 FROM document_urls u WHERE u.document_id = d.id AND u.title LIKE ?
 	))`
 	args := []interface{}{pattern, pattern, pattern}
+	switch view {
+	case "archived":
+		cond += " AND d.archived_at IS NOT NULL"
+	case "all":
+		// no archived_at filter
+	default: // "active"
+		cond += " AND d.archived_at IS NULL"
+	}
 	if favoriteOnly {
 		cond += " AND d.is_favorite = 1"
 	}
@@ -540,7 +635,7 @@ func (s *DocumentStore) listByQuery(tagFilter []string, favoriteOnly bool, q str
 		)`, ph, len(tagFilter))
 	}
 	rows, err := s.db.Query(`
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked,
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.archived_at,
 		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
 		FROM documents d
 		WHERE `+cond+`
@@ -613,7 +708,7 @@ func (s *DocumentStore) EmptyTrash() error {
 // ListChildren returns all non-trashed direct children of parentID, ordered by position then id.
 func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) {
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents
 		WHERE parent_id = ? AND trashed_at IS NULL
@@ -626,14 +721,22 @@ func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) 
 }
 
 // listByTags returns documents that carry ALL tags in the filter (AND semantics).
-func (s *DocumentStore) listByTags(tags []string, favoriteOnly bool) ([]*model.Document, error) {
+func (s *DocumentStore) listByTags(view string, tags []string, favoriteOnly bool) ([]*model.Document, error) {
 	// Build: WHERE id IN (SELECT document_id FROM document_tags JOIN tags ... GROUP BY HAVING count = len(tags))
 	extra := ""
+	switch view {
+	case "archived":
+		extra += " AND d.archived_at IS NOT NULL"
+	case "all":
+		// no archived_at filter
+	default: // "active"
+		extra += " AND d.archived_at IS NULL"
+	}
 	if favoriteOnly {
-		extra = " AND d.is_favorite = 1"
+		extra += " AND d.is_favorite = 1"
 	}
 	query := `
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked,
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.archived_at,
 		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
 		FROM documents d
 		WHERE d.trashed_at IS NULL` + extra + `
@@ -688,7 +791,7 @@ func checkCircular(tx *sql.Tx, sourceID, targetID int64) error {
 
 func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 	row := db.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents WHERE id = ? AND trashed_at IS NULL`, id)
 	if err := scanDocRow(row, doc); err != nil {
@@ -701,7 +804,7 @@ func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 
 func scanDocFromTx(tx *sql.Tx, id int64, doc *model.Document) error {
 	row := tx.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents WHERE id = ?`, id)
 	if err := scanDocRow(row, doc); err != nil {
@@ -714,14 +817,14 @@ func scanDocFromTx(tx *sql.Tx, id int64, doc *model.Document) error {
 
 func scanDocRow(row *sql.Row, doc *model.Document) error {
 	var parentID sql.NullInt64
-	var bodyHTML, bodyText, icon sql.NullString
+	var bodyHTML, bodyText, icon, archivedAtStr sql.NullString
 	var createdStr, updatedStr string
 	var assocYear, assocMonth, assocDay sql.NullInt64
 	err := row.Scan(
 		&doc.ID, &parentID, &doc.Title,
 		&bodyHTML, &bodyText, &icon,
 		&doc.Position, &doc.Version,
-		&doc.IsFavorite, &doc.Locked,
+		&doc.IsFavorite, &doc.Locked, &archivedAtStr,
 		&createdStr, &updatedStr,
 		&assocYear, &assocMonth, &assocDay,
 	)
@@ -734,6 +837,11 @@ func scanDocRow(row *sql.Row, doc *model.Document) error {
 	doc.BodyHTML = bodyHTML.String
 	doc.BodyText = bodyText.String
 	doc.Icon = icon.String
+	if archivedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339Nano, archivedAtStr.String)
+		doc.ArchivedAt = &t
+	}
+	doc.Archived = doc.ArchivedAt != nil
 	doc.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
 	doc.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedStr)
 	if assocYear.Valid {
@@ -826,14 +934,14 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 	for rows.Next() {
 		var doc model.Document
 		var parentID sql.NullInt64
-		var bodyHTML, bodyText, icon sql.NullString
+		var bodyHTML, bodyText, icon, archivedAtStr sql.NullString
 		var createdStr, updatedStr string
 		var assocYear, assocMonth, assocDay sql.NullInt64
 		if err := rows.Scan(
 			&doc.ID, &parentID, &doc.Title,
 			&bodyHTML, &bodyText, &icon,
 			&doc.Position, &doc.Version,
-			&doc.IsFavorite, &doc.Locked,
+			&doc.IsFavorite, &doc.Locked, &archivedAtStr,
 			&createdStr, &updatedStr,
 			&assocYear, &assocMonth, &assocDay,
 		); err != nil {
@@ -845,6 +953,11 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 		doc.BodyHTML = bodyHTML.String
 		doc.BodyText = bodyText.String
 		doc.Icon = icon.String
+		if archivedAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339Nano, archivedAtStr.String)
+			doc.ArchivedAt = &t
+		}
+		doc.Archived = doc.ArchivedAt != nil
 		doc.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
 		doc.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedStr)
 		if assocYear.Valid {
