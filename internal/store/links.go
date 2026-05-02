@@ -25,43 +25,59 @@ func NewLinkStore(db *sql.DB) *LinkStore {
 	return &LinkStore{db: db}
 }
 
-// GetLinksForDocument returns outgoing links (source=docID) and incoming
-// backlinks (target=docID) enriched with document titles and trashed status.
+// GetLinksForDocument returns all documents related to docID, regardless of
+// which side holds source_id vs target_id. The result is deduplicated so that
+// a pair that has links in both directions (A→B and B→A) appears only once.
 func (s *LinkStore) GetLinksForDocument(docID int64) (*model.LinksResponse, error) {
-	const outgoingQ = `
-		SELECT dl.id, dl.source_id, dl.target_id,
-		       sd.title, td.title,
-		       (td.trashed_at IS NOT NULL), dl.created_at
+	const q = `
+		SELECT
+			dl.id,
+			CASE WHEN dl.source_id = ? THEN dl.target_id ELSE dl.source_id END AS related_id,
+			CASE WHEN dl.source_id = ? THEN td.title    ELSE sd.title    END AS related_title,
+			CASE WHEN dl.source_id = ?
+			     THEN (td.trashed_at IS NOT NULL)
+			     ELSE (sd.trashed_at IS NOT NULL) END    AS related_trashed,
+			dl.created_at
 		FROM document_links dl
 		JOIN documents sd ON sd.id = dl.source_id
 		JOIN documents td ON td.id = dl.target_id
-		WHERE dl.source_id = ?
-		ORDER BY td.title`
+		WHERE dl.source_id = ? OR dl.target_id = ?
+		ORDER BY related_title`
 
-	const incomingQ = `
-		SELECT dl.id, dl.source_id, dl.target_id,
-		       sd.title, td.title,
-		       (td.trashed_at IS NOT NULL), dl.created_at
-		FROM document_links dl
-		JOIN documents sd ON sd.id = dl.source_id
-		JOIN documents td ON td.id = dl.target_id
-		WHERE dl.target_id = ?
-		ORDER BY sd.title`
+	rows, err := s.db.Query(q, docID, docID, docID, docID, docID)
+	if err != nil {
+		return nil, fmt.Errorf("links.GetLinksForDocument: %w", err)
+	}
+	defer rows.Close()
 
-	out, err := queryLinkEntries(s.db, outgoingQ, docID)
-	if err != nil {
-		return nil, fmt.Errorf("links.GetLinksForDocument outgoing: %w", err)
+	seen := map[int64]bool{}
+	var related []model.RelatedLink
+	for rows.Next() {
+		var e model.RelatedLink
+		var createdAt string
+		var relatedTrashed bool
+		if err := rows.Scan(&e.ID, &e.RelatedID, &e.RelatedTitle, &relatedTrashed, &createdAt); err != nil {
+			return nil, err
+		}
+		e.RelatedTrashed = relatedTrashed
+		e.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+		if !seen[e.RelatedID] {
+			seen[e.RelatedID] = true
+			related = append(related, e)
+		}
 	}
-	in, err := queryLinkEntries(s.db, incomingQ, docID)
-	if err != nil {
-		return nil, fmt.Errorf("links.GetLinksForDocument incoming: %w", err)
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
-	return &model.LinksResponse{Outgoing: out, Incoming: in}, nil
+	if related == nil {
+		related = []model.RelatedLink{}
+	}
+	return &model.LinksResponse{Related: related}, nil
 }
 
 // CreateLink inserts a new link from sourceID to targetID. Returns ErrConflict
 // if the link already exists, or ErrNotFound if either document is missing.
-func (s *LinkStore) CreateLink(sourceID, targetID int64) (*model.LinkEntry, error) {
+func (s *LinkStore) CreateLink(sourceID, targetID int64) (*model.RelatedLink, error) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.db.Exec(
 		`INSERT INTO document_links (source_id, target_id, manual, created_at) VALUES (?, ?, 1, ?)`,
@@ -74,17 +90,16 @@ func (s *LinkStore) CreateLink(sourceID, targetID int64) (*model.LinkEntry, erro
 		return nil, fmt.Errorf("links.CreateLink: %w", err)
 	}
 
-	// Return the entry with enriched titles
 	resp, err := s.GetLinksForDocument(sourceID)
 	if err != nil {
 		return nil, err
 	}
-	for i := range resp.Outgoing {
-		if resp.Outgoing[i].TargetID == targetID {
-			return &resp.Outgoing[i], nil
+	for i := range resp.Related {
+		if resp.Related[i].RelatedID == targetID {
+			return &resp.Related[i], nil
 		}
 	}
-	return &model.LinkEntry{SourceID: sourceID, TargetID: targetID}, nil
+	return &model.RelatedLink{RelatedID: targetID}, nil
 }
 
 // DeleteLink removes a link by its id. Returns ErrNotFound if not found.
@@ -297,38 +312,6 @@ func extractDocLinkIDs(bodyHTML string) []int64 {
 }
 
 // ── private helpers ──────────────────────────────────────────────────────────
-
-func queryLinkEntries(db *sql.DB, q string, arg int64) ([]model.LinkEntry, error) {
-	rows, err := db.Query(q, arg)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var entries []model.LinkEntry
-	for rows.Next() {
-		var e model.LinkEntry
-		var createdAt string
-		var targetTrashed bool
-		if err := rows.Scan(
-			&e.ID, &e.SourceID, &e.TargetID,
-			&e.SourceTitle, &e.TargetTitle,
-			&targetTrashed, &createdAt,
-		); err != nil {
-			return nil, err
-		}
-		e.TargetTrashed = targetTrashed
-		e.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
-		entries = append(entries, e)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if entries == nil {
-		return []model.LinkEntry{}, nil
-	}
-	return entries, nil
-}
 
 func (s *LinkStore) queryAllEdges() ([]model.GraphEdge, error) {
 	rows, err := s.db.Query(`

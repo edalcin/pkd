@@ -10,23 +10,21 @@ type Link struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// LinkEntry is the enriched response shape returned by GET /api/documents/{id}/links.
-// It includes the titles of both documents so the client does not need to make
-// additional requests to display the link list.
-type LinkEntry struct {
-	ID            int64     `json:"id"`
-	SourceID      int64     `json:"source_id"`
-	TargetID      int64     `json:"target_id"`
-	SourceTitle   string    `json:"source_title"`
-	TargetTitle   string    `json:"target_title"`
-	TargetTrashed bool      `json:"target_trashed"`
-	CreatedAt     time.Time `json:"created_at"`
+// RelatedLink is the enriched shape used by GET /api/documents/{id}/links.
+// It describes the relationship from the perspective of the requesting document:
+// RelatedID/RelatedTitle refer to the *other* document regardless of which
+// side stored the original source_id/target_id.
+type RelatedLink struct {
+	ID             int64     `json:"id"`
+	RelatedID      int64     `json:"related_id"`
+	RelatedTitle   string    `json:"related_title"`
+	RelatedTrashed bool      `json:"related_trashed"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 // LinksResponse is returned by GET /api/documents/{id}/links.
 type LinksResponse struct {
-	Outgoing []LinkEntry `json:"outgoing"`
-	Incoming []LinkEntry `json:"incoming"`
+	Related []RelatedLink `json:"related"`
 }
 
 // GraphNode is a node in the graph response.

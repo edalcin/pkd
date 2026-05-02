@@ -33,8 +33,7 @@
   let tagInputEl = $state(null)
   let tagDropdownStyle = $state('')
   let docTags = $state([])
-  let backlinks = $state([])
-  let outgoingLinks = $state([])
+  let relatedLinks = $state([])
   let attachments = $state([])
   let docUrls = $state([])
   let assocYear = $state(null)
@@ -291,11 +290,9 @@
     const targetId = id ?? Number(docId)
     try {
       const resp = await apiGet(`/api/documents/${targetId}/links`)
-      backlinks = resp.incoming || []
-      outgoingLinks = resp.outgoing || []
+      relatedLinks = resp.related || []
     } catch {
-      backlinks = []
-      outgoingLinks = []
+      relatedLinks = []
     }
   }
 
@@ -483,7 +480,7 @@
     return `${String(assocDay).padStart(2,'0')}/${String(assocMonth).padStart(2,'0')}/${assocYear}`
   }
 
-  // ── Related notes (outgoing links) ────────────────────────────────────────
+  // ── Documentos relacionados ────────────────────────────────────────────────
 
   function onLinkInput() {
     clearTimeout(linkSearchTimer)
@@ -491,7 +488,7 @@
     linkSearchTimer = setTimeout(async () => {
       try {
         const hits = await apiGet(`/api/search?q=${encodeURIComponent(linkQuery)}`)
-        const linked = new Set(outgoingLinks.map(l => l.target_id))
+        const linked = new Set(relatedLinks.map(l => l.related_id))
         linkResults = (hits || []).filter(h => h.id !== doc.id && !linked.has(h.id)).slice(0, 8)
         if (linkResults.length > 0) {
           // Position dropdown below the input using fixed coords
@@ -523,7 +520,7 @@
 
   async function removeLink(linkId) {
     await apiDelete(`/api/documents/${doc.id}/links/${linkId}`)
-    outgoingLinks = outgoingLinks.filter(l => l.id !== linkId)
+    relatedLinks = relatedLinks.filter(l => l.id !== linkId)
   }
 
   function closeLinkSearch() {
@@ -1048,36 +1045,20 @@
             {/if}
           </div>
 
-          <!-- outgoing -->
-          {#each outgoingLinks as link}
+          <!-- related docs (undirected) -->
+          {#each relatedLinks as link}
             <div class="assoc-item">
               <span
-                class="assoc-item-label link-title"
-                role="button" tabindex="0"
-                onclick={() => window.location.hash = `/doc/${link.target_id}`}
-                onkeydown={e => e.key === 'Enter' && (window.location.hash = `/doc/${link.target_id}`)}
-              >→ {link.target_title}</span>
+                class="assoc-item-label link-title {link.related_trashed ? 'broken' : ''}"
+                role="button" tabindex={link.related_trashed ? -1 : 0}
+                onclick={() => !link.related_trashed && (window.location.hash = `/doc/${link.related_id}`)}
+                onkeydown={e => e.key === 'Enter' && !link.related_trashed && (window.location.hash = `/doc/${link.related_id}`)}
+              >{link.related_title}{#if link.related_trashed}<span class="broken-badge">excluído</span>{/if}</span>
               <button class="row-btn row-btn-del" onmousedown={e => { e.preventDefault(); removeLink(link.id) }} title="Remover">×</button>
             </div>
           {/each}
 
-          <!-- backlinks -->
-          {#if backlinks.length > 0}
-            <p class="assoc-sub-title">Referenciado por</p>
-            {#each backlinks as link}
-              <div
-                class="assoc-item backlink-item {link.target_trashed ? 'broken' : ''}"
-                onclick={() => !link.target_trashed && (window.location.hash = `/doc/${link.source_id}`)}
-                onkeydown={e => e.key === 'Enter' && !link.target_trashed && (window.location.hash = `/doc/${link.source_id}`)}
-                role="button" tabindex={link.target_trashed ? -1 : 0}
-              >
-                <span class="assoc-item-label">← {link.source_title}</span>
-                {#if link.target_trashed}<span class="broken-badge">excluído</span>{/if}
-              </div>
-            {/each}
-          {/if}
-
-          {#if outgoingLinks.length === 0 && backlinks.length === 0}
+          {#if relatedLinks.length === 0}
             <p class="assoc-empty">Nenhum documento relacionado</p>
           {/if}
         </section>
@@ -1777,16 +1758,6 @@
     letter-spacing: .06em;
     color: var(--text-muted);
     margin-bottom: .4rem;
-  }
-
-  .assoc-sub-title {
-    font-size: .7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    color: var(--text-muted);
-    margin: .5rem 0 .2rem;
-    opacity: .7;
   }
 
   .assoc-item {
