@@ -19,7 +19,7 @@
   import { get } from 'svelte/store'
   import { autoSaveInterval } from '../stores/settings.js'
 
-  let { docId, focusMode = false } = $props()
+  let { docId, focusMode = false, assocPortal = null } = $props()
 
   let mobileTab = $state('content')
   let mobileEditMode = $state(false)
@@ -40,29 +40,8 @@
   let assocMonth = $state(null)
   let assocDay = $state(null)
   let children = $state([])
+  let assocPaneEl = $state(null)
 
-  // ─── Right panel (associations) resize ───────────────────────
-  let assocPanelWidth = $state(Number(localStorage.getItem('pkd-assoc-width')) || 300)
-  let resizingAssoc = $state(false)
-  let assocResizeAnchor = { x: 0, w: 0 }
-
-  function onAssocResizeStart(e) {
-    resizingAssoc = true
-    assocResizeAnchor = { x: e.clientX, w: assocPanelWidth }
-    document.addEventListener('mousemove', onAssocResizeMove)
-    document.addEventListener('mouseup', onAssocResizeEnd)
-  }
-
-  function onAssocResizeMove(e) {
-    assocPanelWidth = Math.max(220, Math.min(600, assocResizeAnchor.w + assocResizeAnchor.x - e.clientX))
-  }
-
-  function onAssocResizeEnd() {
-    resizingAssoc = false
-    localStorage.setItem('pkd-assoc-width', String(assocPanelWidth))
-    document.removeEventListener('mousemove', onAssocResizeMove)
-    document.removeEventListener('mouseup', onAssocResizeEnd)
-  }
   let urlInput = $state('')
   let urlTitleInput = $state('')
   let urlAdding = $state(false)
@@ -255,6 +234,13 @@
     const handler = (e) => { isMobile = e.matches }
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
+  })
+
+  // Teleport assoc-pane into the App-level sidebar portal on desktop
+  $effect(() => {
+    if (assocPortal && assocPaneEl) {
+      assocPortal.appendChild(assocPaneEl)
+    }
   })
 
   async function loadDocument() {
@@ -990,17 +976,7 @@
         <button class="mobile-fab-edit" onclick={() => mobileEditMode = true} aria-label="Editar documento" title="Editar">✏️</button>
       {/if}
 
-      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-      <div
-        class="resize-handle-assoc {resizingAssoc ? 'active' : ''}"
-        onmousedown={onAssocResizeStart}
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Redimensionar painel de associações"
-      ></div>
-
-      <div class="assoc-pane" class:mobile-pane-hidden={isMobile && mobileTab !== 'assoc'}
-           style="width:{assocPanelWidth}px">
+      <div class="assoc-pane" bind:this={assocPaneEl} class:mobile-pane-hidden={isMobile && mobileTab !== 'assoc'}>
         {#if isMobile}
           <div class="mobile-assoc-header">
             <i class="bx {doc.icon || 'bx-file-blank'}"></i>
@@ -2250,26 +2226,13 @@
   .assoc-pane {
     display: flex;
     flex-direction: column;
-    flex-shrink: 0;
+    flex: 1;
     overflow-y: auto;
-    border-left: 1px solid var(--border);
-    background: var(--bg-panel);
   }
 
   .assoc-pane .assoc-grid { grid-template-columns: 1fr; }
   .assoc-pane .assoc-area { margin-top: 0; padding: 1rem; }
   .assoc-pane .children-area { padding: 1rem 1rem 0; border-bottom: 1px solid var(--border); margin-bottom: 0; }
-
-  .resize-handle-assoc {
-    width: 4px;
-    cursor: col-resize;
-    background: transparent;
-    flex-shrink: 0;
-    transition: background .15s;
-    z-index: 10;
-  }
-  .resize-handle-assoc:hover,
-  .resize-handle-assoc.active { background: var(--accent); }
 
   .mobile-tab-bar { display: none; }
   .mobile-fab-edit { display: none; }
@@ -2293,14 +2256,10 @@
       overflow-y: auto;
       min-height: 0;
       padding: .75rem 1rem 64px;
-      border-left: none;
-      width: auto !important;
-      background: transparent;
     }
 
     .assoc-pane .assoc-area { padding: 0; }
     .assoc-pane .children-area { padding: 0; border-bottom: none; }
-    .resize-handle-assoc { display: none; }
 
     .mobile-pane-hidden { display: none !important; }
     .mobile-toolbar-hidden { display: none !important; }

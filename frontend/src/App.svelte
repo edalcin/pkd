@@ -63,6 +63,38 @@
     document.removeEventListener('mouseup', onResizeEnd)
   }
 
+  // ─── Right panel (associations) resize ──────────────────────
+  let isMobile = $state(window.matchMedia('(max-width: 640px)').matches)
+  let assocSidebarEl = $state(null)
+  let assocPanelWidth = $state(Number(localStorage.getItem('pkd-assoc-width')) || 300)
+  let resizingAssoc = $state(false)
+  let assocResizeAnchor = { x: 0, w: 0 }
+
+  $effect(() => {
+    const mq = window.matchMedia('(max-width: 640px)')
+    const handler = (e) => { isMobile = e.matches }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  })
+
+  function onAssocResizeStart(e) {
+    resizingAssoc = true
+    assocResizeAnchor = { x: e.clientX, w: assocPanelWidth }
+    document.addEventListener('mousemove', onAssocResizeMove)
+    document.addEventListener('mouseup', onAssocResizeEnd)
+  }
+
+  function onAssocResizeMove(e) {
+    assocPanelWidth = Math.max(220, Math.min(600, assocResizeAnchor.w + assocResizeAnchor.x - e.clientX))
+  }
+
+  function onAssocResizeEnd() {
+    resizingAssoc = false
+    localStorage.setItem('pkd-assoc-width', String(assocPanelWidth))
+    document.removeEventListener('mousemove', onAssocResizeMove)
+    document.removeEventListener('mouseup', onAssocResizeEnd)
+  }
+
   // ─── Document filter ──────────────────────────────────────
   let filterTimer = null
 
@@ -204,7 +236,7 @@
       <main class="content-area">
         {#if route.view === 'doc' && route.id}
           {#key route.id}
-            <Editor docId={route.id} />
+            <Editor docId={route.id} assocPortal={assocSidebarEl} />
           {/key}
         {:else if route.view === 'graph'}
           <GraphView />
@@ -220,6 +252,19 @@
           </div>
         {/if}
       </main>
+
+      <!-- Right associations panel (desktop only) -->
+      {#if route.view === 'doc' && route.id && !isMobile}
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <div
+          class="resize-handle-assoc {resizingAssoc ? 'active' : ''}"
+          onmousedown={onAssocResizeStart}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Redimensionar painel de associações"
+        ></div>
+        <aside class="assoc-sidebar" bind:this={assocSidebarEl} style="width:{assocPanelWidth}px" aria-label="Associações"></aside>
+      {/if}
     </div>
   </div>
 
@@ -258,6 +303,26 @@
     margin-left: -.25rem;
   }
   .topbar-reset-btn:hover { background: var(--bg-active); color: var(--accent); border-color: var(--accent); }
+
+  .resize-handle-assoc {
+    width: 4px;
+    cursor: col-resize;
+    background: transparent;
+    flex-shrink: 0;
+    transition: background .15s;
+    z-index: 10;
+  }
+  .resize-handle-assoc:hover,
+  .resize-handle-assoc.active { background: var(--accent); }
+
+  .assoc-sidebar {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+  }
 
   .focus-layout {
     width: 100dvw;
