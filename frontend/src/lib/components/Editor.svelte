@@ -40,6 +40,29 @@
   let assocMonth = $state(null)
   let assocDay = $state(null)
   let children = $state([])
+
+  // ─── Right panel (associations) resize ───────────────────────
+  let assocPanelWidth = $state(Number(localStorage.getItem('pkd-assoc-width')) || 300)
+  let resizingAssoc = $state(false)
+  let assocResizeAnchor = { x: 0, w: 0 }
+
+  function onAssocResizeStart(e) {
+    resizingAssoc = true
+    assocResizeAnchor = { x: e.clientX, w: assocPanelWidth }
+    document.addEventListener('mousemove', onAssocResizeMove)
+    document.addEventListener('mouseup', onAssocResizeEnd)
+  }
+
+  function onAssocResizeMove(e) {
+    assocPanelWidth = Math.max(220, Math.min(600, assocResizeAnchor.w + assocResizeAnchor.x - e.clientX))
+  }
+
+  function onAssocResizeEnd() {
+    resizingAssoc = false
+    localStorage.setItem('pkd-assoc-width', String(assocPanelWidth))
+    document.removeEventListener('mousemove', onAssocResizeMove)
+    document.removeEventListener('mouseup', onAssocResizeEnd)
+  }
   let urlInput = $state('')
   let urlTitleInput = $state('')
   let urlAdding = $state(false)
@@ -959,37 +982,6 @@
     <!-- TipTap editor -->
     <div class="tiptap-editor" use:mountEditor></div>
 
-    <!-- ── Sub-documentos ────────────────────────────────────────── -->
-    {#if children.length > 0 && !focusMode}
-      <div class="children-area">
-        <div class="children-header">
-          <span class="children-label">Sub-documentos</span>
-        </div>
-        <div class="children-grid">
-          {#each children as child}
-            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-            <div
-              class="child-card"
-              onclick={() => { window.location.hash = `/doc/${child.id}` }}
-              role="button"
-              tabindex="0"
-              onkeydown={e => e.key === 'Enter' && (window.location.hash = `/doc/${child.id}`)}
-            >
-              <div class="child-card-title">
-                <i class="bx {child.icon || 'bx-file-blank'} child-card-icon"></i>
-                <span class="child-card-name">{child.title || 'Sem título'}</span>
-              </div>
-              {#if child.body_text}
-                <p class="child-card-preview">{child.body_text.slice(0, 160)}{child.body_text.length > 160 ? '…' : ''}</p>
-              {:else}
-                <p class="child-card-preview child-card-empty">Sem conteúdo</p>
-              {/if}
-            </div>
-          {/each}
-        </div>
-      </div>
-    {/if}
-
     </div><!-- /content-pane -->
 
     <!-- ── Área de associações ───────────────────────────────────── -->
@@ -998,13 +990,55 @@
         <button class="mobile-fab-edit" onclick={() => mobileEditMode = true} aria-label="Editar documento" title="Editar">✏️</button>
       {/if}
 
-      <div class="assoc-pane" class:mobile-pane-hidden={isMobile && mobileTab !== 'assoc'}>
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div
+        class="resize-handle-assoc {resizingAssoc ? 'active' : ''}"
+        onmousedown={onAssocResizeStart}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Redimensionar painel de associações"
+      ></div>
+
+      <div class="assoc-pane" class:mobile-pane-hidden={isMobile && mobileTab !== 'assoc'}
+           style="width:{assocPanelWidth}px">
         {#if isMobile}
           <div class="mobile-assoc-header">
             <i class="bx {doc.icon || 'bx-file-blank'}"></i>
             <span class="mobile-assoc-title">{doc.title || 'Sem título'}</span>
           </div>
         {/if}
+
+        <!-- ── Sub-documentos (movido para o painel direito) ─── -->
+        {#if children.length > 0}
+          <div class="children-area">
+            <div class="children-header">
+              <span class="children-label">Sub-documentos</span>
+            </div>
+            <div class="children-grid">
+              {#each children as child}
+                <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+                <div
+                  class="child-card"
+                  onclick={() => { window.location.hash = `/doc/${child.id}` }}
+                  role="button"
+                  tabindex="0"
+                  onkeydown={e => e.key === 'Enter' && (window.location.hash = `/doc/${child.id}`)}
+                >
+                  <div class="child-card-title">
+                    <i class="bx {child.icon || 'bx-file-blank'} child-card-icon"></i>
+                    <span class="child-card-name">{child.title || 'Sem título'}</span>
+                  </div>
+                  {#if child.body_text}
+                    <p class="child-card-preview">{child.body_text.slice(0, 160)}{child.body_text.length > 160 ? '…' : ''}</p>
+                  {:else}
+                    <p class="child-card-preview child-card-empty">Sem conteúdo</p>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
     <div class="assoc-area">
       <div class="assoc-divider">
         <span class="assoc-divider-label">Associações</span>
@@ -2203,8 +2237,40 @@
 
   .att-del-btn:hover { color: var(--text); }
 
-  /* ── Mobile Tab Interface ──────────────────────────── */
-  .content-pane, .assoc-pane { display: contents; }
+  /* ── Desktop: layout row com painel direito ───────────── */
+  .content-pane {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    padding: 1.5rem 2rem;
+  }
+
+  .assoc-pane {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+    border-left: 1px solid var(--border);
+    background: var(--bg-panel);
+  }
+
+  .assoc-pane .assoc-grid { grid-template-columns: 1fr; }
+  .assoc-pane .assoc-area { margin-top: 0; padding: 1rem; }
+  .assoc-pane .children-area { padding: 1rem 1rem 0; border-bottom: 1px solid var(--border); margin-bottom: 0; }
+
+  .resize-handle-assoc {
+    width: 4px;
+    cursor: col-resize;
+    background: transparent;
+    flex-shrink: 0;
+    transition: background .15s;
+    z-index: 10;
+  }
+  .resize-handle-assoc:hover,
+  .resize-handle-assoc.active { background: var(--accent); }
+
   .mobile-tab-bar { display: none; }
   .mobile-fab-edit { display: none; }
   .mobile-assoc-header { display: none; }
@@ -2227,7 +2293,14 @@
       overflow-y: auto;
       min-height: 0;
       padding: .75rem 1rem 64px;
+      border-left: none;
+      width: auto !important;
+      background: transparent;
     }
+
+    .assoc-pane .assoc-area { padding: 0; }
+    .assoc-pane .children-area { padding: 0; border-bottom: none; }
+    .resize-handle-assoc { display: none; }
 
     .mobile-pane-hidden { display: none !important; }
     .mobile-toolbar-hidden { display: none !important; }

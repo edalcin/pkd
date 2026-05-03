@@ -236,8 +236,7 @@ input:focus, textarea:focus, select:focus {
   flex: 1;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
-  padding: 1.5rem 2rem;
+  flex-direction: row;
   max-width: 1080px;
   margin: 0 auto;
   width: 100%;
@@ -570,7 +569,6 @@ input:focus, textarea:focus, select:focus {
   }
   .sidebar.open { transform: translateX(0); }
   .resize-handle { display: none; }
-  .editor-area { padding: 0; }
   .doc-title { font-size: 1.4rem; }
   .tiptap-editor { flex: unset !important; overflow-y: visible !important; min-height: 200px; }
 
