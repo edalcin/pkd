@@ -236,10 +236,16 @@
     return () => mq.removeEventListener('change', handler)
   })
 
-  // Teleport assoc-pane into the App-level sidebar portal on desktop
+  // Teleport assoc-pane into the App-level sidebar portal on desktop.
+  // The returned cleanup removes the element from the portal when this
+  // Editor instance is destroyed (e.g. {#key route.id} swap), preventing
+  // stale panes from accumulating in the sidebar.
   $effect(() => {
-    if (assocPortal && assocPaneEl) {
-      assocPortal.appendChild(assocPaneEl)
+    const portal = assocPortal
+    const el = assocPaneEl
+    if (portal && el) {
+      portal.appendChild(el)
+      return () => el.remove()
     }
   })
 
