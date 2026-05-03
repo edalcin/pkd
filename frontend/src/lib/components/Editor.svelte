@@ -754,6 +754,13 @@
         {#if doc.archived}
           <span class="archive-badge" title="Documento arquivado"><i class="bx bx-archive"></i></span>
         {/if}
+        <button
+          class="save-icon-btn {saving ? 'saving' : ''}"
+          onclick={performSave}
+          disabled={saving || doc.locked || doc.archived}
+          title="Salvar (Ctrl+S)"
+          aria-label="Salvar"
+        ><i class="bx {saving ? 'bx-loader-alt bx-spin' : 'bx-save'}"></i></button>
       </div>
       <div class="doc-meta">
         {#each docTags as tag}
@@ -903,12 +910,6 @@
 
         <!-- Export Markdown -->
         <button class="tb-btn" onclick={exportMarkdown} title="Exportar como Markdown (.md)">⬇ .md</button>
-
-        <!-- Save -->
-        <button class="tb-btn tb-save {saving ? 'saving' : ''}"
-          onclick={performSave} disabled={saving} title="Salvar (Ctrl+S)">
-          {saving ? '⏳' : '💾'} Salvar
-        </button>
 
         <div class="tb-sep" role="separator"></div>
 
@@ -1492,16 +1493,6 @@
     cursor: pointer;
   }
 
-  .tb-save {
-    gap: 4px;
-    font-weight: 600;
-    padding: 0 10px;
-  }
-
-  .tb-save.saving {
-    opacity: .7;
-  }
-
   .tb-color-input {
     width: 24px;
     height: 22px;
@@ -1576,6 +1567,26 @@
     color: var(--text-muted);
     opacity: .75;
   }
+
+  .save-icon-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    opacity: .5;
+    transition: opacity .15s, color .15s, background .15s;
+  }
+  .save-icon-btn:hover:not(:disabled) { opacity: 1; background: var(--bg-hover); color: var(--accent); }
+  .save-icon-btn:disabled { opacity: .25; cursor: default; }
+  .save-icon-btn.saving { opacity: .7; }
 
   .tag-input-wrap {
     position: relative;
