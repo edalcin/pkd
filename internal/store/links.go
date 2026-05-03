@@ -235,7 +235,7 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 					NodeType: "tag",
 				}
 			}
-			filteredEdges = append(filteredEdges, model.GraphEdge{Source: n.ID, Target: graphTagID, EdgeType: "link"})
+			filteredEdges = append(filteredEdges, model.GraphEdge{Source: n.ID, Target: graphTagID, EdgeType: "tag"})
 		}
 	}
 	for _, tn := range tagNodeMap {

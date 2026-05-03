@@ -13,6 +13,8 @@
   let loading = $state(true)
   let showAll = $state(false)
   let showHierarchy = $state(true)
+  let showLinks = $state(true)
+  let showTagEdges = $state(true)
   let tagFilter = $state('')
   let simulation = null
 
@@ -89,9 +91,18 @@
       .selectAll('line')
       .data(ls)
       .enter().append('line')
-      .attr('class', d => d.edge_type === 'hierarchy' ? 'graph-edge graph-edge--hierarchy' : 'graph-edge')
+      .attr('class', d => {
+        if (d.edge_type === 'hierarchy') return 'graph-edge graph-edge--hierarchy'
+        if (d.edge_type === 'tag') return 'graph-edge graph-edge--tag'
+        return 'graph-edge graph-edge--link'
+      })
       .attr('stroke-width', 1.5)
-      .attr('visibility', d => d.edge_type === 'hierarchy' && !showHierarchy ? 'hidden' : 'visible')
+      .attr('visibility', d => {
+        if (d.edge_type === 'hierarchy' && !showHierarchy) return 'hidden'
+        if (d.edge_type === 'tag' && !showTagEdges) return 'hidden'
+        if (d.edge_type === 'link' && !showLinks) return 'hidden'
+        return 'visible'
+      })
 
     // Nodes group
     const nodeEls = g.append('g')
@@ -157,9 +168,20 @@
 
   function toggleHierarchy() {
     if (!svgEl) return
-    select(svgEl)
-      .selectAll('.graph-edge--hierarchy')
+    select(svgEl).selectAll('.graph-edge--hierarchy')
       .attr('visibility', showHierarchy ? 'visible' : 'hidden')
+  }
+
+  function toggleLinks() {
+    if (!svgEl) return
+    select(svgEl).selectAll('.graph-edge--link')
+      .attr('visibility', showLinks ? 'visible' : 'hidden')
+  }
+
+  function toggleTagEdges() {
+    if (!svgEl) return
+    select(svgEl).selectAll('.graph-edge--tag')
+      .attr('visibility', showTagEdges ? 'visible' : 'hidden')
   }
 </script>
 
@@ -193,6 +215,14 @@
       <label class="show-all-toggle">
         <input type="checkbox" bind:checked={showHierarchy} onchange={toggleHierarchy} />
         Hierarquia
+      </label>
+      <label class="show-all-toggle">
+        <input type="checkbox" bind:checked={showLinks} onchange={toggleLinks} />
+        Links entre docs
+      </label>
+      <label class="show-all-toggle">
+        <input type="checkbox" bind:checked={showTagEdges} onchange={toggleTagEdges} />
+        Relações com tags
       </label>
       <button class="btn btn-ghost" onclick={zoomToFit} title="Ajustar tela">⤢ Ajustar</button>
       <span class="node-count">{nodes.length} nós · {links.length} arestas</span>
