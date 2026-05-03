@@ -38,12 +38,37 @@
   onMount(() => loadGraph())
   onDestroy(() => simulation?.stop())
 
-  // Fire setupGraph only after svgEl is in the DOM and data is ready.
+  // Re-renders whenever rawNodes, svgEl, or any toggle changes.
+  // getFilteredData() reads all toggle $state vars so they become tracked dependencies.
   $effect(() => {
     if (svgEl && rawNodes.length > 0) {
-      setupGraph(rawNodes, rawEdges)
+      const { nodes: fn, edges: fe } = getFilteredData()
+      setupGraph(fn, fe)
     }
   })
+
+  // Returns the subset of nodes and edges to render based on active toggles.
+  function getFilteredData() {
+    const visibleEdges = rawEdges.filter(e => {
+      if (e.edge_type === 'link') return showLinks
+      if (e.edge_type === 'tag') return showTagEdges
+      if (e.edge_type === 'hierarchy') return showHierarchy
+      return true
+    })
+
+    if (showAll) return { nodes: rawNodes, edges: visibleEdges }
+
+    // Only include nodes that participate in at least one visible edge.
+    const connectedIDs = new Set()
+    for (const e of visibleEdges) {
+      connectedIDs.add(e.source)
+      connectedIDs.add(e.target)
+    }
+    return {
+      nodes: rawNodes.filter(n => connectedIDs.has(n.id)),
+      edges: visibleEdges,
+    }
+  }
 
   async function loadGraph() {
     loading = true
@@ -60,7 +85,7 @@
     }
   }
 
-  function setupGraph(rawNodes, rawEdges) {
+  function setupGraph(initNodes, initEdges) {
     if (!svgEl) return
 
     const width = svgEl.clientWidth
@@ -70,6 +95,20 @@
     select(svgEl).selectAll('*').remove()
 
     const svg = select(svgEl)
+
+    // Arrowhead marker for hierarchy edges (parent→child direction)
+    svg.append('defs').append('marker')
+      .attr('id', 'arrowhead')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 20)  // tip(10) + node-radius(6px / 0.6scale = 10 units)
+      .attr('refY', 0)
+      .attr('orient', 'auto')
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', 'var(--accent)')
+
     const g = svg.append('g')
 
     // Zoom behavior
@@ -78,9 +117,9 @@
       .on('zoom', e => g.attr('transform', e.transform))
     svg.call(zoomBehavior)
 
-    // Mutable copies for D3
-    const ns = rawNodes.map(n => ({ ...n }))
-    const ls = rawEdges.map(e => ({
+    // Mutable copies for D3 (spread preserves edge_type and other fields)
+    const ns = initNodes.map(n => ({ ...n }))
+    const ls = initEdges.map(e => ({
       ...e,
       source: ns.find(n => n.id === e.source) || e.source,
       target: ns.find(n => n.id === e.target) || e.target,
@@ -97,12 +136,7 @@
         return 'graph-edge graph-edge--link'
       })
       .attr('stroke-width', 1.5)
-      .attr('visibility', d => {
-        if (d.edge_type === 'hierarchy' && !showHierarchy) return 'hidden'
-        if (d.edge_type === 'tag' && !showTagEdges) return 'hidden'
-        if (d.edge_type === 'link' && !showLinks) return 'hidden'
-        return 'visible'
-      })
+      .attr('marker-end', d => d.edge_type === 'hierarchy' ? 'url(#arrowhead)' : null)
 
     // Nodes group
     const nodeEls = g.append('g')
@@ -165,24 +199,6 @@
     select(svgEl).transition().duration(500)
       .call(zoom().transform, zoomIdentity)
   }
-
-  function toggleHierarchy() {
-    if (!svgEl) return
-    select(svgEl).selectAll('.graph-edge--hierarchy')
-      .attr('visibility', showHierarchy ? 'visible' : 'hidden')
-  }
-
-  function toggleLinks() {
-    if (!svgEl) return
-    select(svgEl).selectAll('.graph-edge--link')
-      .attr('visibility', showLinks ? 'visible' : 'hidden')
-  }
-
-  function toggleTagEdges() {
-    if (!svgEl) return
-    select(svgEl).selectAll('.graph-edge--tag')
-      .attr('visibility', showTagEdges ? 'visible' : 'hidden')
-  }
 </script>
 
 <div class="graph-container">
@@ -213,15 +229,15 @@
         Todos os docs
       </label>
       <label class="show-all-toggle">
-        <input type="checkbox" bind:checked={showHierarchy} onchange={toggleHierarchy} />
+        <input type="checkbox" bind:checked={showHierarchy} />
         Hierarquia
       </label>
       <label class="show-all-toggle">
-        <input type="checkbox" bind:checked={showLinks} onchange={toggleLinks} />
+        <input type="checkbox" bind:checked={showLinks} />
         Links entre docs
       </label>
       <label class="show-all-toggle">
-        <input type="checkbox" bind:checked={showTagEdges} onchange={toggleTagEdges} />
+        <input type="checkbox" bind:checked={showTagEdges} />
         Relações com tags
       </label>
       <button class="btn btn-ghost" onclick={zoomToFit} title="Ajustar tela">⤢ Ajustar</button>

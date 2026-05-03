@@ -435,8 +435,9 @@ input:focus, textarea:focus, select:focus {
   dominant-baseline: hanging;
 }
 .graph-edge { stroke: var(--border); stroke-opacity: .6; }
-.graph-edge--hierarchy { stroke: var(--accent); stroke-opacity: .5; stroke-dasharray: 6,3; }
-.graph-edge--tag { stroke: #e879f9; stroke-opacity: .4; stroke-dasharray: 2,3; }
+.graph-edge--link { stroke: #60a5fa; stroke-opacity: .7; }
+.graph-edge--hierarchy { stroke: var(--accent); stroke-opacity: .6; stroke-dasharray: 6,3; }
+.graph-edge--tag { stroke: #e879f9; stroke-opacity: .5; stroke-dasharray: 2,3; }
 .graph-controls {
   position: absolute;
   top: 1rem;
