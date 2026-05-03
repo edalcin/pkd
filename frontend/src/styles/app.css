@@ -435,6 +435,7 @@ input:focus, textarea:focus, select:focus {
   dominant-baseline: hanging;
 }
 .graph-edge { stroke: var(--border); stroke-opacity: .6; }
+.graph-edge--hierarchy { stroke: var(--accent); stroke-opacity: .5; stroke-dasharray: 6,3; }
 .graph-controls {
   position: absolute;
   top: 1rem;

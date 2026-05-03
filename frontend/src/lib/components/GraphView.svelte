@@ -12,6 +12,7 @@
   let links = $state([])
   let loading = $state(true)
   let showAll = $state(false)
+  let showHierarchy = $state(true)
   let tagFilter = $state('')
   let simulation = null
 
@@ -78,6 +79,7 @@
     // Mutable copies for D3
     const ns = rawNodes.map(n => ({ ...n }))
     const ls = rawEdges.map(e => ({
+      ...e,
       source: ns.find(n => n.id === e.source) || e.source,
       target: ns.find(n => n.id === e.target) || e.target,
     }))
@@ -87,8 +89,9 @@
       .selectAll('line')
       .data(ls)
       .enter().append('line')
-      .attr('class', 'graph-edge')
+      .attr('class', d => d.edge_type === 'hierarchy' ? 'graph-edge graph-edge--hierarchy' : 'graph-edge')
       .attr('stroke-width', 1.5)
+      .attr('visibility', d => d.edge_type === 'hierarchy' && !showHierarchy ? 'hidden' : 'visible')
 
     // Nodes group
     const nodeEls = g.append('g')
@@ -151,6 +154,13 @@
     select(svgEl).transition().duration(500)
       .call(zoom().transform, zoomIdentity)
   }
+
+  function toggleHierarchy() {
+    if (!svgEl) return
+    select(svgEl)
+      .selectAll('.graph-edge--hierarchy')
+      .attr('visibility', showHierarchy ? 'visible' : 'hidden')
+  }
 </script>
 
 <div class="graph-container">
@@ -179,6 +189,10 @@
       <label class="show-all-toggle">
         <input type="checkbox" bind:checked={showAll} onchange={loadGraph} />
         Todos os docs
+      </label>
+      <label class="show-all-toggle">
+        <input type="checkbox" bind:checked={showHierarchy} onchange={toggleHierarchy} />
+        Hierarquia
       </label>
       <button class="btn btn-ghost" onclick={zoomToFit} title="Ajustar tela">⤢ Ajustar</button>
       <span class="node-count">{nodes.length} nós · {links.length} arestas</span>

@@ -38,8 +38,9 @@ type GraphNode struct {
 
 // GraphEdge is a directed edge in the graph response.
 type GraphEdge struct {
-	Source int64 `json:"source"`
-	Target int64 `json:"target"`
+	Source   int64  `json:"source"`
+	Target   int64  `json:"target"`
+	EdgeType string `json:"edge_type,omitempty"`
 }
 
 // GraphData is returned by GET /api/graph.

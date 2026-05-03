@@ -126,8 +126,17 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 		return nil, err
 	}
 
+	hierarchyEdges, err := s.queryHierarchyEdges()
+	if err != nil {
+		return nil, err
+	}
+
 	connectedIDs := map[int64]bool{}
 	for _, e := range edges {
+		connectedIDs[e.Source] = true
+		connectedIDs[e.Target] = true
+	}
+	for _, e := range hierarchyEdges {
 		connectedIDs[e.Source] = true
 		connectedIDs[e.Target] = true
 	}
@@ -203,6 +212,11 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 			filteredEdges = append(filteredEdges, e)
 		}
 	}
+	for _, e := range hierarchyEdges {
+		if nodeSet[e.Source] && nodeSet[e.Target] {
+			filteredEdges = append(filteredEdges, e)
+		}
+	}
 
 	// Add tag nodes (negative IDs) and doc→tag edges for every tag
 	// that appears on at least one included document node.
@@ -221,7 +235,7 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 					NodeType: "tag",
 				}
 			}
-			filteredEdges = append(filteredEdges, model.GraphEdge{Source: n.ID, Target: graphTagID})
+			filteredEdges = append(filteredEdges, model.GraphEdge{Source: n.ID, Target: graphTagID, EdgeType: "link"})
 		}
 	}
 	for _, tn := range tagNodeMap {
@@ -329,6 +343,31 @@ func (s *LinkStore) queryAllEdges() ([]model.GraphEdge, error) {
 		if err := rows.Scan(&e.Source, &e.Target); err != nil {
 			return nil, err
 		}
+		e.EdgeType = "link"
+		edges = append(edges, e)
+	}
+	return edges, rows.Err()
+}
+
+func (s *LinkStore) queryHierarchyEdges() ([]model.GraphEdge, error) {
+	rows, err := s.db.Query(`
+		SELECT parent.id, child.id
+		FROM documents child
+		JOIN documents parent ON parent.id = child.parent_id
+		WHERE child.trashed_at IS NULL
+		  AND parent.trashed_at IS NULL
+		  AND child.parent_id IS NOT NULL`)
+	if err != nil {
+		return nil, fmt.Errorf("links.queryHierarchyEdges: %w", err)
+	}
+	defer rows.Close()
+	var edges []model.GraphEdge
+	for rows.Next() {
+		var e model.GraphEdge
+		if err := rows.Scan(&e.Source, &e.Target); err != nil {
+			return nil, err
+		}
+		e.EdgeType = "hierarchy"
 		edges = append(edges, e)
 	}
 	return edges, rows.Err()
