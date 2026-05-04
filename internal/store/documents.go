@@ -591,10 +591,12 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 	default: // "active"
 		// Recursive CTE: traverse only non-archived nodes from non-archived roots.
 		// This naturally hides children of archived parents without promoting them.
+		// favExtra is applied to the outer WHERE so that favorite children of
+		// non-favorite parents are still included (buildTree promotes orphans to roots).
 		rows, err = s.db.Query(`
 			WITH RECURSIVE active_ids AS (
 			  SELECT id FROM documents
-			  WHERE parent_id IS NULL AND trashed_at IS NULL AND archived_at IS NULL`+favExtra+`
+			  WHERE parent_id IS NULL AND trashed_at IS NULL AND archived_at IS NULL
 			  UNION ALL
 			  SELECT d.id FROM documents d
 			  JOIN active_ids a ON d.parent_id = a.id
@@ -602,7 +604,7 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 			)
 			SELECT `+cols+`
 			FROM documents
-			WHERE id IN (SELECT id FROM active_ids)
+			WHERE id IN (SELECT id FROM active_ids)`+favExtra+`
 			ORDER BY position ASC, id ASC`)
 	}
 	if err != nil {
