@@ -12,7 +12,7 @@
   import Link from '@tiptap/extension-link'
   import { DocLink } from '../editor/doclink-extension.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, unarchiveDoc } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, archiveDoc, unarchiveDoc } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
@@ -325,10 +325,11 @@
     if ($linksRefreshSignal && doc) loadLinks(doc.id)
   })
 
-  // Auto-save: interval configured by user (0 = disabled)
+  // Auto-save: interval configured by user (0 = disabled); skip for locked docs
   function scheduleAutoSave() {
     const interval = get(autoSaveInterval)
     if (interval === 0) return
+    if (doc?.locked) return
     clearTimeout(autoSaveTimer)
     autoSaveTimer = setTimeout(performSave, interval)
   }
@@ -344,8 +345,8 @@
     doc = updated
   }
 
-  async function handleUnarchive() {
-    const updated = await unarchiveDoc(doc.id)
+  async function handleToggleArchive() {
+    const updated = doc.archived ? await unarchiveDoc(doc.id) : await archiveDoc(doc.id)
     doc = updated
   }
 
@@ -751,9 +752,13 @@
           title={doc.locked ? 'Destrancar documento' : 'Trancar documento'}
           aria-label={doc.locked ? 'Destrancar' : 'Trancar'}
         ><i class="bx {doc.locked ? 'bx-lock' : 'bx-lock-open'}"></i></button>
-        {#if doc.archived}
-          <span class="archive-badge" title="Documento arquivado"><i class="bx bx-archive"></i></span>
-        {/if}
+        <button
+          class="archive-btn {doc.archived ? 'is-archived' : ''}"
+          onclick={handleToggleArchive}
+          disabled={doc.locked}
+          title={doc.archived ? 'Desarquivar documento' : 'Arquivar documento'}
+          aria-label={doc.archived ? 'Desarquivar' : 'Arquivar'}
+        ><i class="bx bx-archive"></i></button>
         <button
           class="save-icon-btn {saving ? 'saving' : ''}"
           onclick={performSave}
@@ -813,7 +818,7 @@
       <div class="archived-banner">
         <i class="bx bx-archive"></i>
         <span>Este documento está arquivado e é somente leitura.</span>
-        <button class="archived-unarchive-btn" onclick={handleUnarchive}>Desarquivar</button>
+        <button class="archived-unarchive-btn" onclick={handleToggleArchive}>Desarquivar</button>
       </div>
     {/if}
 
@@ -1555,18 +1560,25 @@
   .lock-btn:hover { opacity: 1; background: var(--bg-hover); }
   .lock-btn.is-locked { opacity: 1; color: var(--accent); }
 
-  .archive-badge {
+  .archive-btn {
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 32px;
     height: 32px;
+    border: none;
+    background: none;
     border-radius: 6px;
+    cursor: pointer;
     font-size: 1.1rem;
     color: var(--text-muted);
-    opacity: .75;
+    opacity: .4;
+    transition: opacity .15s, color .15s, background .15s;
   }
+  .archive-btn:hover:not(:disabled) { opacity: 1; background: var(--bg-hover); }
+  .archive-btn.is-archived { opacity: 1; color: var(--accent); }
+  .archive-btn:disabled { cursor: default; }
 
   .save-icon-btn {
     flex-shrink: 0;
