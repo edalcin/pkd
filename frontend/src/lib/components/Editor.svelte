@@ -353,11 +353,13 @@
   $effect(() => {
     if (editorReady && editorInstance) {
       editorInstance.setEditable(!doc?.locked && !(isMobile && !focusMode && !mobileEditMode))
+      if (doc?.locked) { clearTimeout(autoSaveTimer); autoSaveTimer = null }
     }
   })
 
   async function performSave() {
     if (!doc || !editorInstance) return
+    if (doc.locked) return
     if (saving) { scheduleAutoSave(); return }
     if (conflictData) return
     const html = editorInstance.getHTML()
