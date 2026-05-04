@@ -217,7 +217,7 @@ func (s *DocumentStore) ToggleLock(id int64) (*model.Document, error) {
 	return s.GetByID(id)
 }
 
-// Archive marks a document as archived and locks it automatically.
+// Archive marks a document and all its non-trashed descendants as archived and locked.
 // Returns ErrNotFound if the document doesn't exist or is trashed.
 // Returns ErrArchived if the document is already archived.
 func (s *DocumentStore) Archive(id int64) (*model.Document, error) {
@@ -234,8 +234,18 @@ func (s *DocumentStore) Archive(id int64) (*model.Document, error) {
 		if archivedAt.Valid {
 			return ErrArchived
 		}
-		_, err := tx.Exec(
-			`UPDATE documents SET archived_at = `+nowISO+`, locked = 1 WHERE id = ?`, id)
+		_, err := tx.Exec(`
+			WITH RECURSIVE subtree(id) AS (
+				SELECT id FROM documents WHERE id = ? AND trashed_at IS NULL
+				UNION ALL
+				SELECT d.id FROM documents d
+				INNER JOIN subtree s ON d.parent_id = s.id
+				WHERE d.trashed_at IS NULL
+			)
+			UPDATE documents
+			SET archived_at = `+nowISO+`, locked = 1
+			WHERE id IN (SELECT id FROM subtree)
+			  AND archived_at IS NULL`, id)
 		return err
 	})
 	if err != nil {
