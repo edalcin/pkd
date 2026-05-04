@@ -175,7 +175,7 @@
 
     <i class="bx {node.icon || 'bx-file-blank'} icon"></i>
     <span class="label">{node.title || 'Sem título'}</span>
-    {#if node.locked}
+    {#if node.locked && !node.archived}
       <i class="bx bx-lock lock-indicator" title="Documento trancado"></i>
     {/if}
     {#if node.archived}
