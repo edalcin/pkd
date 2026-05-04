@@ -250,18 +250,29 @@ func (s *DocumentStore) Archive(id int64) (*model.Document, error) {
 	return s.GetByID(id)
 }
 
-// Unarchive clears archived_at, restoring a document to active status.
+// Unarchive clears archived_at on a document and all its non-trashed descendants.
 // Returns ErrNotFound if the document doesn't exist or is trashed.
-// Idempotent — no error if the document is already active.
+// Idempotent — no error if already active.
 func (s *DocumentStore) Unarchive(id int64) (*model.Document, error) {
-	res, err := s.db.Exec(
-		`UPDATE documents SET archived_at = NULL WHERE id = ? AND trashed_at IS NULL`, id)
+	var exists bool
+	if err := s.db.QueryRow(
+		`SELECT 1 FROM documents WHERE id = ? AND trashed_at IS NULL`, id,
+	).Scan(&exists); err != nil {
+		return nil, ErrNotFound
+	}
+	_, err := s.db.Exec(`
+		WITH RECURSIVE subtree(id) AS (
+			SELECT id FROM documents WHERE id = ? AND trashed_at IS NULL
+			UNION ALL
+			SELECT d.id FROM documents d
+			INNER JOIN subtree s ON d.parent_id = s.id
+			WHERE d.trashed_at IS NULL
+		)
+		UPDATE documents
+		SET archived_at = NULL
+		WHERE id IN (SELECT id FROM subtree)`, id)
 	if err != nil {
 		return nil, err
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return nil, ErrNotFound
 	}
 	return s.GetByID(id)
 }
