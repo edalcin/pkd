@@ -352,7 +352,7 @@
 
   $effect(() => {
     if (editorReady && editorInstance) {
-      editorInstance.setEditable(!doc?.locked && !doc?.archived && !(isMobile && !focusMode && !mobileEditMode))
+      editorInstance.setEditable(!doc?.locked && !(isMobile && !focusMode && !mobileEditMode))
     }
   })
 
@@ -725,7 +725,7 @@
             onclick={() => iconPickerOpen = !iconPickerOpen}
             title="Definir ícone do documento"
             aria-label="Ícone"
-            disabled={doc.locked || doc.archived}
+            disabled={doc.locked}
           >
             <i class="bx {doc.icon || 'bx-file-blank'}" style={doc.icon ? '' : 'opacity:.25'}></i>
           </button>
@@ -744,7 +744,7 @@
           oninput={scheduleAutoSave}
           placeholder="Título do documento"
           aria-label="Título"
-          disabled={doc.locked || doc.archived}
+          disabled={doc.locked}
         />
         <button
           class="lock-btn {doc.locked ? 'is-locked' : ''}"
@@ -774,7 +774,7 @@
             style={c ? `background:${c}; border-color:${c}; color:#fff` : ''}
           >
             #{tag}
-            <button class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remover tag" disabled={doc.locked || doc.archived}>×</button>
+            <button class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remover tag" disabled={doc.locked}>×</button>
           </span>
         {/each}
         <div class="tag-input-wrap">
@@ -789,7 +789,7 @@
             placeholder="+ tag"
             aria-label="Adicionar tag"
             autocomplete="off"
-            disabled={doc.locked || doc.archived}
+            disabled={doc.locked}
           />
           {#if tagSuggestionsOpen}
             <div class="tag-dropdown" role="listbox" style={tagDropdownStyle}>
@@ -813,7 +813,7 @@
     </div>
 
     <!-- Archived banner -->
-    {#if doc.archived}
+    {#if doc.archived && doc.locked}
       <div class="archived-banner">
         <i class="bx bx-archive"></i>
         <span>Este documento está arquivado e é somente leitura.</span>
@@ -825,7 +825,7 @@
          {#key editorTick} forces re-evaluation of isActive() on every
          TipTap transaction (selection change, content edit). -->
     {#key editorTick}
-    <div class="toolbar {doc.locked || doc.archived ? 'toolbar-locked' : ''} {isMobile && !mobileEditMode ? 'mobile-toolbar-hidden' : ''}" role="toolbar" aria-label="Formatação">
+    <div class="toolbar {doc.locked ? 'toolbar-locked' : ''} {isMobile && !mobileEditMode ? 'mobile-toolbar-hidden' : ''}" role="toolbar" aria-label="Formatação">
         {#if isMobile && mobileEditMode}
           <button class="tb-btn tb-done-mobile" onclick={() => { performSave(); mobileEditMode = false }} title="Salvar e sair">✓ Pronto</button>
           <div class="tb-sep" role="separator"></div>
@@ -983,7 +983,7 @@
 
     <!-- ── Área de associações ───────────────────────────────────── -->
     {#if !focusMode}
-      {#if isMobile && !mobileEditMode && !doc.locked && !doc.archived}
+      {#if isMobile && !mobileEditMode && !doc.locked}
         <button class="mobile-fab-edit" onclick={() => mobileEditMode = true} aria-label="Editar documento" title="Editar">✏️</button>
       {/if}
 

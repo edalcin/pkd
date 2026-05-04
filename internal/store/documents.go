@@ -150,15 +150,11 @@ func (s *DocumentStore) UpdateAndSync(id int64, clientVersion int64, title, body
 	err := WithTx(s.db, func(tx *sql.Tx) error {
 		var storedVersion int64
 		var locked bool
-		var archivedAt sql.NullString
-		if err := tx.QueryRow(`SELECT version, locked, archived_at FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&storedVersion, &locked, &archivedAt); err != nil {
+		if err := tx.QueryRow(`SELECT version, locked FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&storedVersion, &locked); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrNotFound
 			}
 			return fmt.Errorf("version check: %w", err)
-		}
-		if archivedAt.Valid {
-			return ErrArchived
 		}
 		if locked {
 			return ErrLocked

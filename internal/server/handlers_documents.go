@@ -98,10 +98,6 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		if errors.Is(err, store.ErrArchived) {
-			writeJSON(w, http.StatusLocked, map[string]string{"error": "document is archived"})
-			return
-		}
 		if errors.Is(err, store.ErrLocked) {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "document is locked"})
 			return
