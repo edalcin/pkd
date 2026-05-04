@@ -217,29 +217,25 @@ func (s *DocumentStore) ToggleLock(id int64) (*model.Document, error) {
 	return s.GetByID(id)
 }
 
-// Archive marks a document as archived by setting archived_at to now.
+// Archive marks a document as archived and locks it automatically.
 // Returns ErrNotFound if the document doesn't exist or is trashed.
-// Returns ErrLocked if the document is locked.
 // Returns ErrArchived if the document is already archived.
 func (s *DocumentStore) Archive(id int64) (*model.Document, error) {
 	err := WithTx(s.db, func(tx *sql.Tx) error {
-		var locked bool
 		var archivedAt sql.NullString
 		if err := tx.QueryRow(
-			`SELECT locked, archived_at FROM documents WHERE id = ? AND trashed_at IS NULL`, id,
-		).Scan(&locked, &archivedAt); err != nil {
+			`SELECT archived_at FROM documents WHERE id = ? AND trashed_at IS NULL`, id,
+		).Scan(&archivedAt); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrNotFound
 			}
 			return err
 		}
-		if locked {
-			return ErrLocked
-		}
 		if archivedAt.Valid {
 			return ErrArchived
 		}
-		_, err := tx.Exec(`UPDATE documents SET archived_at = `+nowISO+` WHERE id = ?`, id)
+		_, err := tx.Exec(
+			`UPDATE documents SET archived_at = `+nowISO+`, locked = 1 WHERE id = ?`, id)
 		return err
 	})
 	if err != nil {

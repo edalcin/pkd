@@ -358,10 +358,6 @@ func (s *Server) handleArchiveDocument() http.HandlerFunc {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		if errors.Is(err, store.ErrLocked) {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "document is locked"})
-			return
-		}
 		if errors.Is(err, store.ErrArchived) {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "document is already archived"})
 			return

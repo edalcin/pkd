@@ -755,7 +755,6 @@
         <button
           class="archive-btn {doc.archived ? 'is-archived' : ''}"
           onclick={handleToggleArchive}
-          disabled={doc.locked}
           title={doc.archived ? 'Desarquivar documento' : 'Arquivar documento'}
           aria-label={doc.archived ? 'Desarquivar' : 'Arquivar'}
         ><i class="bx bx-archive"></i></button>
