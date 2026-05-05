@@ -113,7 +113,7 @@ func (s *URLStore) ListAllWithDocTitle() ([]model.AdminURL, error) {
 		SELECT u.id, u.document_id, d.title, u.url, u.title
 		FROM document_urls u
 		JOIN documents d ON d.id = u.document_id
-		WHERE d.trashed = 0
+		WHERE d.trashed_at IS NULL
 		ORDER BY d.title COLLATE NOCASE ASC, u.id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("urls.ListAllWithDocTitle: %w", err)

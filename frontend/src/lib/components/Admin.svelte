@@ -315,7 +315,11 @@
   }
 
   async function loadAdminURLs() {
-    adminURLs = await apiGet('/api/admin/urls')
+    try {
+      adminURLs = await apiGet('/api/admin/urls')
+    } catch {
+      adminURLs = []
+    }
   }
 
   function startEditURL(u) {
