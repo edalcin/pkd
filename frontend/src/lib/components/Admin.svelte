@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { apiGet, apiPost, apiDelete, apiFetch } from '../api.js'
+  import { apiGet, apiPost, apiPut, apiDelete, apiFetch } from '../api.js'
   import { loadTags, tags } from '../stores/tags.js'
   import { autoSaveInterval } from '../stores/settings.js'
 
@@ -36,6 +36,24 @@
   let shares = $state([])
   let sharesLoading = $state(false)
 
+  // Links management tab
+  let adminURLs = $state(null)
+  let urlSearch = $state('')
+  let urlSortDir = $state('asc')
+  let urlEditId = $state(null)
+  let urlEditForm = $state({ url: '', title: '' })
+  let urlSaving = $state(false)
+
+  let filteredURLs = $derived.by(() => {
+    const list = adminURLs ?? []
+    const q = urlSearch.trim().toLowerCase()
+    const filtered = q ? list.filter(u => u.document_title.toLowerCase().includes(q)) : list
+    return [...filtered].sort((a, b) => {
+      const cmp = a.document_title.localeCompare(b.document_title, 'pt-BR', { sensitivity: 'base' })
+      return urlSortDir === 'asc' ? cmp : -cmp
+    })
+  })
+
   onMount(() => {
     loadTags()
     loadTrash()
@@ -64,6 +82,7 @@
     if (id === 'attachments' && allAttachments.length === 0) loadAttachments()
     if (id === 'tags') loadAdminTags()
     if (id === 'shares') loadShares()
+    if (id === 'links') loadAdminURLs()
   }
 
   async function loadShares() {
@@ -293,6 +312,37 @@
       await apiDelete(`/api/documents/${r.document_id}/urls/${r.id}`)
     }
     linkCheckResults = linkCheckResults.filter(r => r.valid)
+  }
+
+  async function loadAdminURLs() {
+    adminURLs = await apiGet('/api/admin/urls')
+  }
+
+  function startEditURL(u) {
+    urlEditId = u.id
+    urlEditForm = { url: u.url, title: u.title }
+  }
+
+  function cancelEditURL() {
+    urlEditId = null
+  }
+
+  async function saveEditURL(u) {
+    if (!urlEditForm.url.trim()) return
+    urlSaving = true
+    try {
+      await apiPut(`/api/documents/${u.document_id}/urls/${u.id}`, urlEditForm)
+      adminURLs = adminURLs.map(x => x.id === u.id ? { ...x, ...urlEditForm } : x)
+      urlEditId = null
+    } finally {
+      urlSaving = false
+    }
+  }
+
+  async function deleteAdminURL(u) {
+    if (!confirm('Excluir este link?')) return
+    await apiDelete(`/api/documents/${u.document_id}/urls/${u.id}`)
+    adminURLs = adminURLs.filter(x => x.id !== u.id)
   }
 
   function isImage(mime) {
@@ -529,9 +579,78 @@
 
   <!-- Links -->
   {#if activeTab === 'links'}
+    <!-- URL management table -->
     <div class="admin-section">
-      <h3>Verificar links externos</h3>
-      <p class="muted" style="margin-bottom:.75rem">Verifica a validade de todos os links externos associados a documentos.</p>
+      <div class="section-header">
+        <h3>Links externos ({adminURLs ? adminURLs.length : '…'})</h3>
+        <button class="btn btn-ghost btn-sm" onclick={loadAdminURLs}>↻ Atualizar</button>
+      </div>
+
+      {#if adminURLs === null}
+        <p class="muted">Carregando…</p>
+      {:else if adminURLs.length === 0}
+        <p class="muted">Nenhum link associado a documentos.</p>
+      {:else}
+        <div class="url-controls">
+          <input
+            class="url-search"
+            type="search"
+            placeholder="Buscar por documento…"
+            bind:value={urlSearch}
+          />
+          <button
+            class="btn btn-ghost btn-sm url-sort-btn"
+            onclick={() => urlSortDir = urlSortDir === 'asc' ? 'desc' : 'asc'}
+            title="Ordenar por título do documento"
+          >Documento {urlSortDir === 'asc' ? '↑' : '↓'}</button>
+        </div>
+
+        {#if filteredURLs.length === 0}
+          <p class="muted" style="margin-top:.5rem">Nenhum resultado para "{urlSearch}".</p>
+        {:else}
+          <div class="url-table">
+            <div class="url-table-head">
+              <span class="utc-doc">Documento</span>
+              <span class="utc-title">Título do link</span>
+              <span class="utc-url">URL</span>
+              <span class="utc-actions"></span>
+            </div>
+            {#each filteredURLs as u (u.id)}
+              {#if urlEditId === u.id}
+                <div class="url-row url-row-edit">
+                  <span class="utc-doc">
+                    <a class="doc-link" href="#{`/doc/${u.document_id}`}">{u.document_title || '(sem título)'}</a>
+                  </span>
+                  <input class="url-input" bind:value={urlEditForm.title} placeholder="Título" />
+                  <input class="url-input" bind:value={urlEditForm.url} placeholder="https://…" />
+                  <span class="utc-actions">
+                    <button class="btn btn-primary btn-sm" onclick={() => saveEditURL(u)} disabled={urlSaving || !urlEditForm.url.trim()}>✓</button>
+                    <button class="btn btn-ghost btn-sm" onclick={cancelEditURL}>✕</button>
+                  </span>
+                </div>
+              {:else}
+                <div class="url-row">
+                  <span class="utc-doc">
+                    <a class="doc-link" href="#{`/doc/${u.document_id}`}">{u.document_title || '(sem título)'}</a>
+                  </span>
+                  <span class="utc-title url-cell-text">{u.title || '—'}</span>
+                  <a class="utc-url url-cell-text lc-url" href={u.url} target="_blank" rel="noopener">{u.url}</a>
+                  <span class="utc-actions">
+                    <button class="btn btn-ghost btn-sm" onclick={() => startEditURL(u)} title="Editar">✏️</button>
+                    <button class="btn btn-ghost btn-sm" onclick={() => deleteAdminURL(u)} title="Excluir">🗑️</button>
+                  </span>
+                </div>
+              {/if}
+            {/each}
+          </div>
+        {/if}
+      {/if}
+    </div>
+
+    <!-- URL validity check -->
+    <div class="admin-section">
+      <h3>Verificar validade dos links</h3>
+      <p class="muted" style="margin-bottom:.75rem">Verifica se os links externos ainda estão acessíveis.</p>
       <button class="btn btn-primary" onclick={handleCheckLinks} disabled={linkChecking}>
         {linkChecking ? 'Verificando…' : '🔗 Verificar links'}
       </button>
@@ -908,6 +1027,88 @@
 
   .btn-sm { padding: .25rem .6rem; font-size: .8rem; }
   .muted { color: var(--text-muted); }
+
+  /* URL management table */
+  .url-controls {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .75rem;
+  }
+
+  .url-search {
+    flex: 1;
+    padding: .4rem .75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    font-size: .875rem;
+  }
+
+  .url-sort-btn { flex-shrink: 0; }
+
+  .url-table {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: .875rem;
+  }
+
+  .url-table-head {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr auto;
+    gap: .5rem;
+    padding: .4rem .75rem;
+    background: var(--bg-hover);
+    font-weight: 600;
+    font-size: .8rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .url-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr auto;
+    gap: .5rem;
+    align-items: center;
+    padding: .4rem .75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .url-row:last-child { border-bottom: none; }
+  .url-row:hover:not(.url-row-edit) { background: var(--bg-hover); }
+  .url-row-edit { background: var(--bg-hover); }
+
+  .utc-doc { overflow: hidden; }
+  .utc-title { overflow: hidden; }
+  .utc-url { overflow: hidden; }
+  .utc-actions { display: flex; gap: .25rem; justify-content: flex-end; flex-shrink: 0; }
+
+  .url-cell-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+
+  .url-input {
+    width: 100%;
+    padding: .3rem .5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: .875rem;
+    box-sizing: border-box;
+  }
+
+  .doc-link {
+    color: var(--accent);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+  }
+  .doc-link:hover { text-decoration: underline; }
 
   .link-check-list {
     display: flex;

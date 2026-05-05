@@ -181,6 +181,17 @@ func (s *Server) handleAdminCleanup() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleAdminListURLs() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rows, err := s.urls.ListAllWithDocTitle()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, rows)
+	}
+}
+
 func (s *Server) handleAdminCheckURLs() http.HandlerFunc {
 	type result struct {
 		ID         int64  `json:"id"`

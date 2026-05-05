@@ -177,6 +177,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Delete("/api/admin/tags/{id}", s.handleAdminDeleteTag())
 		r.Get("/api/admin/attachments", s.handleAdminListAttachments())
 		r.Get("/api/admin/attachments/orphans", s.handleAdminListOrphans())
+		r.Get("/api/admin/urls", s.handleAdminListURLs())
 		r.Post("/api/admin/check-urls", s.handleAdminCheckURLs())
 		r.Get("/api/admin/shares", s.handleAdminListShares())
 		r.Delete("/api/admin/shares/{shareID}", s.handleAdminRevokeShare())

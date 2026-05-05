@@ -106,6 +106,33 @@ func (s *URLStore) Delete(id int64) error {
 	return nil
 }
 
+// ListAllWithDocTitle returns all URLs joined with their document titles,
+// ordered by document title then URL id. Trashed documents are excluded.
+func (s *URLStore) ListAllWithDocTitle() ([]model.AdminURL, error) {
+	rows, err := s.db.Query(`
+		SELECT u.id, u.document_id, d.title, u.url, u.title
+		FROM document_urls u
+		JOIN documents d ON d.id = u.document_id
+		WHERE d.trashed = 0
+		ORDER BY d.title COLLATE NOCASE ASC, u.id ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("urls.ListAllWithDocTitle: %w", err)
+	}
+	defer rows.Close()
+	var out []model.AdminURL
+	for rows.Next() {
+		var u model.AdminURL
+		if err := rows.Scan(&u.ID, &u.DocumentID, &u.DocumentTitle, &u.URL, &u.Title); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	if out == nil {
+		out = []model.AdminURL{}
+	}
+	return out, rows.Err()
+}
+
 // ListAll returns all URLs across all documents (used by admin validation).
 func (s *URLStore) ListAll() ([]*model.DocumentURL, error) {
 	rows, err := s.db.Query(`
