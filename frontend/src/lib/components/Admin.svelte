@@ -381,7 +381,7 @@
   }
 </script>
 
-<div class="admin-wrap">
+<div class="admin-wrap" class:admin-wrap-wide={activeTab === 'links'}>
   <h1 class="admin-title">⚙️ Administração</h1>
 
   <!-- Tabs -->
@@ -810,6 +810,10 @@
     width: 100%;
   }
 
+  .admin-wrap-wide {
+    max-width: none;
+  }
+
   .autosave-options {
     display: flex;
     gap: .5rem;
@@ -1063,9 +1067,9 @@
 
   .url-table-head {
     display: grid;
-    grid-template-columns: 1fr 1fr 2fr auto;
-    gap: .5rem;
-    padding: .4rem .75rem;
+    grid-template-columns: minmax(180px, 2fr) minmax(120px, 1fr) minmax(200px, 3fr) 88px;
+    gap: .75rem;
+    padding: .45rem 1rem;
     background: var(--bg-hover);
     font-weight: 600;
     font-size: .8rem;
@@ -1075,10 +1079,10 @@
 
   .url-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 2fr auto;
-    gap: .5rem;
+    grid-template-columns: minmax(180px, 2fr) minmax(120px, 1fr) minmax(200px, 3fr) 88px;
+    gap: .75rem;
     align-items: center;
-    padding: .4rem .75rem;
+    padding: .45rem 1rem;
     border-bottom: 1px solid var(--border);
   }
 
