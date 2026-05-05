@@ -1554,12 +1554,11 @@
     border-radius: 6px;
     cursor: pointer;
     font-size: 1.1rem;
-    color: var(--text-muted);
-    opacity: .4;
-    transition: opacity .15s, color .15s, background .15s;
+    color: var(--text);
+    transition: color .15s, background .15s;
   }
-  .lock-btn:hover { opacity: 1; background: var(--bg-hover); }
-  .lock-btn.is-locked { opacity: 1; color: var(--accent); }
+  .lock-btn:hover { background: var(--bg-hover); }
+  .lock-btn.is-locked { color: var(--accent); }
 
   .archive-btn {
     flex-shrink: 0;
@@ -1573,13 +1572,12 @@
     border-radius: 6px;
     cursor: pointer;
     font-size: 1.1rem;
-    color: var(--text-muted);
-    opacity: .4;
-    transition: opacity .15s, color .15s, background .15s;
+    color: var(--text);
+    transition: color .15s, background .15s;
   }
-  .archive-btn:hover:not(:disabled) { opacity: 1; background: var(--bg-hover); }
-  .archive-btn.is-archived { opacity: 1; color: var(--accent); }
-  .archive-btn:disabled { cursor: default; }
+  .archive-btn:hover:not(:disabled) { background: var(--bg-hover); }
+  .archive-btn.is-archived { color: var(--accent); }
+  .archive-btn:disabled { opacity: .4; cursor: default; }
 
   .save-icon-btn {
     flex-shrink: 0;
@@ -1593,12 +1591,11 @@
     border-radius: 6px;
     cursor: pointer;
     font-size: 1.1rem;
-    color: var(--text-muted);
-    opacity: .5;
-    transition: opacity .15s, color .15s, background .15s;
+    color: var(--text);
+    transition: color .15s, background .15s;
   }
-  .save-icon-btn:hover:not(:disabled) { opacity: 1; background: var(--bg-hover); color: var(--accent); }
-  .save-icon-btn:disabled { opacity: .25; cursor: default; }
+  .save-icon-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--accent); }
+  .save-icon-btn:disabled { opacity: .35; cursor: default; }
   .save-icon-btn.saving { opacity: .7; }
 
   .tag-input-wrap {
