@@ -765,6 +765,29 @@ Agora qualquer processo na EC2 só consegue tocar nos buckets do PKD via o endpo
 
 ---
 
+###  ATUALIZAÇÃO
+
+Teste realizado no console da instância EC2 e funcionando:
+
+```
+[ec2-user@ip-172-16-0-106 ~]$ TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+[ec2-user@ip-172-16-0-106 ~]$ curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/iam/security-credentials/
+pkd-prod-attachments-role[ec2-user@ip-172-16-0-106 ~]$ aws s3 ls s3://pkd-prod-attachments/
+[ec2-user@ip-172-16-0-106 ~]$ aws s3 ls s3://pkd-prod-attachments/
+[ec2-user@ip-172-16-0-106 ~]$ echo "Teste de conexão PKD" > teste.txt
+[ec2-user@ip-172-16-0-106 ~]$ aws s3 cp teste.txt s3://pkd-prod-attachments/
+upload: ./teste.txt to s3://pkd-prod-attachments/teste.txt
+[ec2-user@ip-172-16-0-106 ~]$ aws s3 ls s3://pkd-prod-attachments/
+2026-05-06 13:20:08         22 teste.txt
+[ec2-user@ip-172-16-0-106 ~]$
+
+```
+
+
+---
+
 ## Apêndice E — Configurar AWS Budget alert
 
 **Por que:** garante que se algum dia o custo do PKD na AWS sair do esperado (ex: configuração errada gerando milhões de requisições, ou alguém fazendo upload massivo), você recebe um email.
@@ -834,6 +857,23 @@ A cada 90-180 dias:
 2. Atualize as env vars no UNRAID.
 3. Verifique que o PKD continua funcionando.
 4. Volte na key antiga → **Deactivate** → confirme que tudo continua funcionando → **Delete**.
+
+---
+
+### ATUALIZAÇÃO
+
+Chave para o usuário do UNRAID criada.
+
+Essas variáveis serão adicionadas ao DOCKER no UNRAID:
+
+```
+PKD_S3_ACCESS_KEY_ID: ...
+PKD_S3_SECRET_ACCESS_KEY: ...
+PKD_S3_BUCKET = "pkd-dev-attachments"
+PKD_S3_REGION = "us-east-1"
+```
+
+
 
 ---
 
