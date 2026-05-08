@@ -36,6 +36,14 @@
   let shares = $state([])
   let sharesLoading = $state(false)
 
+  // Storage tab
+  let storageConfig = $state(null)
+  let storageTestResult = $state(null)
+  let storageMigrateResult = $state(null)
+  let storageCleanupResult = $state(null)
+  let storageLoading = $state(false)
+  let storageSwitching = $state(false)
+
   // Links management tab
   let adminURLs = $state(null)
   let urlSearch = $state('')
@@ -83,6 +91,53 @@
     if (id === 'tags') loadAdminTags()
     if (id === 'shares') loadShares()
     if (id === 'links') loadAdminURLs()
+    if (id === 'storage') loadStorageConfig()
+  }
+
+  async function loadStorageConfig() {
+    storageConfig = await apiGet('/api/admin/storage/config')
+  }
+
+  async function switchStorageBackend(backend) {
+    storageSwitching = true
+    try {
+      await apiPut('/api/admin/storage/config', { backend })
+      await loadStorageConfig()
+    } finally {
+      storageSwitching = false
+    }
+  }
+
+  async function testStorage() {
+    storageLoading = true
+    storageTestResult = null
+    try {
+      storageTestResult = await apiPost('/api/admin/storage/test', {})
+    } finally {
+      storageLoading = false
+    }
+  }
+
+  async function migrateStorage() {
+    if (!confirm('Migrar todos os arquivos para o backend ativo? Operação pode demorar alguns segundos.')) return
+    storageLoading = true
+    storageMigrateResult = null
+    try {
+      storageMigrateResult = await apiPost('/api/admin/storage/migrate', {})
+    } finally {
+      storageLoading = false
+    }
+  }
+
+  async function cleanupStorageSource() {
+    if (!confirm('Remover arquivos da origem após migração confirmada? Esta ação não pode ser desfeita.')) return
+    storageLoading = true
+    storageCleanupResult = null
+    try {
+      storageCleanupResult = await apiPost('/api/admin/storage/cleanup-source', {})
+    } finally {
+      storageLoading = false
+    }
   }
 
   async function loadShares() {
@@ -386,7 +441,7 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links'], ['shares','🌐 Compartilhados'], ['settings','⚙️ Preferências']] as [id, label]}
+    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links'], ['shares','🌐 Compartilhados'], ['storage','☁️ Storage'], ['settings','⚙️ Preferências']] as [id, label]}
       <button
         class="tab-btn {activeTab === id ? 'active' : ''}"
         onclick={() => setTab(id)}
@@ -733,6 +788,92 @@
             </div>
           {/each}
         </div>
+      {/if}
+    </div>
+  {/if}
+
+  <!-- Storage -->
+  {#if activeTab === 'storage'}
+    <div class="admin-section">
+      <h3>Backend de armazenamento</h3>
+
+      {#if !storageConfig}
+        <p class="muted">Carregando...</p>
+      {:else}
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem">
+          <span>Ativo: <strong>{storageConfig.backend === 's3' ? '☁️ S3' : '💾 Local'}</strong></span>
+          {#if storageConfig.s3_configured && storageConfig.backend !== 's3'}
+            <button class="btn btn-primary btn-sm" onclick={() => switchStorageBackend('s3')} disabled={storageSwitching}>
+              Ativar S3
+            </button>
+          {/if}
+          {#if storageConfig.backend === 's3'}
+            <button class="btn btn-ghost btn-sm" onclick={() => switchStorageBackend('local')} disabled={storageSwitching}>
+              Voltar para Local
+            </button>
+          {/if}
+        </div>
+
+        {#if storageConfig.s3_configured}
+          <div class="storage-info">
+            <p><strong>Bucket:</strong> {storageConfig.s3_bucket}</p>
+            <p><strong>Região:</strong> {storageConfig.s3_region}</p>
+            {#if storageConfig.s3_prefix}<p><strong>Prefixo:</strong> {storageConfig.s3_prefix}</p>{/if}
+            <p><strong>Auth:</strong> {storageConfig.auth_method === 'instance_profile' ? 'IAM Role (Instance Profile)' : 'Access Key (env vars)'}</p>
+          </div>
+        {:else}
+          <p class="muted">S3 não configurado. Defina <code>PKD_S3_BUCKET</code> e <code>PKD_S3_REGION</code> nas variáveis de ambiente.</p>
+        {/if}
+
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1.5rem">
+          <button class="btn btn-ghost btn-sm" onclick={testStorage} disabled={storageLoading}>
+            🔍 Testar conexão
+          </button>
+          {#if storageConfig.s3_configured}
+            <button class="btn btn-ghost btn-sm" onclick={migrateStorage} disabled={storageLoading}>
+              📦 Migrar para backend ativo
+            </button>
+            <button class="btn btn-danger btn-sm" onclick={cleanupStorageSource} disabled={storageLoading}>
+              🗑 Limpar origem
+            </button>
+          {/if}
+        </div>
+
+        {#if storageTestResult}
+          <div class="storage-result" style="margin-top:1rem">
+            <h4>Resultado do teste:</h4>
+            {#each Object.entries(storageTestResult) as [name, result]}
+              <p>
+                <strong>{name}:</strong>
+                {result.ok ? '✅' : '❌'}
+                {result.latency_ms}ms
+                {#if result.error}<span style="color:var(--color-danger)"> — {result.error}</span>{/if}
+              </p>
+            {/each}
+          </div>
+        {/if}
+
+        {#if storageMigrateResult}
+          <div class="storage-result" style="margin-top:1rem">
+            <h4>Migração:</h4>
+            <p>Copiados: <strong>{storageMigrateResult.copied}</strong> em {storageMigrateResult.duration_ms}ms</p>
+            {#if storageMigrateResult.errors?.length > 0}
+              <p style="color:var(--color-danger)">Erros:</p>
+              <ul>{#each storageMigrateResult.errors as e}<li>{e}</li>{/each}</ul>
+            {/if}
+          </div>
+        {/if}
+
+        {#if storageCleanupResult}
+          <div class="storage-result" style="margin-top:1rem">
+            <h4>Limpeza da origem:</h4>
+            <p>Removidos: <strong>{storageCleanupResult.removed}</strong></p>
+            {#if storageCleanupResult.errors?.length > 0}
+              <p style="color:var(--color-danger)">Erros:</p>
+              <ul>{#each storageCleanupResult.errors as e}<li>{e}</li>{/each}</ul>
+            {/if}
+          </div>
+        {/if}
       {/if}
     </div>
   {/if}

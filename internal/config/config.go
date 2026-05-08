@@ -8,6 +8,17 @@ import (
 	"strings"
 )
 
+// S3Config holds optional Amazon S3 storage configuration.
+// When Bucket and Region are set, the S3 backend is available.
+// Credentials are picked up automatically: env vars (dev) or EC2 Instance Profile (prod).
+type S3Config struct {
+	Bucket          string
+	Prefix          string // optional key prefix inside the bucket
+	Region          string
+	AccessKeyID     string // optional — empty in prod (IAM Role via IMDS)
+	SecretAccessKey string // optional — idem
+}
+
 // Config holds all runtime configuration loaded from environment variables.
 type Config struct {
 	// Required
@@ -16,11 +27,11 @@ type Config struct {
 	AttachmentsPath string
 
 	// Optional with defaults
-	ListenAddr          string
-	SessionIdleMinutes  int
-	MaxImageMB          int64
-	MaxAttachmentMB     int64
-	TrustProxyHeaders   bool
+	ListenAddr         string
+	SessionIdleMinutes int
+	MaxImageMB         int64
+	MaxAttachmentMB    int64
+	TrustProxyHeaders  bool
 
 	// BaseURL is the public-facing base URL used when generating share links
 	// (e.g. "https://pkd.dalc.in/"). If empty, the server derives it from the
@@ -30,6 +41,10 @@ type Config struct {
 	// ImportToken is the pre-shared secret for the /api/import endpoint used by
 	// external apps (e.g. notas). If empty, the endpoint is disabled.
 	ImportToken string
+
+	// S3 is populated when PKD_S3_BUCKET and PKD_S3_REGION are set.
+	// Nil means S3 is not configured and the local backend is the only option.
+	S3 *S3Config
 }
 
 // Load reads configuration from environment variables. It returns an error
@@ -105,6 +120,19 @@ func Load() (*Config, error) {
 
 	if v := os.Getenv("PKD_IMPORT_TOKEN"); v != "" {
 		cfg.ImportToken = v
+	}
+
+	// S3 configuration — optional. Both bucket and region must be set to enable.
+	s3Bucket := os.Getenv("PKD_S3_BUCKET")
+	s3Region := os.Getenv("PKD_S3_REGION")
+	if s3Bucket != "" && s3Region != "" {
+		cfg.S3 = &S3Config{
+			Bucket:          s3Bucket,
+			Prefix:          os.Getenv("PKD_S3_PREFIX"),
+			Region:          s3Region,
+			AccessKeyID:     os.Getenv("PKD_S3_ACCESS_KEY_ID"),
+			SecretAccessKey: os.Getenv("PKD_S3_SECRET_ACCESS_KEY"),
+		}
 	}
 
 	return cfg, nil

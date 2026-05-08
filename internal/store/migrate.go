@@ -95,6 +95,8 @@ func Open(dbPath string) (*sql.DB, error) {
 		{`ALTER TABLE documents ADD COLUMN assoc_day   INTEGER`, "alter documents assoc_day"},
 		{`ALTER TABLE documents ADD COLUMN locked      INTEGER NOT NULL DEFAULT 0`, "alter documents locked"},
 		{`ALTER TABLE documents ADD COLUMN archived_at TEXT`, "alter documents archived_at"},
+		{`ALTER TABLE attachments ADD COLUMN storage_location TEXT NOT NULL DEFAULT 'local'`, "alter attachments storage_location"},
+		{`ALTER TABLE attachments ADD COLUMN content_sha256 TEXT`, "alter attachments content_sha256"},
 	}
 	for _, m := range colMigrations {
 		if _, err := db.Exec(m.sql); err != nil {
@@ -112,6 +114,23 @@ func Open(dbPath string) (*sql.DB, error) {
 	); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("store.Open idx_documents_archived_at: %w", err)
+	}
+
+	// Settings table for key/value config (e.g. active storage backend).
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS settings (
+		key        TEXT PRIMARY KEY,
+		value      TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	)`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open settings table: %w", err)
+	}
+
+	// Seed default active storage backend if not yet set.
+	if _, err := db.Exec(`INSERT OR IGNORE INTO settings (key, value, updated_at)
+		VALUES ('attachments.backend', 'local', datetime('now'))`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open settings seed: %w", err)
 	}
 
 	// Data migration: backfill associated date from created_at for existing documents.

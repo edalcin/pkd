@@ -1,83 +1,86 @@
 package store
 
 import (
+	"bytes"
+	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/edalcin/pkd/internal/model"
 	"github.com/edalcin/pkd/internal/security"
+	"github.com/edalcin/pkd/internal/storage"
 )
 
-// AttachmentStore persists attachment metadata and manages file storage.
+// AttachmentStore manages attachment metadata in SQLite and delegates file I/O
+// to storage.Backend implementations.
 type AttachmentStore struct {
-	db              *sql.DB
-	attachmentsPath string
+	db    *sql.DB
+	local storage.Backend
+	s3    storage.Backend // nil when S3 is not configured
 }
 
-// NewAttachmentStore wraps db and an on-disk attachments directory.
-func NewAttachmentStore(db *sql.DB, attachmentsPath string) *AttachmentStore {
-	return &AttachmentStore{db: db, attachmentsPath: attachmentsPath}
+// NewAttachmentStore returns an AttachmentStore. s3 may be nil.
+func NewAttachmentStore(db *sql.DB, local storage.Backend, s3 storage.Backend) *AttachmentStore {
+	return &AttachmentStore{db: db, local: local, s3: s3}
 }
 
-// CreateFile writes body to a sharded path under attachmentsPath and inserts
-// the metadata row. If the stream exceeds maxBytes it is rejected.
-// subdir, when non-empty, adds an extra folder level (e.g. "inline" for
-// images embedded directly in the document body).
-// Returns the created Attachment with a populated URL.
-func (s *AttachmentStore) CreateFile(docID int64, origName, mimeType, subdir string, body io.Reader, maxBytes int64) (*model.Attachment, error) {
-	// Generate a random stored filename and shard path: [subdir/]ab/cd/<random>
-	token := security.NewToken(16) // 16 bytes → 22 chars base64url
-	base := s.attachmentsPath
-	if subdir != "" {
-		base = filepath.Join(base, subdir)
+// BackendForLocation returns the correct backend for the given storage_location value.
+// Falls back to local if the named backend is unavailable.
+func (s *AttachmentStore) BackendForLocation(location string) storage.Backend {
+	if location == "s3" && s.s3 != nil {
+		return s.s3
 	}
-	shardDir := filepath.Join(base, token[:2], token[2:4])
-	if err := os.MkdirAll(shardDir, 0750); err != nil {
-		return nil, fmt.Errorf("mkdir shard: %w", err)
+	return s.local
+}
+
+// CreateFile buffers body (enforcing maxBytes), writes to backend, and inserts
+// the metadata row in SQLite. Returns the created Attachment with URL populated.
+// subdir adds an extra path level (e.g. "inline" for editor-embedded images).
+func (s *AttachmentStore) CreateFile(ctx context.Context, backend storage.Backend, docID int64, origName, mimeType, subdir string, body io.Reader, maxBytes int64) (*model.Attachment, error) {
+	// Buffer the body to enforce size limit and get the exact byte count for S3.
+	buf, n, err := readWithLimit(body, maxBytes)
+	if err != nil {
+		return nil, err
 	}
-	var storedFilename string
+
+	// Generate a random logical key: [subdir/]ab/cd/<token>
+	token := security.NewToken(16)
+	var key string
 	if subdir != "" {
-		storedFilename = filepath.Join(subdir, token[:2], token[2:4], token)
+		key = fmt.Sprintf("%s/%s/%s/%s", subdir, token[:2], token[2:4], token)
 	} else {
-		storedFilename = filepath.Join(token[:2], token[2:4], token)
-	}
-	fullPath := filepath.Join(s.attachmentsPath, storedFilename)
-
-	f, err := os.Create(fullPath)
-	if err != nil {
-		return nil, fmt.Errorf("create file: %w", err)
+		key = fmt.Sprintf("%s/%s/%s", token[:2], token[2:4], token)
 	}
 
-	// Limit reads to maxBytes + 1 to detect oversized uploads
-	written, err := io.Copy(f, io.LimitReader(body, maxBytes+1))
-	f.Close()
-	if err != nil {
-		os.Remove(fullPath)
-		return nil, fmt.Errorf("write file: %w", err)
-	}
-	if written > maxBytes {
-		os.Remove(fullPath)
-		return nil, ErrTooLarge
+	// Compute SHA256 for migration verification (stored on S3 uploads; optional on local).
+	sum := sha256.Sum256(buf)
+	checksum := hex.EncodeToString(sum[:])
+
+	if err := backend.Put(ctx, key, bytes.NewReader(buf), n, mimeType); err != nil {
+		return nil, fmt.Errorf("storage put: %w", err)
 	}
 
 	att := &model.Attachment{
-		DocumentID:     docID,
-		OriginalName:   origName,
-		StoredFilename: storedFilename,
-		MimeType:       mimeType,
-		SizeBytes:      written,
+		DocumentID:      docID,
+		OriginalName:    origName,
+		StoredFilename:  key,
+		MimeType:        mimeType,
+		SizeBytes:       n,
+		StorageLocation: backend.Name(),
+		ContentSHA256:   checksum,
 	}
 
 	err = WithTx(s.db, func(tx *sql.Tx) error {
 		res, err := tx.Exec(`
-			INSERT INTO attachments (document_id, original_name, stored_filename, mime_type, size_bytes, created_at)
-			VALUES (?, ?, ?, ?, ?, ?)`,
+			INSERT INTO attachments (document_id, original_name, stored_filename, mime_type, size_bytes, storage_location, content_sha256, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			att.DocumentID, att.OriginalName, att.StoredFilename, att.MimeType, att.SizeBytes,
+			att.StorageLocation, att.ContentSHA256,
 			time.Now().UTC().Format(time.RFC3339Nano))
 		if err != nil {
 			return err
@@ -88,7 +91,7 @@ func (s *AttachmentStore) CreateFile(docID int64, origName, mimeType, subdir str
 		return nil
 	})
 	if err != nil {
-		os.Remove(fullPath)
+		backend.Delete(ctx, key) // best-effort rollback
 		return nil, err
 	}
 
@@ -99,33 +102,32 @@ func (s *AttachmentStore) CreateFile(docID int64, origName, mimeType, subdir str
 func (s *AttachmentStore) GetByID(id int64) (*model.Attachment, error) {
 	var att model.Attachment
 	var createdStr string
+	var sha sql.NullString
 	err := s.db.QueryRow(`
-		SELECT id, document_id, original_name, stored_filename, mime_type, size_bytes, created_at
+		SELECT id, document_id, original_name, stored_filename, mime_type, size_bytes, storage_location, content_sha256, created_at
 		FROM attachments WHERE id = ?`, id).Scan(
 		&att.ID, &att.DocumentID, &att.OriginalName, &att.StoredFilename,
-		&att.MimeType, &att.SizeBytes, &createdStr)
+		&att.MimeType, &att.SizeBytes, &att.StorageLocation, &sha, &createdStr)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
+	att.ContentSHA256 = sha.String
 	att.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
 	att.URL = fmt.Sprintf("/api/attachments/%d", att.ID)
 	return &att, nil
 }
 
-// Delete removes the file on disk and the metadata row.
+// Delete removes the file from its storage backend and the metadata row.
 func (s *AttachmentStore) Delete(id int64) error {
 	att, err := s.GetByID(id)
 	if err != nil {
 		return err
 	}
-	fullPath, err := security.SafeAttachmentPath(s.attachmentsPath, att.StoredFilename)
-	if err != nil {
-		return err
-	}
-	os.Remove(fullPath) // best-effort; proceed even if file is gone
+	backend := s.BackendForLocation(att.StorageLocation)
+	backend.Delete(context.Background(), att.StoredFilename) // best-effort
 	_, err = s.db.Exec(`DELETE FROM attachments WHERE id = ?`, id)
 	return err
 }
@@ -133,7 +135,7 @@ func (s *AttachmentStore) Delete(id int64) error {
 // ListByDocument returns all attachments for a document.
 func (s *AttachmentStore) ListByDocument(docID int64) ([]*model.Attachment, error) {
 	rows, err := s.db.Query(`
-		SELECT id, document_id, original_name, stored_filename, mime_type, size_bytes, created_at
+		SELECT id, document_id, original_name, stored_filename, mime_type, size_bytes, storage_location, created_at
 		FROM attachments WHERE document_id = ? ORDER BY created_at`, docID)
 	if err != nil {
 		return nil, err
@@ -143,7 +145,8 @@ func (s *AttachmentStore) ListByDocument(docID int64) ([]*model.Attachment, erro
 	for rows.Next() {
 		var att model.Attachment
 		var createdStr string
-		if err := rows.Scan(&att.ID, &att.DocumentID, &att.OriginalName, &att.StoredFilename, &att.MimeType, &att.SizeBytes, &createdStr); err != nil {
+		if err := rows.Scan(&att.ID, &att.DocumentID, &att.OriginalName, &att.StoredFilename,
+			&att.MimeType, &att.SizeBytes, &att.StorageLocation, &createdStr); err != nil {
 			return nil, err
 		}
 		att.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
@@ -157,7 +160,7 @@ func (s *AttachmentStore) ListByDocument(docID int64) ([]*model.Attachment, erro
 // ordered newest first. Used by the admin attachments panel.
 func (s *AttachmentStore) ListAllWithDocument() ([]*model.AttachmentWithDoc, error) {
 	rows, err := s.db.Query(`
-		SELECT a.id, a.document_id, a.original_name, a.mime_type, a.size_bytes, a.created_at,
+		SELECT a.id, a.document_id, a.original_name, a.mime_type, a.size_bytes, a.storage_location, a.created_at,
 		       COALESCE(d.title, '(sem documento)') as doc_title
 		FROM attachments a
 		LEFT JOIN documents d ON d.id = a.document_id
@@ -170,7 +173,8 @@ func (s *AttachmentStore) ListAllWithDocument() ([]*model.AttachmentWithDoc, err
 	for rows.Next() {
 		var a model.AttachmentWithDoc
 		var createdStr string
-		if err := rows.Scan(&a.ID, &a.DocumentID, &a.OriginalName, &a.MimeType, &a.SizeBytes, &createdStr, &a.DocumentTitle); err != nil {
+		if err := rows.Scan(&a.ID, &a.DocumentID, &a.OriginalName, &a.MimeType, &a.SizeBytes,
+			&a.StorageLocation, &createdStr, &a.DocumentTitle); err != nil {
 			return nil, err
 		}
 		a.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
@@ -181,26 +185,25 @@ func (s *AttachmentStore) ListAllWithDocument() ([]*model.AttachmentWithDoc, err
 }
 
 // DeleteByDocument removes all attachment files and rows for a given document.
-// Used before permanently deleting a document that has attachments.
+// Used before permanently deleting a document.
 func (s *AttachmentStore) DeleteByDocument(docID int64) error {
 	atts, err := s.ListByDocument(docID)
 	if err != nil {
 		return err
 	}
 	for _, att := range atts {
-		if path, err := security.SafeAttachmentPath(s.attachmentsPath, att.StoredFilename); err == nil {
-			os.Remove(path)
-		}
+		backend := s.BackendForLocation(att.StorageLocation)
+		backend.Delete(context.Background(), att.StoredFilename) // best-effort
 	}
 	_, err = s.db.Exec(`DELETE FROM attachments WHERE document_id = ?`, docID)
 	return err
 }
 
-// ListOrphanedStoredFiles returns stored filenames that have no matching row.
-// Used by the admin cleanup handler.
+// ListOrphanedStoredFiles returns logical keys that exist in the active backend
+// storage but have no matching row in the database.
+// Only checks the local backend (orphan detection for S3 runs via admin migrate endpoint).
 func (s *AttachmentStore) ListOrphanedStoredFiles() ([]string, error) {
-	// Walk the attachments directory and compare to database rows
-	rows, err := s.db.Query(`SELECT stored_filename FROM attachments`)
+	rows, err := s.db.Query(`SELECT stored_filename FROM attachments WHERE storage_location = 'local'`)
 	if err != nil {
 		return nil, err
 	}
@@ -211,30 +214,167 @@ func (s *AttachmentStore) ListOrphanedStoredFiles() ([]string, error) {
 		if err := rows.Scan(&sf); err != nil {
 			return nil, err
 		}
-		known[filepath.Clean(filepath.Join(s.attachmentsPath, sf))] = struct{}{}
+		known[sf] = struct{}{}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
+	diskKeys, err := s.local.List(context.Background(), "")
+	if err != nil {
+		return nil, err
+	}
+
 	var orphans []string
-	err = filepath.Walk(s.attachmentsPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return nil
+	for _, key := range diskKeys {
+		if _, ok := known[key]; !ok {
+			orphans = append(orphans, key)
 		}
-		if _, ok := known[filepath.Clean(path)]; !ok {
-			orphans = append(orphans, path)
+	}
+	return orphans, nil
+}
+
+// MigrateToBackend copies all attachments with storage_location != target to the target backend,
+// verifying SHA256 integrity. Non-destructive: source files are not deleted.
+// Returns (copied, errors).
+func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.Backend) (int, []string) {
+	rows, err := s.db.Query(`
+		SELECT id, stored_filename, mime_type, storage_location, content_sha256
+		FROM attachments WHERE storage_location != ?`, target.Name())
+	if err != nil {
+		return 0, []string{fmt.Sprintf("query failed: %v", err)}
+	}
+	defer rows.Close()
+
+	type row struct {
+		id       int64
+		key      string
+		mime     string
+		location string
+		sha256   string
+	}
+	var todo []row
+	for rows.Next() {
+		var r row
+		var sha sql.NullString
+		if err := rows.Scan(&r.id, &r.key, &r.mime, &r.location, &sha); err != nil {
+			return 0, []string{fmt.Sprintf("scan: %v", err)}
 		}
-		return nil
-	})
-	return orphans, err
+		r.sha256 = sha.String
+		todo = append(todo, r)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, []string{fmt.Sprintf("rows: %v", err)}
+	}
+
+	copied := 0
+	var errs []string
+
+	for _, r := range todo {
+		src := s.BackendForLocation(r.location)
+		rc, size, err := src.Get(ctx, r.key)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: read failed: %v", r.key, err))
+			continue
+		}
+
+		// Buffer to verify SHA256 and provide Content-Length for S3 PutObject.
+		data, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: buffer failed: %v", r.key, err))
+			continue
+		}
+		_ = size
+
+		// Verify source integrity if SHA256 is stored.
+		sum := sha256.Sum256(data)
+		checksum := hex.EncodeToString(sum[:])
+		if r.sha256 != "" && r.sha256 != checksum {
+			errs = append(errs, fmt.Sprintf("%s: SHA256 mismatch (expected %s, got %s)", r.key, r.sha256, checksum))
+			continue
+		}
+
+		// Write to target.
+		if err := target.Put(ctx, r.key, bytes.NewReader(data), int64(len(data)), r.mime); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: write failed: %v", r.key, err))
+			continue
+		}
+
+		// Verify target read-back.
+		trc, _, err := target.Get(ctx, r.key)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: verify read failed: %v", r.key, err))
+			continue
+		}
+		tData, err := io.ReadAll(trc)
+		trc.Close()
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: verify read failed: %v", r.key, err))
+			continue
+		}
+		tSum := sha256.Sum256(tData)
+		tChecksum := hex.EncodeToString(tSum[:])
+		if tChecksum != checksum {
+			errs = append(errs, fmt.Sprintf("%s: target SHA256 mismatch after write", r.key))
+			target.Delete(ctx, r.key) // remove corrupt copy
+			continue
+		}
+
+		// Update DB row.
+		if _, err := s.db.ExecContext(ctx, `
+			UPDATE attachments SET storage_location = ?, content_sha256 = ? WHERE id = ?`,
+			target.Name(), checksum, r.id); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: DB update failed: %v", r.key, err))
+			continue
+		}
+		copied++
+	}
+	return copied, errs
+}
+
+// CleanupSource deletes files from the source backend for attachments that have
+// been migrated to target (storage_location == target.Name()). Does not touch DB rows.
+func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target storage.Backend) (int, []string) {
+	rows, err := s.db.Query(`
+		SELECT stored_filename FROM attachments WHERE storage_location = ?`, target.Name())
+	if err != nil {
+		return 0, []string{fmt.Sprintf("query: %v", err)}
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			return 0, []string{fmt.Sprintf("scan: %v", err)}
+		}
+		keys = append(keys, k)
+	}
+
+	removed := 0
+	var errs []string
+	for _, k := range keys {
+		if err := source.Delete(ctx, k); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", k, err))
+			continue
+		}
+		removed++
+	}
+	return removed, errs
 }
 
 // ErrTooLarge is returned when an uploaded file exceeds the size limit.
 var ErrTooLarge = errors.New("file too large")
 
-// FullPath resolves the on-disk path for an attachment, performing path
-// traversal validation. Returns ErrPathTraversal on invalid filenames.
-func (s *AttachmentStore) FullPath(att *model.Attachment) (string, error) {
-	return security.SafeAttachmentPath(s.attachmentsPath, att.StoredFilename)
+// readWithLimit reads r up to maxBytes. Returns ErrTooLarge if exceeded.
+func readWithLimit(r io.Reader, maxBytes int64) ([]byte, int64, error) {
+	buf, err := io.ReadAll(io.LimitReader(r, maxBytes+1))
+	if err != nil {
+		return nil, 0, fmt.Errorf("read body: %w", err)
+	}
+	if int64(len(buf)) > maxBytes {
+		return nil, 0, ErrTooLarge
+	}
+	return buf, int64(len(buf)), nil
 }

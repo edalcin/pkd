@@ -145,7 +145,7 @@ func (s *Server) handleAdminRestore() http.HandlerFunc {
 		}
 		s.db = newDB
 		s.docs = store.NewDocumentStore(newDB)
-		s.attachments = store.NewAttachmentStore(newDB, s.cfg.AttachmentsPath)
+		s.attachments = store.NewAttachmentStore(newDB, s.localBackend, s.s3Backend)
 		s.tags = store.NewTagStore(newDB)
 		s.search = store.NewSearchStore(newDB)
 		s.shares = store.NewShareStore(newDB)
@@ -162,14 +162,15 @@ func (s *Server) handleAdminRestore() http.HandlerFunc {
 
 func (s *Server) handleAdminCleanup() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// ListOrphanedStoredFiles returns logical keys (not absolute paths) for local-backend files.
 		orphans, err := s.attachments.ListOrphanedStoredFiles()
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		removed := 0
-		for _, path := range orphans {
-			if os.Remove(path) == nil {
+		for _, key := range orphans {
+			if s.localBackend.Delete(r.Context(), key) == nil {
 				removed++
 			}
 		}

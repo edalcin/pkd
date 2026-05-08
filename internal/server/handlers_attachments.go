@@ -2,13 +2,14 @@ package server
 
 import (
 	"errors"
+	"io"
 	"mime"
 	"net/http"
-	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
-	"time"
 
+	"github.com/edalcin/pkd/internal/storage"
 	"github.com/edalcin/pkd/internal/store"
 )
 
@@ -54,6 +55,8 @@ func (s *Server) handleCreateAttachment() http.HandlerFunc {
 			return
 		}
 
+		backend := s.activeStorage()
+
 		// Accept both multipart/form-data (from the attachment panel) and
 		// application/octet-stream (from the CKEditor image upload adapter).
 		var (
@@ -96,7 +99,7 @@ func (s *Server) handleCreateAttachment() http.HandlerFunc {
 			if r.URL.Query().Get("inline") == "1" {
 				subdir = "inline"
 			}
-			att, err := s.attachments.CreateFile(docID, origName, mimeType, subdir, file, maxBytes)
+			att, err := s.attachments.CreateFile(r.Context(), backend, docID, origName, mimeType, subdir, file, maxBytes)
 			if errors.Is(err, store.ErrTooLarge) {
 				http.Error(w, "file too large", http.StatusRequestEntityTooLarge)
 				return
@@ -109,7 +112,7 @@ func (s *Server) handleCreateAttachment() http.HandlerFunc {
 			return
 		}
 
-		att, err := s.attachments.CreateFile(docID, origName, mimeType, "", r.Body, maxBytes)
+		att, err := s.attachments.CreateFile(r.Context(), backend, docID, origName, mimeType, "", r.Body, maxBytes)
 		if errors.Is(err, store.ErrTooLarge) {
 			http.Error(w, "file too large", http.StatusRequestEntityTooLarge)
 			return
@@ -120,8 +123,8 @@ func (s *Server) handleCreateAttachment() http.HandlerFunc {
 		}
 		// CKEditor SimpleUploadAdapter expects: {"default": "<url>"}
 		writeJSON(w, http.StatusCreated, map[string]interface{}{
-			"url":    att.URL,
-			"id":     att.ID,
+			"url":     att.URL,
+			"id":      att.ID,
 			"default": att.URL,
 		})
 	}
@@ -143,13 +146,8 @@ func (s *Server) handleGetAttachment() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		fullPath, err := s.attachments.FullPath(att)
-		if err != nil {
-			http.Error(w, "invalid path", http.StatusBadRequest)
-			return
-		}
+
 		w.Header().Set("Content-Type", att.MimeType)
-		// Use "inline" for types browsers can display natively; "attachment" forces download.
 		inline := isInlineableMIME(att.MimeType)
 		disposition := "attachment"
 		if inline {
@@ -158,27 +156,38 @@ func (s *Server) handleGetAttachment() http.HandlerFunc {
 		safeName := strings.NewReplacer(`"`, `'`, `\`, `-`).Replace(att.OriginalName)
 		w.Header().Set("Content-Disposition", disposition+`; filename="`+safeName+`"`)
 
-		// Override the global security headers for inline-displayable attachments.
-		// The global middleware sets X-Frame-Options: DENY and frame-ancestors 'none',
-		// which would block the browser's built-in PDF/image viewer inside <embed>/<iframe>.
+		// Override global security headers for inline-displayable attachments.
 		if inline {
 			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 			w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
 		}
 
-		// Use ServeContent instead of ServeFile to avoid URL-path redirect logic.
-		f, err := os.Open(fullPath)
-		if err != nil {
-			http.Error(w, "file not found", http.StatusNotFound)
-			return
+		// Route to the correct backend based on storage_location.
+		// Local backend: supports HTTP range requests via ServeContent.
+		// S3 backend: streams without range support (v1).
+		backend := s.attachments.BackendForLocation(att.StorageLocation)
+
+		if seeker, ok := backend.(storage.Seeker); ok {
+			// Local: full range request support
+			f, err := seeker.OpenSeek(r.Context(), att.StoredFilename)
+			if err != nil {
+				http.Error(w, "file not found", http.StatusNotFound)
+				return
+			}
+			defer f.Close()
+			http.ServeContent(w, r, att.OriginalName, att.CreatedAt, f)
+		} else {
+			// S3: stream without range
+			rc, size, err := backend.Get(r.Context(), att.StoredFilename)
+			if err != nil {
+				http.Error(w, "file not found", http.StatusNotFound)
+				return
+			}
+			defer rc.Close()
+			w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+			w.WriteHeader(http.StatusOK)
+			io.Copy(w, rc) //nolint:errcheck
 		}
-		defer f.Close()
-		fi, _ := f.Stat()
-		var modTime time.Time
-		if fi != nil {
-			modTime = fi.ModTime()
-		}
-		http.ServeContent(w, r, att.OriginalName, modTime, f)
 	}
 }
 

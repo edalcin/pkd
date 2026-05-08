@@ -536,6 +536,12 @@ input:focus, textarea:focus, select:focus {
 .admin-section:last-child { border-bottom: none; }
 .admin-section h3 { font-size: .9rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .75rem; }
 
+.storage-info { background: var(--surface-alt, var(--surface)); border: 1px solid var(--border); border-radius: 6px; padding: .75rem 1rem; font-size: .85rem; }
+.storage-info p { margin: .25rem 0; }
+.storage-result { background: var(--surface-alt, var(--surface)); border: 1px solid var(--border); border-radius: 6px; padding: .75rem 1rem; font-size: .85rem; }
+.storage-result h4 { margin: 0 0 .5rem; font-size: .8rem; color: var(--text-muted); text-transform: uppercase; }
+.storage-result ul { margin: .25rem 0 0 1rem; padding: 0; font-size: .8rem; }
+
 /* ─── Calendar ───────────────────────────────────────────────────────────── */
 .calendar-grid {
   display: grid;

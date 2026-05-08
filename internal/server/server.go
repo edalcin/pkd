@@ -1,15 +1,23 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
+	"log"
 	"net/http"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+
 	"github.com/edalcin/pkd/internal/config"
 	"github.com/edalcin/pkd/internal/sessions"
+	"github.com/edalcin/pkd/internal/storage"
 	"github.com/edalcin/pkd/internal/store"
 )
 
@@ -26,28 +34,102 @@ type Server struct {
 	backup      *store.BackupStore
 	links       *store.LinkStore
 	urls        *store.URLStore
+	settings    *store.SettingsStore
 	throttle    *Throttle
 	handler     http.Handler
+
+	localBackend storage.Backend // always non-nil
+	s3Backend    storage.Backend // nil when S3 not configured
+	activeMu     sync.RWMutex
+	activeBackend storage.Backend // points to localBackend or s3Backend
 }
+
+// activeStorage returns the currently active storage backend (thread-safe).
+func (s *Server) activeStorage() storage.Backend {
+	s.activeMu.RLock()
+	defer s.activeMu.RUnlock()
+	return s.activeBackend
+}
+
+// setActiveStorage atomically swaps the active backend and persists the choice.
+func (s *Server) setActiveStorage(name string) error {
+	var b storage.Backend
+	switch name {
+	case "s3":
+		if s.s3Backend == nil {
+			return &errS3NotConfigured{}
+		}
+		b = s.s3Backend
+	default:
+		name = "local"
+		b = s.localBackend
+	}
+	if err := s.settings.SetAttachmentsBackend(name); err != nil {
+		return err
+	}
+	s.activeMu.Lock()
+	s.activeBackend = b
+	s.activeMu.Unlock()
+	return nil
+}
+
+type errS3NotConfigured struct{}
+
+func (e *errS3NotConfigured) Error() string { return "S3 not configured (missing PKD_S3_BUCKET or PKD_S3_REGION)" }
 
 // New builds the chi router with all middleware and routes wired up.
 func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
-	s := &Server{
-		cfg:         cfg,
-		db:          db,
-		sessions:    sess,
-		docs:        store.NewDocumentStore(db),
-		attachments: store.NewAttachmentStore(db, cfg.AttachmentsPath),
-		tags:        store.NewTagStore(db),
-		search:      store.NewSearchStore(db),
-		shares:      store.NewShareStore(db),
-		backup:      store.NewBackupStore(db, cfg.DBPath),
-		links:       store.NewLinkStore(db),
-		urls:        store.NewURLStore(db),
-		throttle:    NewThrottle(cfg.TrustProxyHeaders),
+	local := storage.NewLocal(cfg.AttachmentsPath)
+
+	var s3b storage.Backend
+	if cfg.S3 != nil {
+		s3b = buildS3Backend(cfg.S3)
 	}
+
+	s := &Server{
+		cfg:          cfg,
+		db:           db,
+		sessions:     sess,
+		docs:         store.NewDocumentStore(db),
+		tags:         store.NewTagStore(db),
+		search:       store.NewSearchStore(db),
+		shares:       store.NewShareStore(db),
+		backup:       store.NewBackupStore(db, cfg.DBPath),
+		links:        store.NewLinkStore(db),
+		urls:         store.NewURLStore(db),
+		settings:     store.NewSettingsStore(db),
+		throttle:     NewThrottle(cfg.TrustProxyHeaders),
+		localBackend: local,
+		s3Backend:    s3b,
+		activeBackend: local, // default; overridden below from DB
+	}
+	s.attachments = store.NewAttachmentStore(db, local, s3b)
+
+	// Restore active backend from DB settings.
+	if name, err := s.settings.AttachmentsBackend(); err == nil && name == "s3" && s3b != nil {
+		s.activeBackend = s3b
+	}
+
 	s.handler = s.buildRouter()
 	return s
+}
+
+// buildS3Backend creates the S3 client and backend from config.
+func buildS3Backend(cfg *config.S3Config) storage.Backend {
+	var opts []func(*awsconfig.LoadOptions) error
+	opts = append(opts, awsconfig.WithRegion(cfg.Region))
+	if cfg.AccessKeyID != "" && cfg.SecretAccessKey != "" {
+		opts = append(opts, awsconfig.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
+		))
+	}
+	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(), opts...)
+	if err != nil {
+		log.Printf("warn: S3 config load failed: %v — S3 backend unavailable", err)
+		return nil
+	}
+	client := awss3.NewFromConfig(awsCfg)
+	return storage.NewS3(client, cfg.Bucket, cfg.Prefix)
 }
 
 // Handler returns the root http.Handler.
@@ -181,6 +263,13 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/check-urls", s.handleAdminCheckURLs())
 		r.Get("/api/admin/shares", s.handleAdminListShares())
 		r.Delete("/api/admin/shares/{shareID}", s.handleAdminRevokeShare())
+
+		// Storage management
+		r.Get("/api/admin/storage/config", s.handleAdminStorageConfig())
+		r.Put("/api/admin/storage/config", s.handleAdminStorageSetBackend())
+		r.Post("/api/admin/storage/test", s.handleAdminStorageTest())
+		r.Post("/api/admin/storage/migrate", s.handleAdminStorageMigrate())
+		r.Post("/api/admin/storage/cleanup-source", s.handleAdminStorageCleanupSource())
 	})
 
 	return r
