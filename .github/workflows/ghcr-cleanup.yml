@@ -1,0 +1,24 @@
+name: Cleanup old SHA image tags
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'  # todo domingo às 03:00 UTC
+  workflow_dispatch:       # permite rodar manualmente
+
+permissions:
+  packages: write
+
+jobs:
+  cleanup:
+    name: Delete sha-* tags older than 30 days
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete old SHA-tagged versions
+        uses: snok/container-retention-policy@v2
+        with:
+          account-type: personal
+          grace-period: 30d
+          keep-at-least: 5
+          filter-tags: sha-*
+          token: ${{ secrets.GITHUB_TOKEN }}
