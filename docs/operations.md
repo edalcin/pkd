@@ -134,26 +134,76 @@ Se `PKD_BASE_URL` não estiver definida, o servidor usa o host da requisição H
 
 ## Atualizações
 
-### Docker run / compose
+### Modelo de tags Docker
+
+| Tag | Semântica | Ambiente |
+|---|---|---|
+| `:edge` | Sempre aponta para o último commit de `main` | UNRAID (dev) |
+| `:sha-abc1234` | Imutável — identifica um commit específico | Referência de auditoria |
+| `:stable` | Aponta para a versão atual em produção | EC2 (prod) |
+| `:v1.2.3` | Imutável — release semver | Produção, histórico |
+
+### UNRAID (dev — tag `:edge`)
+
+O UNRAID usa `:edge`, que atualiza automaticamente a cada push em `main`.
+
+1. Docker tab → clique no ícone do container `pkd` → **Force Update**.
+2. O UNRAID baixa a nova imagem `:edge` e reinicia o container.
+3. Seus dados em `/mnt/user/appdata/pkd/` ficam intocados.
+
+Ou com Watchtower (atualização automática sem intervenção manual).
+
+### EC2 (produção — tag `:stable`)
+
+A EC2 usa `:stable`, que **só muda quando você promove manualmente**. Veja §"Promoção dev → prod" abaixo.
 
 ```bash
-docker pull ghcr.io/edalcin/pkd:latest
+docker pull ghcr.io/edalcin/pkd:stable
 docker stop pkd && docker rm pkd
 # Re-execute o comando docker run original (dados ficam nos volumes)
 ```
 
-Ou com docker compose:
+---
+
+## Promoção dev → prod
+
+Depois de validar a versão rodando no UNRAID:
 
 ```bash
-docker compose pull
-docker compose up -d
+# 1. Verificar qual commit está rodando em dev
+docker inspect ghcr.io/edalcin/pkd:edge --format '{{index .RepoDigests 0}}'
+
+# 2. Criar tag Git semver no commit atual de main
+git tag -a v1.2.3 -m "Release 1.2.3
+
+- feat: armazenamento de anexos em S3
+- fix: descrição do fix
+"
+git push origin v1.2.3
 ```
 
-### UNRAID
+O workflow `promote-to-prod.yml` dispara automaticamente, re-tagueando a imagem `:sha-*` correspondente como `:v1.2.3` e `:stable` (sem rebuild).
 
-1. Docker tab → clique no ícone do container `pkd` → **Force Update**.
-2. O UNRAID baixa a nova imagem e reinicia o container.
-3. Seus dados em `/mnt/user/appdata/pkd/` ficam intocados.
+```bash
+# 3. Na EC2, puxar a nova :stable e reiniciar
+docker pull ghcr.io/edalcin/pkd:stable
+docker stop pkd && docker rm pkd
+# Re-execute o comando docker run original
+```
+
+### Reversão de produção
+
+```bash
+# Listar versões disponíveis
+docker images ghcr.io/edalcin/pkd
+
+# Reiniciar com versão anterior
+docker pull ghcr.io/edalcin/pkd:v1.2.2
+docker stop pkd && docker rm pkd
+docker run ... ghcr.io/edalcin/pkd:v1.2.2
+```
+
+Tempo total: **menos de 1 minuto**, sem rebuild, sem mexer em código.
 
 ### Migrações de schema
 

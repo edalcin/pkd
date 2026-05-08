@@ -34,4 +34,20 @@ Go 1.23 (pure Go, CGO disabled): Follow standard conventions
 
 
 <!-- MANUAL ADDITIONS START -->
+
+## Branch Strategy
+
+`main` is the only long-lived branch. Feature branches are allowed as **ephemeral** (hours/days max, merged via PR, then deleted). Never create long-lived environment branches — dev vs. prod separation is done via Docker tags, not code.
+
+## Docker Tags
+
+| Tag | Meaning | Target |
+|---|---|---|
+| `:edge` | Latest `main` commit | UNRAID (dev) — auto-updates |
+| `:sha-abc1234` | Immutable, tied to a specific commit | Audit reference |
+| `:stable` | Current production version | EC2 (prod) — manual promote |
+| `:v1.2.3` | Immutable semver release | Production history |
+
+To promote dev → prod: `git tag -a vX.Y.Z -m "..."` + `git push origin vX.Y.Z`. The `promote-to-prod.yml` workflow re-tags the image automatically (no rebuild).
+
 <!-- MANUAL ADDITIONS END -->

@@ -10,7 +10,7 @@ This guide walks you through installing PKD on UNRAID using the graphical **Dock
 
 - UNRAID 6.12 or later
 - Docker service running (Community Applications is optional — PKD is a direct container pull)
-- Internet access to pull `ghcr.io/edalcin/pkd:latest` (or pre-pull on an internet-connected machine and transfer the image)
+- Internet access to pull `ghcr.io/edalcin/pkd:edge` (or pre-pull on an internet-connected machine and transfer the image)
 
 ---
 
@@ -38,7 +38,7 @@ Navigate to **Docker tab → Add Container**.
 | Field | Value |
 |---|---|
 | **Name** | `pkd` |
-| **Repository** | `ghcr.io/edalcin/pkd:latest` |
+| **Repository** | `ghcr.io/edalcin/pkd:edge` |
 | **Network Type** | `Bridge` |
 | **WebUI** | `http://[IP]:[PORT:8080]` |
 | **Icon URL** | *(optional)* `https://raw.githubusercontent.com/edalcin/pkd/main/docs/assets/pkd-icon.png` |
