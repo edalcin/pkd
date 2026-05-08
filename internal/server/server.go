@@ -270,6 +270,8 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/storage/test", s.handleAdminStorageTest())
 		r.Post("/api/admin/storage/migrate", s.handleAdminStorageMigrate())
 		r.Post("/api/admin/storage/cleanup-source", s.handleAdminStorageCleanupSource())
+		r.Get("/api/admin/storage/backup-attachments", s.handleAdminStorageBackupAttachments())
+		r.Post("/api/admin/storage/restore-attachments", s.handleAdminStorageRestoreAttachments())
 	})
 
 	return r

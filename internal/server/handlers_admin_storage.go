@@ -1,6 +1,7 @@
 package server
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -109,6 +110,84 @@ func testBackend(ctx context.Context, b storage.Backend) *testResult {
 }
 
 func ms(start time.Time) int64 { return time.Since(start).Milliseconds() }
+
+func (s *Server) handleAdminStorageBackupAttachments() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		keys, err := s.localBackend.List(ctx, "")
+		if err != nil {
+			http.Error(w, "list error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		filename := "pkd-attachments-" + time.Now().Format("2006-01-02") + ".zip"
+		w.Header().Set("Content-Type", "application/zip")
+		w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+		zw := zip.NewWriter(w)
+		defer zw.Close()
+		for _, key := range keys {
+			rc, _, err := s.localBackend.Get(ctx, key)
+			if err != nil {
+				continue
+			}
+			fw, err := zw.Create(key)
+			if err != nil {
+				rc.Close()
+				continue
+			}
+			io.Copy(fw, rc)
+			rc.Close()
+		}
+	}
+}
+
+func (s *Server) handleAdminStorageRestoreAttachments() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		if err := r.ParseMultipartForm(200 << 20); err != nil {
+			http.Error(w, "form parse error: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		f, _, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, "missing file field", http.StatusBadRequest)
+			return
+		}
+		defer f.Close()
+		data, err := io.ReadAll(f)
+		if err != nil {
+			http.Error(w, "read error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+		if err != nil {
+			http.Error(w, "invalid zip: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		restored := 0
+		var errs []string
+		for _, zf := range zr.File {
+			if zf.FileInfo().IsDir() {
+				continue
+			}
+			rc, err := zf.Open()
+			if err != nil {
+				errs = append(errs, zf.Name+": "+err.Error())
+				continue
+			}
+			err = s.localBackend.Put(ctx, zf.Name, rc, int64(zf.UncompressedSize64), "application/octet-stream")
+			rc.Close()
+			if err != nil {
+				errs = append(errs, zf.Name+": "+err.Error())
+				continue
+			}
+			restored++
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"restored": restored,
+			"errors":   errs,
+		})
+	}
+}
 
 func (s *Server) handleAdminStorageMigrate() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

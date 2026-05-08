@@ -43,6 +43,8 @@
   let storageCleanupResult = $state(null)
   let storageLoading = $state(false)
   let storageSwitching = $state(false)
+  let storageRestoreResult = $state(null)
+  let storageRestoreInput = $state(null)
 
   // Links management tab
   let adminURLs = $state(null)
@@ -124,6 +126,30 @@
     storageMigrateResult = null
     try {
       storageMigrateResult = await apiPost('/api/admin/storage/migrate', {})
+    } finally {
+      storageLoading = false
+    }
+  }
+
+  async function backupAttachments() {
+    const res = await apiFetch('/api/admin/storage/backup-attachments')
+    if (!res.ok) { alert('Erro ao gerar backup'); return }
+    const blob = await res.blob()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `pkd-attachments-${new Date().toISOString().slice(0,10)}.zip`
+    a.click()
+  }
+
+  async function restoreAttachments() {
+    if (!storageRestoreInput?.files?.[0]) { alert('Selecione um arquivo ZIP'); return }
+    storageLoading = true
+    storageRestoreResult = null
+    try {
+      const fd = new FormData()
+      fd.append('file', storageRestoreInput.files[0])
+      const res = await apiFetch('/api/admin/storage/restore-attachments', { method: 'POST', body: fd })
+      storageRestoreResult = await res.json()
     } finally {
       storageLoading = false
     }
@@ -871,6 +897,29 @@
             {#if storageCleanupResult.errors?.length > 0}
               <p style="color:var(--color-danger)">Erros:</p>
               <ul>{#each storageCleanupResult.errors as e}<li>{e}</li>{/each}</ul>
+            {/if}
+          </div>
+        {/if}
+
+        <hr style="margin:2rem 0">
+        <h4>Backup / Restauro de anexos (local)</h4>
+        <p class="muted" style="margin-bottom:1rem">Exporta ou importa todos os arquivos do backend local. Útil para migrar entre instâncias.</p>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick={backupAttachments} disabled={storageLoading}>
+            ⬇ Download ZIP de anexos
+          </button>
+          <input type="file" accept=".zip" bind:this={storageRestoreInput} style="font-size:.85rem">
+          <button class="btn btn-ghost btn-sm" onclick={restoreAttachments} disabled={storageLoading}>
+            ⬆ Restaurar ZIP
+          </button>
+        </div>
+        {#if storageRestoreResult}
+          <div class="storage-result" style="margin-top:1rem">
+            <h4>Restauro:</h4>
+            <p>Restaurados: <strong>{storageRestoreResult.restored}</strong></p>
+            {#if storageRestoreResult.errors?.length > 0}
+              <p style="color:var(--color-danger)">Erros:</p>
+              <ul>{#each storageRestoreResult.errors as e}<li>{e}</li>{/each}</ul>
             {/if}
           </div>
         {/if}
