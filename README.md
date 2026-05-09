@@ -26,7 +26,8 @@
 | 🖼️ **Redimensionamento de imagens** | Passe o mouse sobre uma imagem e arraste a alça (canto inferior direito) para redimensioná-la; largura persiste no documento |
 | ⬇️ **Exportar como Markdown** | Botão `⬇ .md` no toolbar converte o documento para Markdown e baixa o arquivo `.md` no browser |
 | 🎯 **Modo foco** | Botão de tela cheia abre o editor em uma janela separada, sem distrações; estado de conteúdo sincronizado ao fechar |
-| 🔗 **Links bidirecionais** | Relacione documentos pelo painel "Notas relacionadas"; backlinks aparecem automaticamente em "Referenciado por" |
+| 🔗 **Notas relacionadas** | Relacione documentos pelo painel "Notas relacionadas"; as relações são **simétricas** — ambos os documentos exibem a mesma lista de relacionados, sem distinção de direção |
+| 📍 **Breadcrumb de hierarquia** | Ancestrais clicáveis exibidos abaixo do título no editor — navegue para qualquer nível da hierarquia com um clique |
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
 | 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
 | 📅 **Calendário** | Navegue pelos documentos pela data de criação |
@@ -45,7 +46,7 @@ Cada documento possui uma **área de associações** no rodapé, com três colun
 
 | Coluna | Funcionalidade |
 |---|---|
-| 📄 **Notas relacionadas** | Relacione documentos com busca autocomplete; backlinks automáticos |
+| 📄 **Notas relacionadas** | Relacione documentos com busca autocomplete; relações simétricas — ambos os documentos exibem a mesma lista |
 | 📎 **Arquivos** | Imagens mostram thumbnail; PDFs, áudios e outros tipos exibem ícone. Clicar abre modal de visualização (lightbox, embed PDF, player de áudio/vídeo) |
 | 🔗 **Links externos** | URLs com título opcional; verificação de validade no painel de administração |
 
@@ -59,18 +60,20 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 |---|---|
 | 🏷️ **Hashtags com autocomplete** | Marque documentos com tags; ao digitar, sugeridas as tags já existentes no sistema |
 | 🎨 **Cores por tag** | Cada tag possui cor configurável; chips coloridos em toda a interface (sidebar e editor) |
-| 🕸️ **Graph View** | Grafo D3.js force-directed: nós de documentos (coloridos pela tag primária) + nós de tags (círculos tracejados). Clicar em tag filtra o grafo |
+| 🗂️ **Arquivamento** | Arquive documentos pelo ícone na barra; arquivar pai cascateia para todos os filhos recursivamente. Documentos arquivados são auto-trancados; desarquivar pai libera todos os filhos |
+| 🕸️ **Graph View** | Grafo D3.js force-directed: nós de documentos, tags e hierarquia pai/filho. Toggles independentes para Hierarquia, Links entre docs e Relações com tags; filtro de nós por tipo de relação |
 | 🔗 **Links públicos** | Links de compartilhamento revogáveis, somente leitura |
 
 ### Administração
 
 | | |
 |---|---|
-| 💾 **Backup / Restore** | Download do SQLite + restore com confirmação |
+| 💾 **Backup / Restore** | Download do SQLite + restore com confirmação; download de todos os anexos como ZIP e restauro via ZIP |
 | 🗑️ **Lixeira** | Documentos excluídos ficam em lixeira; restauráveis individualmente ou em lote |
 | 🏷️ **Tags** | Renomear, editar cor, excluir ou mesclar tags globalmente; botão para remover tags órfãs |
 | 📎 **Arquivos** | Grade com todos os anexos do sistema (thumbnail para imagens), listagem de arquivos órfãos com limpeza em lote |
-| 🔗 **Verificação de links** | Testa todos os links externos (HTTP HEAD) e permite excluir os inválidos em lote |
+| 🔗 **Links externos** | Tabela de gerenciamento de todos os links externos; testa validade (HTTP HEAD) e permite excluir inválidos em lote |
+| ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada e limpeza da origem |
 | 🧹 **Limpeza** | Remove anexos órfãos e executa `VACUUM` no banco |
 
 ### Interface
@@ -166,14 +169,19 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 | `PKD_TRUST_PROXY_HEADERS` | não | `0` | Defina como `1` apenas atrás de proxy reverso confiável |
 | `PKD_BASE_URL` | não | *(host da request)* | URL pública base para links de compartilhamento (ex: `https://pkd.exemplo.com/`) |
 | `PKD_IMPORT_TOKEN` | não | *(desativado)* | Token secreto para o endpoint `POST /api/import`. Se vazio, o endpoint não existe. Gere com `openssl rand -hex 32` |
+| `PKD_S3_BUCKET` | não | *(vazio)* | Nome do bucket S3; junto com `PKD_S3_REGION` habilita S3 como backend disponível |
+| `PKD_S3_REGION` | não | *(vazio)* | Região AWS do bucket (ex: `us-east-1`) |
+| `PKD_S3_PREFIX` | não | *(vazio)* | Prefixo de caminho dentro do bucket (ex: `pkd/attachments/`) |
+| `PKD_S3_ACCESS_KEY_ID` | não | *(credenciais da instância)* | Access Key ID; se vazio, usa credenciais padrão da instância/IAM role |
+| `PKD_S3_SECRET_ACCESS_KEY` | não | *(credenciais da instância)* | Secret Access Key correspondente |
 
 ---
 
 ## Como usar
 
-### Links bidirecionais
+### Notas relacionadas
 
-Use o campo **"Buscar nota para relacionar…"** na coluna _Notas relacionadas_ no rodapé do documento para criar relações entre documentos. O documento alvo exibe automaticamente o documento de origem em "Referenciado por", criando um vínculo bidirecional visível nos dois lados.
+Use o campo **"Buscar nota para relacionar…"** na coluna _Notas relacionadas_ no rodapé do documento para criar relações entre documentos. As relações são **simétricas** — ambos os documentos exibem a mesma lista de relacionados. Para remover um vínculo, clique no ✕ ao lado do documento em qualquer um dos lados.
 
 ### Tags e cores
 
@@ -207,6 +215,27 @@ Arraste um arquivo ou clique em **"+ Anexar arquivo"**. Imagens exibem thumbnail
 
 Insira uma imagem no editor (upload, URL ou colar). Passe o mouse sobre ela — uma alça azul aparece no canto inferior direito. Clique e arraste horizontalmente para ajustar a largura. Ao soltar, a nova largura é salva no documento automaticamente.
 
+### Arquivamento
+
+Clique no ícone de caixa (📦) na barra superior do editor para arquivar ou desarquivar um documento. Ao arquivar:
+
+- O documento e **todos os seus filhos** são arquivados recursivamente e trancados automaticamente
+- Documentos arquivados somem da árvore principal e aparecem na view **Arquivados**
+- Um documento arquivado pode ser editado se destrancado individualmente
+
+Ao desarquivar o documento pai, **todos os filhos** são desarquivados em cascata e ficam novamente disponíveis na árvore principal.
+
+### Armazenamento S3
+
+Configure as variáveis `PKD_S3_BUCKET` e `PKD_S3_REGION` para habilitar o backend S3. Depois acesse **Administração → Storage**:
+
+1. **Testar conexão** — verifica credenciais e acesso ao bucket
+2. **Migrar para S3** — copia todos os anexos do armazenamento local para o S3 com verificação SHA256; em caso de falha o processo pode ser repetido com segurança
+3. **Ativar S3** — troca o backend ativo; novas uploads vão para o S3
+4. **Limpar origem** — remove os arquivos locais após confirmar a migração
+
+O backup ZIP exporta e importa os anexos do backend local; para fazer backup de anexos já no S3, use as ferramentas nativas do AWS (S3 Versioning, replication, etc.).
+
 ### Exportar como Markdown
 
 Clique no botão **⬇ .md** na barra de ferramentas. O browser baixa imediatamente o arquivo `<título>.md` com o conteúdo do documento convertido para Markdown (headings `#`, código em triple-backtick, links `[[Documento]]` preservados).
@@ -217,9 +246,20 @@ Acesse pelo ícone 🕸️ na barra superior. O grafo mostra:
 
 - **Nós de documento** → círculos coloridos pela tag primária
 - **Nós de tag** → círculos com borda tracejada rosa
-- **Arestas** → relações entre documentos e entre documentos e suas tags
+- **Arestas de hierarquia** → linhas tracejadas `--accent` entre pai e filho
+- **Arestas de link** → relações manuais entre documentos (azul)
+- **Arestas de tag** → relação documento ↔ tag (rosa)
 
-Por padrão só aparecem documentos com ao menos uma conexão (link ou tag). Marque **"Todos os docs"** para ver o grafo completo. Clicar em um nó de tag filtra o grafo por aquela tag.
+**Toggles de visibilidade** (independentes, sem reiniciar simulação):
+
+| Toggle | O que controla |
+|---|---|
+| **Hierarquia** | Exibe/oculta arestas e nós de relação pai/filho |
+| **Links entre docs** | Exibe/oculta arestas e nós de relação manual entre documentos |
+| **Relações com tags** | Exibe/oculta arestas e nós de tag |
+| **Todos os docs** | Força exibição de todos os documentos, mesmo sem conexões |
+
+Clicar em um nó de tag filtra o grafo por aquela tag. Clicar em um nó de documento navega para o documento.
 
 ---
 
@@ -262,7 +302,17 @@ go run ./cmd/pkd
 Todo push para o branch `main` dispara o workflow do GitHub Actions que:
 1. Executa `go test ./...`
 2. Builda a imagem Docker (linux/amd64)
-3. Publica em `ghcr.io/edalcin/pkd:latest` e `ghcr.io/edalcin/pkd:<sha>`
+3. Publica `ghcr.io/edalcin/pkd:edge` (UNRAID/dev — atualiza automaticamente) e `ghcr.io/edalcin/pkd:sha-<hash>` (imutável)
+
+**Promoção para produção** — execute manualmente o workflow `promote-to-prod` (via `workflow_dispatch` no GitHub Actions) ou crie uma tag semântica:
+
+```bash
+git tag -a v1.2.3 -m "descrição" && git push origin v1.2.3
+```
+
+O workflow re-etiqueta a imagem `:edge` como `:stable` e `:v1.2.3` — sem rebuild.
+
+**Limpeza automática** — workflow semanal remove tags `sha-*` com mais de 30 dias do GHCR.
 
 Nenhuma credencial é armazenada no repositório — o workflow usa o `GITHUB_TOKEN` automático do GitHub Actions.
 
@@ -283,7 +333,8 @@ graph TD
 
     App --- SPA
     App -->|"SQL / modernc-sqlite"| DB[("🗄️ SQLite\ndocuments · document_links\ndocument_urls · attachments\ntags · shares · FTS5")]
-    App -->|"os.File"| Vol[("📂 Attachments Volume")]
+    App -->|"storage.Backend"| Vol[("📂 Local Volume\n(padrão)")]
+    App -.->|"storage.Backend (opcional)"| S3[("☁️ Amazon S3\n(PKD_S3_BUCKET)")]
 ```
 
 ### Modelo de dados
@@ -291,7 +342,7 @@ graph TD
 | Tabela | Descrição |
 |---|---|
 | `documents` | Documentos com hierarquia via `parent_id`, soft-delete, versionamento otimista |
-| `document_links` | Arestas direcionadas entre documentos. Flag `manual` registra links adicionados pelo painel de notas relacionadas |
+| `document_links` | Arestas simétricas entre documentos; o "outro doc" é derivado via `CASE WHEN` independente de qual lado é `source_id`. Flag `manual` distingue links do painel de notas relacionadas |
 | `document_urls` | URLs externas com título opcional associadas a documentos |
 | `attachments` | Metadados de arquivos; binários em volume externo com path sharding |
 | `tags` + `document_tags` | Tags normalizadas com campo `color`; join N:N com documentos |
@@ -315,6 +366,57 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-05-09
+
+**Editor**
+- Breadcrumb de hierarquia abaixo do título: ancestrais clicáveis via CTE recursiva no backend; navegue para qualquer nível da hierarquia com um clique
+
+---
+
+### 2026-05-08
+
+**Armazenamento S3**
+- Backend S3 (AWS SDK v2, SSE-S3, Intelligent-Tiering) com interface `storage.Backend` e injeção de dependência
+- Migração Local → S3 com verificação SHA256 por arquivo; processo idempotente e seguro para re-execução
+- Painel de administração: teste de conexão, migração, ativação de backend e limpeza da origem
+- Novas variáveis: `PKD_S3_BUCKET`, `PKD_S3_REGION`, `PKD_S3_PREFIX`, `PKD_S3_ACCESS_KEY_ID`, `PKD_S3_SECRET_ACCESS_KEY`
+
+**Backup de anexos**
+- Download ZIP de todos os anexos do backend local (`GET /api/admin/storage/backup-attachments`)
+- Restauro via ZIP (`POST /api/admin/storage/restore-attachments`) — migração entre instâncias sem rsync/SCP
+
+---
+
+### 2026-05-03
+
+**Graph View**
+- Hierarquia pai/filho visualizada como arestas tracejadas com cor de destaque (`--accent`)
+- Toggles independentes: **Hierarquia**, **Links entre docs**, **Relações com tags** — oculta/exibe nós e arestas sem reiniciar a simulação de força
+- Filtro de nós por tipo de relação: ao ativar um toggle, apenas documentos com aquele tipo de relação aparecem (a menos que "Todos os docs" esteja ativo)
+- Cores distintas por tipo de aresta: azul (links), rosa (tags), accent tracejado (hierarquia)
+
+---
+
+### 2026-05-02
+
+**Arquivamento**
+- Arquivar/desarquivar via ícone na barra do editor (sempre visível, como o cadeado)
+- Arquivar pai cascateia recursivamente para todos os filhos; auto-tranca ao arquivar
+- Desarquivar pai cascateia para todos os filhos recursivamente
+- Documento arquivado pode ser editado normalmente se destrancado individualmente
+- Auto-save desativado para documentos trancados
+
+**Links entre documentos**
+- Relações passam a ser **simétricas e sem direção**: ambos os documentos exibem a mesma lista única de "Relacionados", sem distinção entre "Notas relacionadas" e "Referenciado por"
+
+**Graph View**
+- `edge_type` separado em `link` e `tag` no backend, preparando suporte a toggles de visibilidade
+
+**Admin**
+- Tabela de gerenciamento de links externos na aba Links (responsiva ao espaço disponível)
+
+---
 
 ### 2026-04-21
 
