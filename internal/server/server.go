@@ -203,6 +203,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/documents/{id}/unarchive", s.handleUnarchiveDocument())
 		r.Patch("/api/documents/{id}/associated-date", s.handleUpdateAssocDate())
 			r.Get("/api/documents/{id}/children", s.handleListChildren())
+			r.Get("/api/documents/{id}/ancestors", s.handleListAncestors())
 
 		// Tree
 			r.Get("/api/tree", s.handleTree())

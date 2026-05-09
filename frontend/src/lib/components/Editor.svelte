@@ -40,6 +40,7 @@
   let assocMonth = $state(null)
   let assocDay = $state(null)
   let children = $state([])
+  let ancestors = $state([])
   let assocPaneEl = $state(null)
 
   let urlInput = $state('')
@@ -254,6 +255,7 @@
     mobileEditMode = false
     mobileTab = 'content'
     loading = true
+    ancestors = []
     try {
       const loadedDoc = await loadDoc(targetId)
       if (Number(docId) !== targetId) return  // navigation changed mid-flight, abort
@@ -293,6 +295,13 @@
         children = ch
       } catch {
         children = []
+      }
+      try {
+        const ancs = await apiGet(`/api/documents/${targetId}/ancestors`)
+        if (Number(docId) !== targetId) return
+        ancestors = ancs || []
+      } catch {
+        ancestors = []
       }
     } finally {
       // Only clear loading if we're still the current document.
@@ -768,6 +777,19 @@
           aria-label="Salvar"
         ><i class="bx {saving ? 'bx-loader-alt bx-spin' : 'bx-save'}"></i></button>
       </div>
+      {#if ancestors.length > 0}
+        <nav class="doc-breadcrumb" aria-label="Localização do documento">
+          {#each ancestors as anc}
+            <button
+              class="breadcrumb-item"
+              onclick={() => window.location.hash = `/doc/${anc.id}`}
+              title={anc.title}
+            >{#if anc.icon}<i class="bx {anc.icon}"></i>{/if}{anc.title}</button>
+            <span class="breadcrumb-sep" aria-hidden="true">›</span>
+          {/each}
+          <span class="breadcrumb-current">{#if doc.icon}<i class="bx {doc.icon}"></i>{/if}{doc.title || 'Sem título'}</span>
+        </nav>
+      {/if}
       <div class="doc-meta">
         {#each docTags as tag}
           {@const c = tagColorMap[tag] || ''}
@@ -1518,6 +1540,45 @@
     gap: .5rem;
     margin-bottom: .5rem;
   }
+
+  .doc-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .15rem;
+    margin-bottom: .35rem;
+    font-size: .75rem;
+    color: var(--text-muted, #888);
+    min-height: 1.2rem;
+  }
+  .breadcrumb-item {
+    background: none;
+    border: none;
+    padding: .1rem .2rem;
+    border-radius: 3px;
+    cursor: pointer;
+    color: var(--text-muted, #888);
+    font-size: .75rem;
+    white-space: nowrap;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color .15s, background .15s;
+  }
+  .breadcrumb-item:hover { color: var(--accent); background: var(--bg-hover); }
+  .breadcrumb-item i { margin-right: .2rem; font-size: .8rem; }
+  .breadcrumb-sep { color: var(--text-muted, #888); opacity: .5; user-select: none; }
+  .breadcrumb-current {
+    color: var(--text-muted, #888);
+    font-size: .75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+    opacity: .7;
+  }
+  .breadcrumb-current i { margin-right: .2rem; font-size: .8rem; }
+
 
   .doc-icon-wrap {
     position: relative;

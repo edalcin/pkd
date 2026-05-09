@@ -304,6 +304,25 @@ func (s *Server) handleListChildren() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleListAncestors() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		ancestors, err := s.docs.Ancestors(id)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if ancestors == nil {
+			ancestors = []*model.Ancestor{}
+		}
+		writeJSON(w, http.StatusOK, ancestors)
+	}
+}
+
 func (s *Server) handleRestoreDocument() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseID(r, "id")

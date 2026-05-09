@@ -49,3 +49,10 @@ type VersionConflict struct {
 	StoredVersion int64     `json:"stored_version"`
 	Stored        *Document `json:"stored"`
 }
+
+// Ancestor is a minimal document node used for breadcrumb display.
+type Ancestor struct {
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
+	Icon  string `json:"icon,omitempty"`
+}

@@ -731,6 +731,39 @@ func (s *DocumentStore) EmptyTrash() error {
 	})
 }
 
+// Ancestors returns the ancestor chain for id, ordered root-first,
+// excluding the document itself. Uses a recursive CTE to walk up parent_id.
+func (s *DocumentStore) Ancestors(id int64) ([]*model.Ancestor, error) {
+	rows, err := s.db.Query(`
+		WITH RECURSIVE anc(id, parent_id, title, icon, depth) AS (
+			SELECT d.id, d.parent_id, d.title, d.icon, 0
+			FROM documents d
+			WHERE d.id = (SELECT parent_id FROM documents WHERE id = ? AND trashed_at IS NULL)
+			  AND d.trashed_at IS NULL
+			UNION ALL
+			SELECT d.id, d.parent_id, d.title, d.icon, a.depth + 1
+			FROM documents d
+			JOIN anc a ON d.id = a.parent_id
+			WHERE d.trashed_at IS NULL
+		)
+		SELECT id, title, icon FROM anc ORDER BY depth DESC`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []*model.Ancestor
+	for rows.Next() {
+		a := &model.Ancestor{}
+		var icon sql.NullString
+		if err := rows.Scan(&a.ID, &a.Title, &icon); err != nil {
+			return nil, err
+		}
+		a.Icon = icon.String
+		result = append(result, a)
+	}
+	return result, rows.Err()
+}
+
 // ListChildren returns all non-trashed direct children of parentID, ordered by position then id.
 func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) {
 	rows, err := s.db.Query(`
