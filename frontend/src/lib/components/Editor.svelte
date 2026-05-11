@@ -12,7 +12,7 @@
   import Link from '@tiptap/extension-link'
   import { DocLink } from '../editor/doclink-extension.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, archiveDoc, unarchiveDoc } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, archiveDoc, unarchiveDoc, focusTitleForDocId } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
@@ -30,6 +30,7 @@
   let tagInput = $state('')
   let tagSuggestions = $state([])
   let tagSuggestionsOpen = $state(false)
+  let titleInputEl = $state(null)
   let tagInputEl = $state(null)
   let tagDropdownStyle = $state('')
   let docTags = $state([])
@@ -306,7 +307,13 @@
     } finally {
       // Only clear loading if we're still the current document.
       // A newer loadDocument() in flight will clear it when it finishes.
-      if (Number(docId) === targetId) loading = false
+      if (Number(docId) === targetId) {
+        loading = false
+        if (get(focusTitleForDocId) === targetId) {
+          focusTitleForDocId.set(null)
+          setTimeout(() => { titleInputEl?.focus(); titleInputEl?.select() }, 50)
+        }
+      }
     }
   }
 
@@ -751,6 +758,7 @@
         <input
           class="doc-title"
           type="text"
+          bind:this={titleInputEl}
           bind:value={titleValue}
           oninput={scheduleAutoSave}
           placeholder="Título do documento"

@@ -10,6 +10,14 @@ export async function loadTags() {
 
 /** Replace all tags on a document. */
 export async function setDocumentTags(docId, tagNames) {
+  // Optimistic update: new tags appear in sidebar immediately
+  tags.update(current => {
+    const existing = new Set(current.map(t => t.name))
+    const newEntries = tagNames
+      .filter(n => !existing.has(n))
+      .map(n => ({ name: n, count: 1, color: null }))
+    return newEntries.length ? [...current, ...newEntries] : current
+  })
   await apiPut(`/api/documents/${docId}/tags`, { tags: tagNames })
   await loadTags()
 }

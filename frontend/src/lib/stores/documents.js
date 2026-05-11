@@ -37,6 +37,9 @@ export const revealActiveSignal = writable(0)
 /** Incremented whenever a link is created from the sidebar, so Editor reloads. */
 export const linksRefreshSignal = writable(0)
 
+/** When set to a doc ID, Editor should focus the title input after loading that doc. */
+export const focusTitleForDocId = writable(null)
+
 /** Load the document tree, optionally filtered by tags, favorites, and/or text query. */
 export async function loadTree(tags = get(tagFilter), favorites = get(favoriteFilter), q = get(textFilter)) {
   const prevQ = get(textFilter)
@@ -109,6 +112,7 @@ export async function loadDoc(id) {
 export async function createDoc(parentId = null, title = 'Untitled') {
   const doc = await apiPost('/api/documents', { parent_id: parentId, title })
   await loadTree()
+  focusTitleForDocId.set(doc.id)
   return doc
 }
 
