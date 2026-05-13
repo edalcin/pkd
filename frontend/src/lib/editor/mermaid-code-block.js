@@ -95,6 +95,12 @@ export const MermaidCodeBlock = CodeBlock.extend({
         dom: wrapper,
         contentDOM: code,
 
+        // Ignore mutations in diagram area — mermaid sets innerHTML there,
+        // which would otherwise trigger ProseMirror to recreate the NodeView (infinite loop)
+        ignoreMutation(mutation) {
+          return diagram.contains(mutation.target) || mutation.target === diagram
+        },
+
         update(updatedNode) {
           if (updatedNode.type.name !== 'codeBlock') return false
           if (!isMermaid(updatedNode)) return false
