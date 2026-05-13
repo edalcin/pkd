@@ -10,16 +10,20 @@ function initMermaid() {
   mermaid.initialize({
     startOnLoad: false,
     theme: 'default',
-    securityLevel: 'strict',
+    securityLevel: 'loose',
   })
 }
 
-// Detect mermaid syntax even when language attr is not set (e.g. toolbar button)
-const MERMAID_PATTERN = /^(graph\s+[A-Z]{1,3}|flowchart\s+|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie\s|gitGraph|mindmap|timeline|quadrantChart|xychart|block-beta|architecture-beta|requirementDiagram|journey|zenuml)/i
+// Detect mermaid syntax by content when language attr is absent/empty
+const MERMAID_PATTERN = /^(graph\s+[A-Z]{1,3}|flowchart\s+|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie[\s\n]|gitGraph|mindmap|timeline|quadrantChart|xychart|block-beta|architecture-beta|requirementDiagram|journey|zenuml)/i
 
 function isMermaid(node) {
-  return node.attrs.language === 'mermaid' ||
-    (node.attrs.language == null && MERMAID_PATTERN.test(node.textContent.trim()))
+  const lang = node.attrs.language
+  // Truthy lang that is not 'mermaid' → regular code block
+  if (lang && lang !== 'mermaid') return false
+  if (lang === 'mermaid') return true
+  // No language set: detect by content
+  return MERMAID_PATTERN.test(node.textContent.trim())
 }
 
 async function renderMermaid(source, container) {
@@ -33,7 +37,9 @@ async function renderMermaid(source, container) {
     const { svg } = await mermaid.render(id, trimmed)
     container.innerHTML = svg
   } catch (err) {
-    container.innerHTML = `<pre class="mermaid-error">${String(err.message).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>`
+    // Show error so user knows rendering failed
+    container.innerHTML = `<pre class="mermaid-error">Erro Mermaid: ${String(err.message).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>`
+    console.error('[mermaid] render error:', err)
   }
 }
 
@@ -63,25 +69,27 @@ export const MermaidCodeBlock = CodeBlock.extend({
       pre.appendChild(code)
       wrapper.appendChild(pre)
 
-      // Diagram area
+      // Diagram area — starts with loading indicator
       const diagram = document.createElement('div')
       diagram.className = 'mermaid-diagram'
+      diagram.innerHTML = '<span class="mermaid-loading">Renderizando diagrama…</span>'
       wrapper.appendChild(diagram)
 
       let lastSource = null
       let pendingRender = 0
 
-      const scheduleRender = (source) => {
+      const scheduleRender = (source, delay = 150) => {
         const token = ++pendingRender
         setTimeout(async () => {
           if (token !== pendingRender) return
           if (source === lastSource) return
           lastSource = source
           await renderMermaid(source, diagram)
-        }, 150)
+        }, delay)
       }
 
-      scheduleRender(node.textContent)
+      // Render immediately on first load, debounced on updates
+      scheduleRender(node.textContent, 0)
 
       return {
         dom: wrapper,
@@ -90,7 +98,7 @@ export const MermaidCodeBlock = CodeBlock.extend({
         update(updatedNode) {
           if (updatedNode.type.name !== 'codeBlock') return false
           if (!isMermaid(updatedNode)) return false
-          scheduleRender(updatedNode.textContent)
+          scheduleRender(updatedNode.textContent, 150)
           return true
         },
       }

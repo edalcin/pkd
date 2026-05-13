@@ -295,7 +295,7 @@ input:focus, textarea:focus, select:focus {
 .mermaid-source code { background: none; padding: 0; font-size: .85em; }
 .mermaid-diagram { padding: 1em; display: flex; justify-content: center; overflow-x: auto; background: var(--bg); }
 .mermaid-diagram svg { max-width: 100%; height: auto; }
-.mermaid-empty { color: var(--text-muted); font-style: italic; font-size: .85em; }
+.mermaid-empty, .mermaid-loading { color: var(--text-muted); font-style: italic; font-size: .85em; }
 .mermaid-error { color: #c0392b; font-size: .8em; white-space: pre-wrap; margin: 0; }
 /* Hide code source when document is locked/read-only */
 .ProseMirror[contenteditable="false"] .mermaid-source { display: none; }
