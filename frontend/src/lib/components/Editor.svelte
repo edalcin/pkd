@@ -202,6 +202,7 @@
   let dropdownStyle = $state('')
   let linkHrefInputEl = $state(null)
   let saving = $state(false)
+  let linkCopied = $state(false)
   let saveError = $state('')
   let conflictData = $state(null)
   let loading = $state(true)
@@ -372,6 +373,14 @@
       if (doc?.locked) { clearTimeout(autoSaveTimer); autoSaveTimer = null }
     }
   })
+
+  function handleCopyLink() {
+    const url = `${window.location.origin}/#/doc/${doc.id}`
+    navigator.clipboard.writeText(url).then(() => {
+      linkCopied = true
+      setTimeout(() => { linkCopied = false }, 1500)
+    })
+  }
 
   async function performSave() {
     if (!doc || !editorInstance) return
@@ -765,6 +774,12 @@
           aria-label="Título"
           disabled={doc.locked}
         />
+        <button
+          class="copy-link-btn"
+          onclick={handleCopyLink}
+          title="Copiar link do documento"
+          aria-label="Copiar link"
+        ><i class="bx {linkCopied ? 'bx-check' : 'bx-link'}"></i></button>
         <button
           class="lock-btn {doc.locked ? 'is-locked' : ''}"
           onclick={handleToggleLock}
@@ -1666,6 +1681,23 @@
   .save-icon-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--accent); }
   .save-icon-btn:disabled { opacity: .35; cursor: default; }
   .save-icon-btn.saving { opacity: .7; }
+
+  .copy-link-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text);
+    transition: color .15s, background .15s;
+  }
+  .copy-link-btn:hover { background: var(--bg-hover); color: var(--accent); }
 
   .tag-input-wrap {
     position: relative;
