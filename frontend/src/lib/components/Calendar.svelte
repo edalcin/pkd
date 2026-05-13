@@ -102,13 +102,11 @@
         {#if docs.length === 0}
           <p class="muted">Nenhum documento criado neste dia.</p>
         {:else}
-          <div class="doc-scroll">
-            {#each docs as doc}
-              <a class="day-doc-link" href="#{`/doc/${doc.id}`}">
-                <i class="bx {doc.icon || 'bx-file-blank'}"></i> {doc.title}
-              </a>
-            {/each}
-          </div>
+          {#each docs as doc}
+            <a class="day-doc-link" href="#{`/doc/${doc.id}`}">
+              <i class="bx {doc.icon || 'bx-file-blank'}"></i> {doc.title}
+            </a>
+          {/each}
         {/if}
       </div>
     {/if}
@@ -167,33 +165,23 @@
     background: var(--bg-panel);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
 
   .day-docs h3 { font-size: .9rem; margin-bottom: .5rem; }
-
-  .doc-scroll {
-    display: flex;
-    flex-direction: row;
-    gap: .5rem;
-    overflow-x: auto;
-    padding-bottom: .25rem;
-    scrollbar-width: thin;
-  }
 
   .day-doc-link {
     display: flex;
     align-items: center;
     gap: .375rem;
-    padding: .3rem .6rem;
-    font-size: .875rem;
+    padding: .3rem 0;
+    font-size: .9rem;
     color: var(--text);
     cursor: pointer;
-    flex-shrink: 0;
-    white-space: nowrap;
-    background: var(--bg-hover);
-    border-radius: var(--radius);
   }
-  .day-doc-link:hover { color: var(--accent); background: var(--bg-active); }
+  .day-doc-link:hover { color: var(--accent); }
 
   .muted { color: var(--text-muted); font-size: .875rem; }
 </style>
