@@ -11,6 +11,7 @@
   import TextAlign from '@tiptap/extension-text-align'
   import Link from '@tiptap/extension-link'
   import { DocLink } from '../editor/doclink-extension.js'
+  import { MermaidCodeBlock } from '../editor/mermaid-code-block.js'
   import TurndownService from 'turndown'
   import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, archiveDoc, unarchiveDoc, focusTitleForDocId } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
@@ -697,7 +698,8 @@
     editorInstance = new Editor({
       element: node,
       extensions: [
-        StarterKit,
+        StarterKit.configure({ codeBlock: false }),
+        MermaidCodeBlock,
         ResizableImage.configure({ inline: true, allowBase64: true }),
         Table.configure({ resizable: false }),
         TableRow,

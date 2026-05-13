@@ -289,6 +289,17 @@ input:focus, textarea:focus, select:focus {
 .tiptap-editor .ProseMirror pre code { background: none; padding: 0; }
 .tiptap-editor .ProseMirror img { max-width: 100%; border-radius: var(--radius); }
 
+/* Mermaid diagram blocks */
+.mermaid-block { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin: .75em 0; }
+.mermaid-source { background: var(--bg-hover); margin: 0; padding: .75em; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.mermaid-source code { background: none; padding: 0; font-size: .85em; }
+.mermaid-diagram { padding: 1em; display: flex; justify-content: center; overflow-x: auto; background: var(--bg); }
+.mermaid-diagram svg { max-width: 100%; height: auto; }
+.mermaid-empty { color: var(--text-muted); font-style: italic; font-size: .85em; }
+.mermaid-error { color: #c0392b; font-size: .8em; white-space: pre-wrap; margin: 0; }
+/* Hide code source when document is locked/read-only */
+.ProseMirror[contenteditable="false"] .mermaid-source { display: none; }
+
 .resizable-image-wrapper {
   display: inline-block;
   position: relative;

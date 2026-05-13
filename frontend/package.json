@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@tiptap/core": "^2.11.0",
+    "@tiptap/extension-code-block": "^2.27.2",
     "@tiptap/extension-highlight": "^2.27.2",
     "@tiptap/extension-image": "^2.11.0",
     "@tiptap/extension-link": "^2.27.2",
@@ -31,6 +32,7 @@
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
+    "mermaid": "^11.15.0",
     "turndown": "^7.2.4"
   }
 }
