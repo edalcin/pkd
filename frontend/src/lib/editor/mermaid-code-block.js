@@ -14,6 +14,14 @@ function initMermaid() {
   })
 }
 
+// Detect mermaid syntax even when language attr is not set (e.g. toolbar button)
+const MERMAID_PATTERN = /^(graph\s+[A-Z]{1,3}|flowchart\s+|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie\s|gitGraph|mindmap|timeline|quadrantChart|xychart|block-beta|architecture-beta|requirementDiagram|journey|zenuml)/i
+
+function isMermaid(node) {
+  return node.attrs.language === 'mermaid' ||
+    (node.attrs.language == null && MERMAID_PATTERN.test(node.textContent.trim()))
+}
+
 async function renderMermaid(source, container) {
   const trimmed = source.trim()
   if (!trimmed) {
@@ -34,13 +42,11 @@ export const MermaidCodeBlock = CodeBlock.extend({
     return ({ node }) => {
       initMermaid()
 
-      const language = node.attrs.language
-
-      // Non-mermaid: standard pre > code with contentDOM
-      if (language !== 'mermaid') {
+      if (!isMermaid(node)) {
+        // Standard pre > code with contentDOM
         const pre = document.createElement('pre')
         const code = document.createElement('code')
-        if (language) code.className = `language-${language}`
+        if (node.attrs.language) code.className = `language-${node.attrs.language}`
         pre.appendChild(code)
         return { dom: pre, contentDOM: code }
       }
@@ -83,7 +89,7 @@ export const MermaidCodeBlock = CodeBlock.extend({
 
         update(updatedNode) {
           if (updatedNode.type.name !== 'codeBlock') return false
-          if (updatedNode.attrs.language !== 'mermaid') return false
+          if (!isMermaid(updatedNode)) return false
           scheduleRender(updatedNode.textContent)
           return true
         },
