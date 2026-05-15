@@ -112,6 +112,7 @@ input:focus, textarea:focus, select:focus {
   flex-direction: column;
   overflow: hidden;
   flex-shrink: 0;
+  transition: width .2s ease;
 }
 
 /* Drag handle between sidebar and content */
@@ -125,6 +126,7 @@ input:focus, textarea:focus, select:focus {
 }
 .resize-handle:hover,
 .resize-handle.active { background: var(--accent); }
+.resize-handle.hidden { display: none; }
 
 .sidebar-inner {
   flex: 1;

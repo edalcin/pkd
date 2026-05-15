@@ -63,6 +63,20 @@
     document.removeEventListener('mouseup', onResizeEnd)
   }
 
+  // ─── Panel collapse state ────────────────────────────────────
+  let sidebarCollapsed = $state(localStorage.getItem('pkd-sidebar-collapsed') === 'true')
+  let assocCollapsed = $state(localStorage.getItem('pkd-assoc-collapsed') === 'true')
+
+  function toggleSidebarCollapse() {
+    sidebarCollapsed = !sidebarCollapsed
+    localStorage.setItem('pkd-sidebar-collapsed', String(sidebarCollapsed))
+  }
+
+  function toggleAssocCollapse() {
+    assocCollapsed = !assocCollapsed
+    localStorage.setItem('pkd-assoc-collapsed', String(assocCollapsed))
+  }
+
   // ─── Right panel (associations) resize ──────────────────────
   let isMobile = $state(window.matchMedia('(max-width: 640px)').matches)
   let assocSidebarEl = $state(null)
@@ -164,8 +178,15 @@
     <!-- Top bar -->
     <header class="topbar">
       <!-- Hamburger (mobile) -->
-      <button class="icon-btn" onclick={toggleSidebar} aria-label="Menu" title="Menu">
+      <button class="icon-btn mobile-only" onclick={toggleSidebar} aria-label="Menu" title="Menu">
         ☰
+      </button>
+
+      <!-- Desktop sidebar collapse toggle -->
+      <button class="icon-btn desktop-only" onclick={toggleSidebarCollapse}
+              title={sidebarCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}
+              aria-label={sidebarCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}>
+        {sidebarCollapsed ? '▶' : '◀'}
       </button>
 
       <!-- Logo / home link -->
@@ -195,6 +216,15 @@
         <button class="icon-btn" title="Compartilhar" onclick={() => openShare(Number(route.id))}>🔗</button>
       {/if}
 
+      <!-- Desktop assoc panel collapse toggle (doc view only) -->
+      {#if route.view === 'doc' && route.id && !isMobile}
+        <button class="icon-btn desktop-only" onclick={toggleAssocCollapse}
+                title={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}
+                aria-label={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}>
+          {assocCollapsed ? '◀' : '▶'}
+        </button>
+      {/if}
+
       <!-- Theme toggle -->
       <button class="icon-btn" onclick={toggleTheme} title="Alternar tema" aria-label="Alternar tema">
         {theme === 'light' ? '🌙' : '☀️'}
@@ -207,13 +237,15 @@
     <!-- Main layout -->
     <div class="app-layout">
       <!-- Sidebar with mobile overlay -->
-      <aside class="sidebar {sidebarOpen ? 'open' : ''}" style="width:{sidebarWidth}px" aria-label="Navegação">
+      <aside class="sidebar {sidebarOpen ? 'open' : ''}"
+             style={!isMobile && sidebarCollapsed ? 'width:0;border-right:none' : `width:${sidebarWidth}px`}
+             aria-label="Navegação">
         <Sidebar onNavigate={() => sidebarOpen = false} onClearFilter={clearFilter} />
       </aside>
       <!-- Drag handle for desktop resize -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div
-        class="resize-handle {resizing ? 'active' : ''}"
+        class="resize-handle {resizing ? 'active' : ''} {!isMobile && sidebarCollapsed ? 'hidden' : ''}"
         onmousedown={onResizeStart}
         role="separator"
         aria-orientation="vertical"
@@ -257,13 +289,15 @@
       {#if route.view === 'doc' && route.id && !isMobile}
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
         <div
-          class="resize-handle-assoc {resizingAssoc ? 'active' : ''}"
+          class="resize-handle-assoc {resizingAssoc ? 'active' : ''} {assocCollapsed ? 'hidden' : ''}"
           onmousedown={onAssocResizeStart}
           role="separator"
           aria-orientation="vertical"
           aria-label="Redimensionar painel de associações"
         ></div>
-        <aside class="assoc-sidebar" bind:this={assocSidebarEl} style="width:{assocPanelWidth}px" aria-label="Associações"></aside>
+        <aside class="assoc-sidebar" bind:this={assocSidebarEl}
+               style={assocCollapsed ? 'width:0;border-left:none' : `width:${assocPanelWidth}px`}
+               aria-label="Associações"></aside>
       {/if}
     </div>
   </div>
@@ -314,6 +348,7 @@
   }
   .resize-handle-assoc:hover,
   .resize-handle-assoc.active { background: var(--accent); }
+  .resize-handle-assoc.hidden { display: none; }
 
   .assoc-sidebar {
     flex-shrink: 0;
@@ -322,6 +357,17 @@
     overflow: hidden;
     background: var(--bg-panel);
     border-left: 1px solid var(--border);
+    transition: width .2s ease;
+  }
+
+  .mobile-only { display: none; }
+  .desktop-only { display: none; }
+
+  @media (max-width: 640px) {
+    .mobile-only { display: inline-flex; }
+  }
+  @media (min-width: 641px) {
+    .desktop-only { display: inline-flex; }
   }
 
   .focus-layout {
