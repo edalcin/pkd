@@ -128,7 +128,11 @@
       "Bash(findstr -E \"\\(tree|filter|document|sidebar|favorite|ativo\\)\")",
       "Bash(Get-ChildItem -Path D:\\\\git\\\\pkd -Directory -Force)",
       "Bash(docker build *)",
-      "Skill(commit-commands:commit)"
+      "Skill(commit-commands:commit)",
+      "Bash(Find-Item -Path \"D:\\\\git\\\\pkd\" -Name \"go.mod\" -Recurse)",
+      "Bash(Get-ChildItem \"D:\\\\git\\\\pkd\" -Name)",
+      "PowerShell(grep *)",
+      "PowerShell(Get-ChildItem -Path D:\\\\git\\\\pkd\\\\frontend | Where-Object { $_.Name -match 'vite|package|env' })"
     ]
   }
 }
