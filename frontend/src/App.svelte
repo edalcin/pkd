@@ -216,15 +216,6 @@
         <button class="icon-btn" title="Compartilhar" onclick={() => openShare(Number(route.id))}>🔗</button>
       {/if}
 
-      <!-- Desktop assoc panel collapse toggle (doc view only) -->
-      {#if route.view === 'doc' && route.id && !isMobile}
-        <button class="icon-btn desktop-only" onclick={toggleAssocCollapse}
-                title={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}
-                aria-label={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}>
-          {assocCollapsed ? '◀' : '▶'}
-        </button>
-      {/if}
-
       <!-- Theme toggle -->
       <button class="icon-btn" onclick={toggleTheme} title="Alternar tema" aria-label="Alternar tema">
         {theme === 'light' ? '🌙' : '☀️'}
@@ -232,6 +223,15 @@
 
       <!-- Logout -->
       <button class="icon-btn" onclick={logout} title="Sair" aria-label="Sair">⏻</button>
+
+      <!-- Desktop assoc panel collapse toggle — rightmost, alinhado com painel direito -->
+      {#if route.view === 'doc' && route.id && !isMobile}
+        <button class="icon-btn desktop-only" onclick={toggleAssocCollapse}
+                title={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}
+                aria-label={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}>
+          {assocCollapsed ? '◀' : '▶'}
+        </button>
+      {/if}
     </header>
 
     <!-- Main layout -->
