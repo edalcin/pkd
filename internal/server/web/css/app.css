@@ -312,9 +312,16 @@ body {
 .hidden { display: none !important; }
 
 /* ── Share view ──────────────────────────────────────────── */
-.share-view { padding: 2rem; max-width: 800px; margin: 0 auto; }
-.share-view #share-title { font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem; }
-.share-view .ck-content img { max-width: 100%; height: auto; border-radius: 4px; }
+.share-view { padding: 2rem; max-width: 800px; margin: 0 auto; overflow-x: hidden; }
+.share-view #share-title { font-size: 2rem; font-weight: 700; margin-bottom: 1.5rem; overflow-wrap: break-word; word-break: break-word; }
+.share-view .ck-content {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.share-view .ck-content img { max-width: 100%; height: auto; border-radius: 4px; display: block; }
+.share-view .ck-content pre { overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-width: 100%; }
+.share-view .ck-content table { display: block; overflow-x: auto; max-width: 100%; }
+.share-view .ck-content iframe, .share-view .ck-content video, .share-view .ck-content embed { max-width: 100%; }
 
 /* ── Responsive — mobile (≤768 px) ──────────────────────── */
 @media (max-width: 768px) {

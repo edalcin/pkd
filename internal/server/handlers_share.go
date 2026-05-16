@@ -285,6 +285,7 @@ const sharePageHTML = `<!DOCTYPE html>
       border-radius: var(--radius);
       border: 1px solid var(--border);
       padding: 28px 32px;
+      overflow-x: hidden;
     }
     .note-header {
       padding-bottom: 18px;
@@ -314,6 +315,10 @@ const sharePageHTML = `<!DOCTYPE html>
     }
 
     /* ── Prose ───────────────────────────────── */
+    .prose {
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
     .prose h1, .prose h2, .prose h3,
     .prose h4, .prose h5, .prose h6 { margin: 0.75em 0 0.25em; font-weight: 700; }
     .prose h1 { font-size: 1.35em; }
@@ -350,15 +355,19 @@ const sharePageHTML = `<!DOCTYPE html>
       border-radius: 6px;
       padding: 14px 16px;
       overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
       font-size: 13px;
       margin: 0.75em 0;
       line-height: 1.55;
+      max-width: 100%;
     }
-    .prose pre code { background: none; border: none; padding: 0; font-size: 1em; }
-    .prose img { max-width: 100%; border-radius: 6px; margin: 0.5em 0; }
+    .prose pre code { background: none; border: none; padding: 0; font-size: 1em; white-space: pre; }
+    .prose img { max-width: 100%; height: auto; border-radius: 6px; margin: 0.5em 0; display: block; }
     .prose figure { margin: 0.75em 0; }
     .prose figcaption { font-size: 0.85em; color: var(--muted); text-align: center; margin-top: 4px; }
-    .prose table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin: 0.75em 0; }
+    .prose iframe, .prose video, .prose embed { max-width: 100%; }
+    .prose table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 0.9em; max-width: 100%; }
     .prose th {
       border-bottom: 1px solid var(--border);
       padding: 6px 10px;
@@ -368,6 +377,7 @@ const sharePageHTML = `<!DOCTYPE html>
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: .04em;
+      white-space: nowrap;
     }
     .prose td { border-bottom: 1px solid var(--border); padding: 6px 10px; vertical-align: top; }
     .prose tbody tr:last-child td { border-bottom: none; }
