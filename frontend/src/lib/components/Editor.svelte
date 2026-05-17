@@ -13,7 +13,7 @@
   import { DocLink } from '../editor/doclink-extension.js'
   import { MermaidCodeBlock } from '../editor/mermaid-code-block.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, archiveDoc, unarchiveDoc, focusTitleForDocId } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
@@ -366,6 +366,11 @@
   async function handleToggleArchive() {
     const updated = doc.archived ? await unarchiveDoc(doc.id) : await archiveDoc(doc.id)
     doc = updated
+  }
+
+  async function handleCreateSubDoc() {
+    const sub = await createDoc(doc.id, 'Untitled')
+    window.location.hash = `/doc/${sub.id}`
   }
 
   $effect(() => {
@@ -776,6 +781,12 @@
           aria-label="Título"
           disabled={doc.locked}
         />
+        <button
+          class="subdoc-btn"
+          onclick={handleCreateSubDoc}
+          title="Criar sub-documento"
+          aria-label="Criar sub-documento"
+        ><i class="bx bxs-file-plus"></i></button>
         <button
           class="copy-link-btn"
           onclick={handleCopyLink}
@@ -1700,6 +1711,23 @@
     transition: color .15s, background .15s;
   }
   .copy-link-btn:hover { background: var(--bg-hover); color: var(--accent); }
+
+  .subdoc-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text);
+    transition: color .15s, background .15s;
+  }
+  .subdoc-btn:hover { background: var(--bg-hover); color: var(--accent); }
 
   .tag-input-wrap {
     position: relative;
