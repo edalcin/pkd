@@ -116,6 +116,15 @@ func Open(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("store.Open idx_documents_archived_at: %w", err)
 	}
 
+	// Index on content_sha256 supports SHA256 lookups during attachment restore
+	// (005-s3-attachments-backup).
+	if _, err := db.Exec(
+		`CREATE INDEX IF NOT EXISTS idx_attachments_content_sha256 ON attachments(content_sha256) WHERE content_sha256 IS NOT NULL`,
+	); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open idx_attachments_content_sha256: %w", err)
+	}
+
 	// Settings table for key/value config (e.g. active storage backend).
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS settings (
 		key        TEXT PRIMARY KEY,

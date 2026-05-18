@@ -36,12 +36,19 @@ type Server struct {
 	urls        *store.URLStore
 	settings    *store.SettingsStore
 	throttle    *Throttle
+	jobs        *BackupJobManager
 	handler     http.Handler
 
 	localBackend storage.Backend // always non-nil
 	s3Backend    storage.Backend // nil when S3 not configured
 	activeMu     sync.RWMutex
 	activeBackend storage.Backend // points to localBackend or s3Backend
+}
+
+// currentBackendKind returns the active backend identifier ("local" or "s3").
+// Used by job scheduling to enforce single-in-flight per backend.
+func (s *Server) currentBackendKind() string {
+	return s.activeStorage().Name()
 }
 
 // activeStorage returns the currently active storage backend (thread-safe).
@@ -99,6 +106,7 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 		urls:         store.NewURLStore(db),
 		settings:     store.NewSettingsStore(db),
 		throttle:     NewThrottle(cfg.TrustProxyHeaders),
+		jobs:         NewBackupJobManager(),
 		localBackend: local,
 		s3Backend:    s3b,
 		activeBackend: local, // default; overridden below from DB
@@ -109,6 +117,10 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 	if name, err := s.settings.AttachmentsBackend(); err == nil && name == "s3" && s3b != nil {
 		s.activeBackend = s3b
 	}
+
+	// Best-effort startup sweep of orphaned backup temp objects (only S3-capable
+	// backends). Non-blocking — does not delay HTTP listener startup.
+	s.startBackupTempSweep()
 
 	s.handler = s.buildRouter()
 	return s
@@ -273,6 +285,13 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/storage/cleanup-source", s.handleAdminStorageCleanupSource())
 		r.Get("/api/admin/storage/backup-attachments", s.handleAdminStorageBackupAttachments())
 		r.Post("/api/admin/storage/restore-attachments", s.handleAdminStorageRestoreAttachments())
+
+		// Async attachment backup (005-s3-attachments-backup). Backup-start
+		// dispatches a goroutine; status via jobs/{id}; download via short-lived
+		// presigned URL when backend is S3.
+		r.Post("/api/admin/storage/backup-start", s.handleAdminStorageBackupStart())
+		r.Get("/api/admin/storage/jobs/{id}", s.handleAdminStorageGetJob())
+		r.Post("/api/admin/storage/jobs/{id}/download-url", s.handleAdminStorageRegenerateDownloadURL())
 	})
 
 	return r

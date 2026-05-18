@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"io"
+	"time"
 )
 
 // Backend abstracts file storage (local filesystem or Amazon S3).
@@ -23,4 +24,32 @@ type Backend interface {
 // Backends implementing Seeker allow HTTP 206 Partial Content (range requests).
 type Seeker interface {
 	OpenSeek(ctx context.Context, key string) (io.ReadSeekCloser, error)
+}
+
+// ObjectMeta is metadata returned by S3Capable.ListWithMetadata.
+type ObjectMeta struct {
+	Key          string
+	SizeBytes    int64
+	LastModified time.Time
+}
+
+// S3Capable is implemented by backends that can stream a backup ZIP entirely
+// inside object storage (no temp file on the application host) and produce a
+// short-lived download URL. Local backends do not implement this interface.
+type S3Capable interface {
+	// UploadFromReader stores body at key using multipart upload. body's length
+	// does not need to be known in advance.
+	UploadFromReader(ctx context.Context, key string, body io.Reader, contentType string) error
+
+	// PresignGet returns a time-bounded URL that anyone with the URL can use to
+	// download the object. ttl applies from issue time.
+	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
+
+	// ListWithMetadata lists objects under prefix with their size and last
+	// modification timestamp. Used by the startup sweep to find orphans.
+	ListWithMetadata(ctx context.Context, prefix string) ([]ObjectMeta, error)
+
+	// DeleteMany removes up to len(keys) objects. Implementations may batch
+	// requests internally.
+	DeleteMany(ctx context.Context, keys []string) error
 }

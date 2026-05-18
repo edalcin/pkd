@@ -1,6 +1,6 @@
 # pkd Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-05-01 — **v1.0 released**
+Auto-generated from all feature plans. Last updated: 2026-05-18
 
 ## Active Technologies
 - Go 1.25 (backend, CGO disabled), JavaScript/Svelte 5 (frontend) + chi (router), modernc.org/sqlite (database driver), bluemonday (HTML sanitizer), TipTap v2 (rich text editor), D3.js (graph visualization), Svelte 5 + Vite (frontend build) (003-pkm-refactor)
@@ -8,6 +8,8 @@ Auto-generated from all feature plans. Last updated: 2026-05-01 — **v1.0 relea
 - Go 1.25 (backend, CGO disabled), JavaScript/Svelte 5 (frontend) + chi v5 (router), modernc.org/sqlite v1.48.2, Svelte 5 + Vite (004-document-date-association)
 - SQLite — single file, ISO-8601 strings for timestamps, integer columns for partial dates (004-document-date-association)
 - Go 1.25 (backend, CGO disabled), JavaScript/Svelte 5 (frontend) + chi v5 (router), modernc.org/sqlite v1.48.2, TipTap v2 (editor), Svelte 5 + Vite (005-document-archiving)
+- Go 1.25, aws-sdk-go-v2 service/s3 v1.101.0, **aws-sdk-go-v2 feature/s3/manager (novo)**, archive/zip stdlib (ZIP64), crypto/sha256 stdlib, github.com/google/uuid v1.6.0 (005-s3-attachments-backup)
+- SQLite — novo índice `idx_attachments_content_sha256`; prefixo S3 reservado `_backup-tmp/` (005-s3-attachments-backup)
 
 - Go 1.23 (pure Go, CGO disabled) (001-personal-knowledge-db)
 
@@ -28,6 +30,7 @@ tests/
 Go 1.23 (pure Go, CGO disabled): Follow standard conventions
 
 ## Recent Changes
+- 005-s3-attachments-backup: Added aws-sdk-go-v2 feature/s3/manager para streaming multipart; novo pacote `internal/backup/` (manifest/writer/reader/sweep); novo `internal/server/jobs.go` (in-memory job tracking); prefixo S3 `_backup-tmp/` reservado para artefatos transitórios; índice `idx_attachments_content_sha256`
 - 005-document-archiving: Added Go 1.25 (backend, CGO disabled), JavaScript/Svelte 5 (frontend) + chi v5 (router), modernc.org/sqlite v1.48.2, TipTap v2 (editor), Svelte 5 + Vite
 - 004-document-date-association: Added Go 1.25 (backend, CGO disabled), JavaScript/Svelte 5 (frontend) + chi v5 (router), modernc.org/sqlite v1.48.2, Svelte 5 + Vite
 - 003-pkm-refactor: Added Go 1.25 (backend, CGO disabled), JavaScript/Svelte 5 (frontend) + chi (router), modernc.org/sqlite (database driver), bluemonday (HTML sanitizer), TipTap v2 (rich text editor), D3.js (graph visualization), Svelte 5 + Vite (frontend build)

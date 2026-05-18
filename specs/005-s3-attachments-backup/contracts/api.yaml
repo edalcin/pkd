@@ -1,0 +1,248 @@
+openapi: 3.1.0
+info:
+  title: PKD — Backup & Restauração de Anexos (Delta v1)
+  version: 1.0.0
+  description: |
+    Novos endpoints para backup/restauração de anexos com suporte a backend S3.
+    Coexistem com endpoints antigos (`/api/admin/storage/backup-attachments`,
+    `/api/admin/storage/restore-attachments`) durante transição; estes novos são
+    o caminho preferido e funcionam para ambos os backends (local e S3).
+
+servers:
+  - url: /
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: pkd_session
+
+  schemas:
+    JobStartResponse:
+      type: object
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+          format: uuid
+
+    Job:
+      type: object
+      required: [id, kind, backend_kind, state, processed, started_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [backup, restore]
+        backend_kind:
+          type: string
+          enum: [local, s3]
+        state:
+          type: string
+          enum: [running, succeeded, failed]
+        processed:
+          type: integer
+          format: int64
+          minimum: 0
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 0 quando ainda desconhecido (início de restore)
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        download_url:
+          type: string
+          format: uri
+          nullable: true
+          description: |
+            URL pré-assinada para download do ZIP (backup S3 succeeded apenas).
+            TTL 15 minutos a partir de `url_expires_at`. Re-gerável via
+            `POST /api/admin/storage/jobs/{id}/download-url`.
+        url_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        size_bytes:
+          type: integer
+          format: int64
+          minimum: 0
+        skipped_entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkippedEntry'
+
+    SkippedEntry:
+      type: object
+      required: [sha256, size_bytes, reason]
+      properties:
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        size_bytes:
+          type: integer
+          format: int64
+        reason:
+          type: string
+          enum: ["no matching attachment row"]
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+security:
+  - sessionCookie: []
+
+paths:
+  /api/admin/storage/backup-start:
+    post:
+      summary: Inicia backup assíncrono de anexos no backend ativo
+      operationId: adminStorageBackupStart
+      responses:
+        '202':
+          description: Job criado e em execução
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStartResponse'
+        '401':
+          description: Não autenticado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: Usuário não é administrador
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Já existe operação em andamento para o backend ativo (FR-015)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/admin/storage/restore-start:
+    post:
+      summary: Inicia restauração assíncrona a partir de um ZIP enviado
+      operationId: adminStorageRestoreStart
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [zip]
+              properties:
+                zip:
+                  type: string
+                  format: binary
+                  description: ZIP gerado pela operação de backup desta aplicação
+                on_conflict:
+                  type: string
+                  enum: [overwrite, keep, abort]
+                  default: overwrite
+                  description: |
+                    Estratégia para quando uma chave de destino já existe.
+                    Default "overwrite" (FR-014; Assumption no spec).
+      responses:
+        '202':
+          description: Job criado e em execução
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStartResponse'
+        '400':
+          description: ZIP inválido, manifesto ausente, ou versão não suportada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { description: Não autenticado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Usuário não é administrador, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409':
+          description: Job em andamento para o backend ativo (FR-015)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: ZIP excede o limite de upload do servidor
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/admin/storage/jobs/{id}:
+    get:
+      summary: Consulta status e progresso de um job
+      operationId: adminStorageGetJob
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Estado atual do job
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '404':
+          description: Job desconhecido ou expirado do histórico
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { description: Não autenticado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Usuário não é administrador, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /api/admin/storage/jobs/{id}/download-url:
+    post:
+      summary: Regenera URL pré-assinada do ZIP de backup (S3 apenas)
+      operationId: adminStorageRegenerateDownloadURL
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Nova URL gerada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [download_url, url_expires_at]
+                properties:
+                  download_url:
+                    type: string
+                    format: uri
+                  url_expires_at:
+                    type: string
+                    format: date-time
+        '404':
+          description: Job desconhecido, ainda em execução, falhou, ou ZIP temporário já expirado/removido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Job não é do tipo backup ou não usa backend S3
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { description: Não autenticado, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Usuário não é administrador, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }

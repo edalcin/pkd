@@ -46,6 +46,12 @@
   let storageRestoreResult = $state(null)
   let storageRestoreInput = $state(null)
 
+  // Async S3 backup job (005-s3-attachments-backup)
+  let s3BackupJob = $state(null) // { id, state, processed, total, download_url, url_expires_at, error_message, size_bytes }
+  let s3BackupPolling = $state(false)
+  let s3BackupStarting = $state(false)
+  let s3BackupCountdown = $state(0) // seconds remaining on the presigned URL
+
   // Links management tab
   let adminURLs = $state(null)
   let urlSearch = $state('')
@@ -139,6 +145,87 @@
     a.href = URL.createObjectURL(blob)
     a.download = `pkd-attachments-${new Date().toISOString().slice(0,10)}.zip`
     a.click()
+  }
+
+  // ---- Async S3 backup (005-s3-attachments-backup) ----
+
+  async function startS3Backup() {
+    if (s3BackupJob && s3BackupJob.state === 'running') return
+    s3BackupStarting = true
+    s3BackupJob = null
+    try {
+      const res = await apiFetch('/api/admin/storage/backup-start', { method: 'POST' })
+      if (res.status === 409) {
+        alert('Já existe uma operação em andamento para este backend.')
+        return
+      }
+      if (!res.ok) {
+        const msg = await res.text()
+        alert('Erro ao iniciar backup: ' + msg)
+        return
+      }
+      const { job_id } = await res.json()
+      s3BackupJob = { id: job_id, state: 'running', processed: 0, total: 0 }
+      pollS3BackupJob()
+    } finally {
+      s3BackupStarting = false
+    }
+  }
+
+  async function pollS3BackupJob() {
+    if (!s3BackupJob?.id || s3BackupPolling) return
+    s3BackupPolling = true
+    try {
+      while (s3BackupJob && s3BackupJob.state === 'running') {
+        await new Promise(r => setTimeout(r, 2000))
+        const res = await apiFetch(`/api/admin/storage/jobs/${s3BackupJob.id}`)
+        if (!res.ok) {
+          s3BackupJob = { ...s3BackupJob, state: 'failed', error_message: 'Falha ao consultar status' }
+          break
+        }
+        s3BackupJob = await res.json()
+      }
+      if (s3BackupJob?.state === 'succeeded') {
+        startCountdown()
+      }
+    } finally {
+      s3BackupPolling = false
+    }
+  }
+
+  function startCountdown() {
+    if (!s3BackupJob?.url_expires_at) return
+    const tick = () => {
+      const remaining = Math.max(0, Math.floor((new Date(s3BackupJob.url_expires_at) - Date.now()) / 1000))
+      s3BackupCountdown = remaining
+      if (remaining > 0 && s3BackupJob?.state === 'succeeded') {
+        setTimeout(tick, 1000)
+      }
+    }
+    tick()
+  }
+
+  async function regenerateBackupURL() {
+    if (!s3BackupJob?.id) return
+    const res = await apiFetch(`/api/admin/storage/jobs/${s3BackupJob.id}/download-url`, { method: 'POST' })
+    if (res.status === 404) {
+      alert('ZIP temporário expirou no S3. Inicie um novo backup.')
+      s3BackupJob = null
+      return
+    }
+    if (!res.ok) {
+      alert('Falha ao gerar nova URL.')
+      return
+    }
+    const { download_url, url_expires_at } = await res.json()
+    s3BackupJob = { ...s3BackupJob, download_url, url_expires_at }
+    startCountdown()
+  }
+
+  function formatCountdown(s) {
+    const m = Math.floor(s / 60)
+    const r = s % 60
+    return `${m}:${String(r).padStart(2, '0')}`
   }
 
   async function restoreAttachments() {
@@ -922,6 +1009,59 @@
               <ul>{#each storageRestoreResult.errors as e}<li>{e}</li>{/each}</ul>
             {/if}
           </div>
+        {/if}
+
+        {#if storageConfig?.backend === 's3'}
+          <hr style="margin:2rem 0">
+          <h4>Backup assíncrono (S3)</h4>
+          <p class="muted" style="margin-bottom:1rem">
+            Gera um ZIP com todos os anexos diretamente no bucket S3 (sem usar disco da instância) e fornece um link de download válido por 15 minutos.
+          </p>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
+            <button
+              class="btn btn-primary btn-sm"
+              onclick={startS3Backup}
+              disabled={s3BackupStarting || (s3BackupJob?.state === 'running')}
+            >
+              {#if s3BackupStarting}
+                Iniciando…
+              {:else if s3BackupJob?.state === 'running'}
+                Em andamento…
+              {:else}
+                ☁ Iniciar backup S3
+              {/if}
+            </button>
+          </div>
+
+          {#if s3BackupJob}
+            <div class="storage-result" style="margin-top:1rem">
+              <p>
+                <strong>Status:</strong>
+                {#if s3BackupJob.state === 'running'}
+                  Em execução — {s3BackupJob.processed} / {s3BackupJob.total} anexos processados
+                {:else if s3BackupJob.state === 'succeeded'}
+                  Concluído — {s3BackupJob.total} anexos, {formatBytes(s3BackupJob.size_bytes)}
+                {:else if s3BackupJob.state === 'failed'}
+                  <span style="color:var(--color-danger)">Falhou: {s3BackupJob.error_message}</span>
+                {/if}
+              </p>
+              {#if s3BackupJob.state === 'succeeded' && s3BackupJob.download_url}
+                {#if s3BackupCountdown > 0}
+                  <p>
+                    <a href={s3BackupJob.download_url} target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+                      ⬇ Baixar ZIP
+                    </a>
+                    <span class="muted" style="margin-left:.75rem">Link expira em {formatCountdown(s3BackupCountdown)}</span>
+                  </p>
+                {:else}
+                  <p>
+                    <span class="muted">Link expirou.</span>
+                    <button class="btn btn-ghost btn-sm" onclick={regenerateBackupURL}>Gerar nova URL</button>
+                  </p>
+                {/if}
+              {/if}
+            </div>
+          {/if}
         {/if}
       {/if}
     </div>

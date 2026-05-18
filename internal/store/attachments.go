@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/edalcin/pkd/internal/model"
@@ -38,10 +39,22 @@ func (s *AttachmentStore) BackendForLocation(location string) storage.Backend {
 	return s.local
 }
 
+// ReservedBackupPrefix is the storage key prefix reserved for transient backup
+// artifacts. Real attachment keys must never start with this prefix.
+const ReservedBackupPrefix = "_backup-tmp/"
+
 // CreateFile buffers body (enforcing maxBytes), writes to backend, and inserts
 // the metadata row in SQLite. Returns the created Attachment with URL populated.
 // subdir adds an extra path level (e.g. "inline" for editor-embedded images).
 func (s *AttachmentStore) CreateFile(ctx context.Context, backend storage.Backend, docID int64, origName, mimeType, subdir string, body io.Reader, maxBytes int64) (*model.Attachment, error) {
+	// Defense in depth: reject subdir that would collide with the reserved
+	// backup prefix. Token-derived keys cannot collide, but a future caller
+	// passing user-controlled subdir must not be able to write into the
+	// transient backup namespace.
+	if subdir != "" && (subdir == "_backup-tmp" || strings.HasPrefix(subdir, "_backup-tmp/")) {
+		return nil, fmt.Errorf("subdir %q is reserved", subdir)
+	}
+
 	// Buffer the body to enforce size limit and get the exact byte count for S3.
 	buf, n, err := readWithLimit(body, maxBytes)
 	if err != nil {
@@ -362,6 +375,54 @@ func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target stor
 		removed++
 	}
 	return removed, errs
+}
+
+// AttachmentForBackup carries the columns needed to compose a backup ZIP entry.
+type AttachmentForBackup struct {
+	ID              int64
+	StoredFilename  string
+	MimeType        string
+	SizeBytes       int64
+	StorageLocation string
+	ContentSHA256   string
+}
+
+// EnumerateForBackup returns every attachment row, regardless of backend.
+// Callers iterate the slice to read each file from its origin backend and
+// stream it into the backup archive.
+func (s *AttachmentStore) EnumerateForBackup(ctx context.Context) ([]AttachmentForBackup, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, stored_filename, mime_type, size_bytes, storage_location, content_sha256
+		FROM attachments
+		ORDER BY id`)
+	if err != nil {
+		return nil, fmt.Errorf("enumerate attachments: %w", err)
+	}
+	defer rows.Close()
+
+	var out []AttachmentForBackup
+	for rows.Next() {
+		var a AttachmentForBackup
+		var sha sql.NullString
+		if err := rows.Scan(&a.ID, &a.StoredFilename, &a.MimeType, &a.SizeBytes, &a.StorageLocation, &sha); err != nil {
+			return nil, fmt.Errorf("scan attachment: %w", err)
+		}
+		a.ContentSHA256 = sha.String
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// BackfillSHA256 persists a freshly computed SHA256 for an attachment that did
+// not have one yet (typical of local-backend uploads predating the column).
+func (s *AttachmentStore) BackfillSHA256(ctx context.Context, attachmentID int64, sha256Hex string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE attachments SET content_sha256 = ? WHERE id = ?`,
+		sha256Hex, attachmentID)
+	if err != nil {
+		return fmt.Errorf("backfill sha256: %w", err)
+	}
+	return nil
 }
 
 // ErrTooLarge is returned when an uploaded file exceeds the size limit.
