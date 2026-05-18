@@ -132,7 +132,12 @@
       "Bash(Find-Item -Path \"D:\\\\git\\\\pkd\" -Name \"go.mod\" -Recurse)",
       "Bash(Get-ChildItem \"D:\\\\git\\\\pkd\" -Name)",
       "PowerShell(grep *)",
-      "PowerShell(Get-ChildItem -Path D:\\\\git\\\\pkd\\\\frontend | Where-Object { $_.Name -match 'vite|package|env' })"
+      "PowerShell(Get-ChildItem -Path D:\\\\git\\\\pkd\\\\frontend | Where-Object { $_.Name -match 'vite|package|env' })",
+      "Bash(Get-ChildItem -Path \"D:\\\\git\\\\pkd\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(Remove-Item *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(awk '{print $1}')"
     ]
   }
 }

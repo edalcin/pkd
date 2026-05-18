@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 	// Load the OpenAPI spec so subtests can validate against it.
 	loader := openapi3.NewLoader()
 	loader.IsExternalRefsAllowed = false
-	doc, err = loader.LoadFromFile("../../specs/001-personal-knowledge-db/contracts/openapi.yaml")
+	doc, err = loader.LoadFromFile("openapi.yaml")
 	if err != nil {
 		panic("contract tests: could not load openapi.yaml: " + err.Error())
 	}

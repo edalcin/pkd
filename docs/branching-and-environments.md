@@ -5,8 +5,6 @@
 **Autor:** Claude (análise técnica), Eduardo Dalcin (decisão e revisão)
 **Escopo:** Como organizar o repositório, o pipeline de build e o fluxo de promoção entre as duas instâncias do PKD agora que existe um ambiente de **desenvolvimento** (UNRAID) e um de **produção** (EC2 + S3).
 
-> **Leitura prévia recomendada:** [`docs/s3-attachments-feasibility.md`](./s3-attachments-feasibility.md) — explica por que produção e desenvolvimento passam a ter custos, riscos e responsabilidades distintos.
-
 ---
 
 ## 1. Resumo executivo
@@ -289,7 +287,7 @@ jobs:
 
 ### 7.3 Configuração do container UNRAID
 
-Em `docs/unraid-install.md` (a ser atualizado posteriormente), trocar:
+Em `UNRAID.md` (a ser atualizado posteriormente), trocar:
 
 ```
 Repository: ghcr.io/edalcin/pkd:latest
@@ -431,7 +429,7 @@ Quando decidir adotar a estratégia, executar **na ordem**:
 1. [ ] Atualizar `.github/workflows/build-and-publish.yml` para publicar `:edge` (e manter `:sha-*` imutável).
 2. [ ] Criar `.github/workflows/promote-to-prod.yml` disparado por tag `v*.*.*`.
 3. [ ] Configurar GHCR retention: `sha-*` → 30 dias mínimo; `v*` → indefinido; `edge`/`stable`/`latest` → indefinido.
-4. [ ] Atualizar `docs/unraid-install.md` para usar `:edge`.
+4. [ ] Atualizar `UNRAID.md` para usar `:edge`.
 5. [ ] Atualizar configuração do container UNRAID (campo Repository) para `:edge`.
 6. [ ] Documentar em `docs/operations.md` o procedimento de promoção (passo-a-passo de criar tag Git + verificar prod).
 7. [ ] Configurar EC2 para `:stable` (campo de imagem do container).
@@ -443,10 +441,9 @@ Quando decidir adotar a estratégia, executar **na ordem**:
 
 ## 14. Referências cruzadas
 
-- [`docs/s3-attachments-feasibility.md`](./s3-attachments-feasibility.md) — motivador principal para precisar de janela de validação dev→prod.
 - [`docs/operations.md`](./operations.md) — procedimentos operacionais do dia-a-dia (quando atualizar, ganhará seção sobre promoção).
 - [`docs/security.md`](./security.md) — postura de segurança; tag-based deployment reduz blast radius.
-- [`docs/unraid-install.md`](./unraid-install.md) — configuração da instância de dev.
+- [`UNRAID.md`](../UNRAID.md) — configuração da instância de dev.
 - [`CLAUDE.md`](../CLAUDE.md) — convenções de desenvolvimento; este documento complementa, não contradiz.
 
 ---
