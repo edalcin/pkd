@@ -7,6 +7,27 @@ description: "Task list for 005-s3-attachments-backup"
 **Input**: Design documents from `/specs/005-s3-attachments-backup/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/api.yaml, quickstart.md
 
+## ⏸ Resume here
+
+**Última atualização**: 2026-05-18
+**Estado**: US1 (Phase 1+2+3) **entregue** em commit `52be95f` (`origin/main`). Imagem `:edge` em build via workflow `Build and Publish`.
+
+**Retomar em**: Phase 4 (US2 — restore cross-backend) começando por T032.
+
+**Antes de prosseguir** (foundational adicional não coberto em US1):
+- Re-implementar `GetRange(ctx, key, offset, length) ([]byte, error)` e `HeadSize(ctx, key) (int64, error)` na interface `S3Capable` em `internal/storage/storage.go` + impl em `internal/storage/s3.go` (foram revertidos no PR de US1 para manter escopo limpo — ver `git log --diff-filter=D` para o code-shape).
+- T007: `LookupBySHA256(ctx, sha) ([]AttachmentRef, error)` em `internal/store/attachments.go` (usa `idx_attachments_content_sha256` já criado em T005).
+
+**Validação que US1 está em produção** (precondição para mexer em restore):
+- Confirmar que admin gerou e baixou um ZIP de backup S3 via UI sem incidentes
+- Confirmar que sweep removeu temp object > 24h pelo menos uma vez (log da aplicação)
+
+**Comando para retomar**: abrir esta linha e seguir Phase 4 em ordem. Marcar `[x]` por task. Após Phase 4 → commit `feat(restore): restauração cross-backend de anexos (US2)`. Após Phase 5 → `feat(restore): restauração in-place (US3)`. Após Phase 6 → `docs(backup): operacional + perf + IAM (Polish)`.
+
+**Memory marker**: ver `~/.claude/projects/D--git-pkd/memory/project_s3_backup_resume.md`.
+
+---
+
 **Tests**: Tests INCLUDED — projeto tem `tests/contract`, `tests/integration`, `tests/unit` ativos no CI (build-and-publish.yml). Test tasks devem ser escritas **antes** das tasks de implementação correspondentes (preserva regressão zero).
 
 **Organization**: Tasks agrupadas por user story (US1 Backup S3 P1; US2 Restore cross-backend P1; US3 Restore in-place P2). Cada story é independentemente testável e entregável.
