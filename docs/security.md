@@ -115,6 +115,35 @@ A variável `PKD_BASE_URL` define o prefixo usado na geração de links público
 
 ---
 
+## Backup e restauração de anexos (S3)
+
+| Controle | Mecanismo |
+|---|---|
+| **Autenticação** | Endpoints `/api/admin/storage/backup-start`, `/api/admin/storage/restore-start`, `/api/admin/storage/jobs/{id}` requerem sessão autenticada (middleware `AuthRequired`). Aplicação é single-user; sessão autenticada = admin. |
+| **URL pré-assinada de download** | Gerada via `s3.NewPresignClient(client).PresignGetObject(..., s3.WithPresignExpires(15*time.Minute))`. TTL curto (15 min) limita a janela de exposição caso o link vaze em logs, proxies ou compartilhamento acidental. Após expirar, novo `POST /api/admin/storage/jobs/{id}/download-url` gera URL nova enquanto o objeto temporário existir. |
+| **Prefixo reservado `_backup-tmp/`** | Bloco de chaves do S3 dedicado a artefatos transitórios (ZIPs de backup e restore). `AttachmentStore.CreateFile` rejeita explicitamente `subdir` igual a `_backup-tmp` ou começando com `_backup-tmp/` — defesa em profundidade contra colisão acidental ou injeção de path por código futuro. |
+| **Limpeza pós-crash** | No startup, se backend ativo for S3, goroutine não-bloqueante remove qualquer objeto em `_backup-tmp/` com idade > 24h via `s3.DeleteObjects` batch. Cobre cenário onde a aplicação cai durante backup/restore antes do cleanup inline executar. |
+| **Verificação de integridade** | Restauração computa SHA256 de cada entrada do ZIP e compara contra o nome da entrada (que é o hash declarado). Mismatch é contado em `hash_mismatch` e listado em `skipped` — backend de destino **não** recebe escrita para entrada inválida. Backup também verifica via `io.TeeReader` durante a composição do ZIP. |
+| **Entradas órfãs** | Restauração só escreve no backend quando há linha em `attachments` com `content_sha256` correspondente (`SELECT ... WHERE content_sha256 = ?` usa `idx_attachments_content_sha256`). Entradas órfãs no ZIP são ignoradas e listadas — restauração **nunca cria linhas novas em `attachments`**. |
+| **Concorrência** | `BackupJobManager` mantém no máximo 1 job ativo por backend (`local` ou `s3`). Tentativa concorrente recebe `ErrJobInFlight` → HTTP 409. Mutex bloqueia race entre Start/Get/Finish. |
+| **Recuperação de panic** | Goroutines worker (`runBackupJob`, `runRestoreJob`) têm `recover()` que finaliza o job como `failed` com mensagem `panic: <r>` e dispara cleanup do temp object — panic em um job não derruba o processo. |
+| **Erros sanitizados** | `sanitizeAWSError` em `internal/storage/s3.go` redige strings que contenham "AccessKey" ou "SecretKey" antes de retornar a mensagem ao cliente. |
+
+**IAM mínimo para o backend S3**:
+
+```json
+{"Statement":[{
+  "Effect":"Allow",
+  "Action":["s3:GetObject","s3:PutObject","s3:DeleteObject",
+            "s3:ListBucket","s3:DeleteObjects","s3:AbortMultipartUpload"],
+  "Resource":["arn:aws:s3:::BUCKET","arn:aws:s3:::BUCKET/*"]
+}]}
+```
+
+`PresignGetObject` é client-side e não requer permissão IAM adicional além de `s3:GetObject` (usado pelo destinatário via URL assinada).
+
+---
+
 ## O que o PKD não protege
 
 | Ameaça | Não protegido |

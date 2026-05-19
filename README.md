@@ -68,12 +68,13 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 
 | | |
 |---|---|
-| 💾 **Backup / Restore** | Download do SQLite + restore com confirmação; download de todos os anexos como ZIP e restauro via ZIP |
+| 💾 **Backup / Restore do banco** | Download do SQLite + restore com confirmação |
+| 📦 **Backup / Restauração de anexos** | Backend local: ZIP síncrono. Backend S3: backup **assíncrono** que monta o ZIP no próprio bucket (sem usar disco da instância) e oferece URL pré-assinada (TTL 15 min). Restauração **cross-backend**: ZIP gerado em S3 pode ser restaurado em backend local e vice-versa. Manifesto interno usa SHA256 (dedup natural + verificação de integridade). Job tracking com progresso e contadores (gravados / mantidos / órfãos / hash inválido). |
 | 🗑️ **Lixeira** | Documentos excluídos ficam em lixeira; restauráveis individualmente ou em lote |
 | 🏷️ **Tags** | Renomear, editar cor, excluir ou mesclar tags globalmente; botão para remover tags órfãs |
 | 📎 **Arquivos** | Grade com todos os anexos do sistema (thumbnail para imagens), listagem de arquivos órfãos com limpeza em lote |
 | 🔗 **Links externos** | Tabela de gerenciamento de todos os links externos; testa validade (HTTP HEAD) e permite excluir inválidos em lote |
-| ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada e limpeza da origem |
+| ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada, limpeza da origem; backup/restauração assíncrona com streaming multipart e URL pré-assinada |
 | 🧹 **Limpeza** | Remove anexos órfãos e executa `VACUUM` no banco |
 
 ### Interface
@@ -234,7 +235,22 @@ Configure as variáveis `PKD_S3_BUCKET` e `PKD_S3_REGION` para habilitar o backe
 3. **Ativar S3** — troca o backend ativo; novas uploads vão para o S3
 4. **Limpar origem** — remove os arquivos locais após confirmar a migração
 
-O backup ZIP exporta e importa os anexos do backend local; para fazer backup de anexos já no S3, use as ferramentas nativas do AWS (S3 Versioning, replication, etc.).
+### Backup e restauração de anexos (S3)
+
+Quando o backend ativo é S3, o PKD oferece backup/restauração assíncrona **sem materializar o ZIP no disco da instância de aplicação**:
+
+1. **Backup assíncrono** — `Administração → Storage → Backup assíncrono (S3)`. Pipeline `archive/zip → io.Pipe → manager.Uploader` grava o ZIP diretamente no bucket em `<prefix>/_backup-tmp/<job-id>.zip`. Retorna URL pré-assinada (TTL 15 min) para download direto S3 → navegador. Progresso e contadores via polling.
+2. **Restauração assíncrona** — `Administração → Storage → Restauração assíncrona` aceita ZIP gerado pela aplicação. Restauração **cross-backend** (ZIP de prod S3 restaurado em dev local e vice-versa) e **in-place** (mesmo backend, recupera arquivos perdidos). 3 modos de conflito: `sobrescrever` (padrão), `manter existente`, `abortar`.
+3. **Manifesto interno** (`manifest.json` como última entrada do ZIP) — mapeia SHA256 → `stored_filename`s. Dedup natural quando múltiplas linhas de `attachments` compartilham o mesmo conteúdo; fan-out automático no restore.
+4. **Integridade** — cada entrada restaurada tem hash verificado antes de gravar. Hash mismatch é relatado por arquivo sem abortar a operação (FR-008). Entradas órfãs (SHA256 sem linha em `attachments`) são ignoradas e listadas no resultado.
+5. **Limpeza automática** — no startup, sweep não-bloqueante remove objetos em `_backup-tmp/` com idade > 24h (recuperação de crashes).
+6. **Concorrência** — uma operação ativa por backend por vez; segunda requisição retorna 409.
+
+**IAM mínimo**: `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket`, `s3:DeleteObjects`, `s3:AbortMultipartUpload`.
+
+Endpoints legados (`/api/admin/storage/backup-attachments` síncrono local) continuam funcionando.
+
+Detalhes operacionais em [`docs/operations.md`](docs/operations.md).
 
 ### Exportar como Markdown
 
@@ -366,6 +382,24 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-05-18
+
+**Backup e restauração de anexos com backend S3** (feature 005)
+
+- **Backup assíncrono S3** — novo endpoint `POST /api/admin/storage/backup-start` gera ZIP no próprio bucket via streaming multipart (`io.Pipe` + `manager.Uploader`), sem usar disco da instância. URL pré-assinada para download direto (TTL 15 min, re-gerável). Job tracking com polling de progresso.
+- **Restauração assíncrona cross-backend** — `POST /api/admin/storage/restore-start` aceita o ZIP gerado pela aplicação. ZIP de produção (S3) pode ser restaurado em desenvolvimento (local) e vice-versa. Backend S3 usa Range GETs (`io.ReaderAt`) para evitar disco; backend local usa temp file.
+- **Manifesto interno** com SHA256 como chave lógica — dedup natural no ZIP, fan-out automático no restore quando múltiplas linhas de `attachments` compartilham conteúdo.
+- **Integridade verificada por entrada** — hash mismatch reportado sem abortar restauração; entradas órfãs ignoradas e listadas.
+- **3 modos de conflito** no restore: `overwrite` (padrão), `keep`, `abort`.
+- **Sweep automático** no startup remove ZIPs temporários órfãos com idade > 24h em `_backup-tmp/`.
+- **Single-in-flight por backend** com `BackupJobManager` (mutex + LRU 50, `ErrJobInFlight` → 409).
+- **Backfill SHA256** automático para linhas históricas sem hash, executado durante o backup via `io.TeeReader`.
+- **IAM**: novas ações necessárias `s3:DeleteObjects` (sweep) e `s3:AbortMultipartUpload`.
+
+Tests: 20 unit tests novos (manifest, jobs, writer, reader, fan-out, on_conflict modes, hash mismatch, in-place, per-entry failure isolation). Documentação completa em [`docs/operations.md`](docs/operations.md).
+
+---
 
 ### 2026-05-09
 
