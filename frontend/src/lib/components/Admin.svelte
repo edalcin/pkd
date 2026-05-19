@@ -52,6 +52,14 @@
   let s3BackupStarting = $state(false)
   let s3BackupCountdown = $state(0) // seconds remaining on the presigned URL
 
+  // Async restore job (US2/US3 — cross-backend and in-place restore)
+  let restoreJob = $state(null) // { id, state, processed, total, error_message, restore: {written, kept, skipped_orphan, hash_mismatch, skipped[]} }
+  let restorePolling = $state(false)
+  let restoreStarting = $state(false)
+  let restoreZipInput = $state(null)
+  let restoreOnConflict = $state('overwrite')
+  let restoreShowSkipped = $state(false)
+
   // Links management tab
   let adminURLs = $state(null)
   let urlSearch = $state('')
@@ -226,6 +234,54 @@
     const m = Math.floor(s / 60)
     const r = s % 60
     return `${m}:${String(r).padStart(2, '0')}`
+  }
+
+  // ---- Async restore (US2/US3) ----
+
+  async function startRestore() {
+    if (!restoreZipInput?.files?.[0]) { alert('Selecione um arquivo ZIP gerado por esta aplicação.'); return }
+    if (restoreJob && restoreJob.state === 'running') return
+    restoreStarting = true
+    restoreJob = null
+    restoreShowSkipped = false
+    try {
+      const fd = new FormData()
+      fd.append('zip', restoreZipInput.files[0])
+      fd.append('on_conflict', restoreOnConflict)
+      const res = await apiFetch('/api/admin/storage/restore-start', { method: 'POST', body: fd })
+      if (res.status === 409) {
+        alert('Já existe uma operação em andamento para este backend.')
+        return
+      }
+      if (!res.ok) {
+        const msg = await res.text()
+        alert('Erro ao iniciar restauração: ' + msg)
+        return
+      }
+      const { job_id } = await res.json()
+      restoreJob = { id: job_id, state: 'running', processed: 0, total: 0 }
+      pollRestoreJob()
+    } finally {
+      restoreStarting = false
+    }
+  }
+
+  async function pollRestoreJob() {
+    if (!restoreJob?.id || restorePolling) return
+    restorePolling = true
+    try {
+      while (restoreJob && restoreJob.state === 'running') {
+        await new Promise(r => setTimeout(r, 2000))
+        const res = await apiFetch(`/api/admin/storage/jobs/${restoreJob.id}`)
+        if (!res.ok) {
+          restoreJob = { ...restoreJob, state: 'failed', error_message: 'Falha ao consultar status' }
+          break
+        }
+        restoreJob = await res.json()
+      }
+    } finally {
+      restorePolling = false
+    }
   }
 
   async function restoreAttachments() {
@@ -1062,6 +1118,66 @@
               {/if}
             </div>
           {/if}
+        {/if}
+
+        <hr style="margin:2rem 0">
+        <h4>Restauração assíncrona</h4>
+        <p class="muted" style="margin-bottom:1rem">
+          Aceita ZIP gerado por esta aplicação (mesmo formato local e S3).
+          Restauração cross-backend: ZIP de produção (S3) pode ser restaurado em desenvolvimento (local).
+          Apenas entradas com hash correspondente na base atual são gravadas — órfãs são reportadas.
+        </p>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;margin-bottom:.75rem">
+          <input type="file" accept=".zip" bind:this={restoreZipInput} style="font-size:.85rem">
+          <label style="font-size:.9rem">
+            Se chave já existir:
+            <select bind:value={restoreOnConflict} style="font-size:.85rem;margin-left:.25rem">
+              <option value="overwrite">Sobrescrever (padrão)</option>
+              <option value="keep">Manter existente</option>
+              <option value="abort">Abortar na primeira colisão</option>
+            </select>
+          </label>
+          <button class="btn btn-primary btn-sm" onclick={startRestore} disabled={restoreStarting || (restoreJob?.state === 'running')}>
+            {#if restoreStarting}
+              Enviando…
+            {:else if restoreJob?.state === 'running'}
+              Em andamento…
+            {:else}
+              ⬆ Iniciar restauração
+            {/if}
+          </button>
+        </div>
+
+        {#if restoreJob}
+          <div class="storage-result" style="margin-top:1rem">
+            <p>
+              <strong>Status:</strong>
+              {#if restoreJob.state === 'running'}
+                Em execução — {restoreJob.processed} / {restoreJob.total} entradas
+              {:else if restoreJob.state === 'succeeded'}
+                Concluído — {restoreJob.restore?.written ?? 0} gravados,
+                {restoreJob.restore?.kept ?? 0} mantidos,
+                {restoreJob.restore?.skipped_orphan ?? 0} órfãos ignorados,
+                {restoreJob.restore?.hash_mismatch ?? 0} com hash inválido
+              {:else if restoreJob.state === 'failed'}
+                <span style="color:var(--color-danger)">Falhou: {restoreJob.error_message}</span>
+              {/if}
+            </p>
+            {#if restoreJob.state === 'succeeded' && restoreJob.restore?.skipped?.length > 0}
+              <p>
+                <button class="btn btn-ghost btn-sm" onclick={() => restoreShowSkipped = !restoreShowSkipped}>
+                  {restoreShowSkipped ? '▾' : '▸'} {restoreJob.restore.skipped.length} entrada(s) ignorada(s)
+                </button>
+              </p>
+              {#if restoreShowSkipped}
+                <ul style="font-family:monospace;font-size:.8rem;max-height:200px;overflow:auto">
+                  {#each restoreJob.restore.skipped as e}
+                    <li>{e.sha256.slice(0,16)}… ({formatBytes(e.size_bytes)}) — {e.reason}</li>
+                  {/each}
+                </ul>
+              {/if}
+            {/if}
+          </div>
         {/if}
       {/if}
     </div>

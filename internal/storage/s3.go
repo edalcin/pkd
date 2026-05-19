@@ -177,6 +177,43 @@ func (b *S3Backend) ListWithMetadata(ctx context.Context, prefix string) ([]Obje
 	return out, nil
 }
 
+// GetRange reads length bytes from the object at key starting at offset.
+// Implements storage.S3Capable for use by the restore reader, which needs
+// random-access reads to locate the ZIP central directory without buffering
+// the whole archive on the application host.
+func (b *S3Backend) GetRange(ctx context.Context, key string, offset, length int64) ([]byte, error) {
+	rangeHeader := fmt.Sprintf("bytes=%d-%d", offset, offset+length-1)
+	out, err := b.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(b.bucket),
+		Key:    aws.String(b.objectKey(key)),
+		Range:  aws.String(rangeHeader),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("s3 get range %q: %w", key, sanitizeAWSError(err))
+	}
+	defer out.Body.Close()
+	data, err := io.ReadAll(out.Body)
+	if err != nil {
+		return nil, fmt.Errorf("s3 read range %q: %w", key, err)
+	}
+	return data, nil
+}
+
+// HeadSize returns the byte size of the object at key.
+func (b *S3Backend) HeadSize(ctx context.Context, key string) (int64, error) {
+	out, err := b.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(b.bucket),
+		Key:    aws.String(b.objectKey(key)),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("s3 head %q: %w", key, sanitizeAWSError(err))
+	}
+	if out.ContentLength == nil {
+		return 0, fmt.Errorf("s3 head %q: missing content length", key)
+	}
+	return *out.ContentLength, nil
+}
+
 // DeleteMany removes up to len(keys) objects, batching 1000 at a time.
 func (b *S3Backend) DeleteMany(ctx context.Context, keys []string) error {
 	const batchSize = 1000

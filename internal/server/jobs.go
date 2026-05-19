@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/edalcin/pkd/internal/backup"
 	"github.com/google/uuid"
 )
 
@@ -33,6 +34,19 @@ type Job struct {
 	// TempKey is the object key (S3) or file path (local) of the in-progress
 	// archive. Internal — never serialized.
 	TempKey string `json:"-"`
+
+	// Restore is non-nil for restore jobs and carries per-entry outcomes.
+	Restore *RestoreSummary `json:"restore,omitempty"`
+}
+
+// RestoreSummary aggregates counters and skipped entries from a restore job.
+// Exposed in the job snapshot so the admin UI can render an audit panel.
+type RestoreSummary struct {
+	Written       int64                  `json:"written"`
+	Kept          int64                  `json:"kept"`
+	SkippedOrphan int64                  `json:"skipped_orphan"`
+	HashMismatch  int64                  `json:"hash_mismatch"`
+	Skipped       []backup.SkippedEntry  `json:"skipped,omitempty"`
 }
 
 // ErrJobInFlight is returned by BackupJobManager.Start when another job is

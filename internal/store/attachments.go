@@ -425,6 +425,40 @@ func (s *AttachmentStore) BackfillSHA256(ctx context.Context, attachmentID int64
 	return nil
 }
 
+// AttachmentRef is the minimal info needed by restore to write a single
+// attachment back to the active storage backend.
+type AttachmentRef struct {
+	ID              int64
+	StoredFilename  string
+	StorageLocation string
+	MimeType        string
+}
+
+// LookupBySHA256 returns every attachment row whose content_sha256 matches
+// the given hex digest. Used by restore to fan out a single ZIP entry to
+// every storage filename that points at that content (deduplication).
+//
+// Uses idx_attachments_content_sha256 created in migrate.go.
+func (s *AttachmentStore) LookupBySHA256(ctx context.Context, sha256Hex string) ([]AttachmentRef, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, stored_filename, storage_location, mime_type
+		FROM attachments
+		WHERE content_sha256 = ?`, sha256Hex)
+	if err != nil {
+		return nil, fmt.Errorf("lookup by sha256: %w", err)
+	}
+	defer rows.Close()
+	var out []AttachmentRef
+	for rows.Next() {
+		var r AttachmentRef
+		if err := rows.Scan(&r.ID, &r.StoredFilename, &r.StorageLocation, &r.MimeType); err != nil {
+			return nil, fmt.Errorf("scan ref: %w", err)
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
 // ErrTooLarge is returned when an uploaded file exceeds the size limit.
 var ErrTooLarge = errors.New("file too large")
 

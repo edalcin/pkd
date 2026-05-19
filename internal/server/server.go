@@ -292,6 +292,8 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/storage/backup-start", s.handleAdminStorageBackupStart())
 		r.Get("/api/admin/storage/jobs/{id}", s.handleAdminStorageGetJob())
 		r.Post("/api/admin/storage/jobs/{id}/download-url", s.handleAdminStorageRegenerateDownloadURL())
+		// Async restore (US2 cross-backend, US3 in-place).
+		r.Post("/api/admin/storage/restore-start", s.handleAdminStorageRestoreStart())
 	})
 
 	return r

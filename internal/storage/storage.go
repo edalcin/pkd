@@ -52,4 +52,12 @@ type S3Capable interface {
 	// DeleteMany removes up to len(keys) objects. Implementations may batch
 	// requests internally.
 	DeleteMany(ctx context.Context, keys []string) error
+
+	// GetRange reads length bytes from key starting at offset. Used to wrap
+	// an S3 object as an io.ReaderAt so archive/zip can locate the central
+	// directory without buffering the whole file.
+	GetRange(ctx context.Context, key string, offset, length int64) ([]byte, error)
+
+	// HeadSize returns the total byte size of key.
+	HeadSize(ctx context.Context, key string) (int64, error)
 }
