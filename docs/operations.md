@@ -52,6 +52,79 @@ Funciona com WAL mas é ligeiramente menos consistente que o backup pelo app. Se
 
 ---
 
+## Backup e restauração de anexos (S3)
+
+Quando o backend ativo é S3, o PKD oferece backup/restauração assíncrona de arquivos anexados sem materializar o ZIP no disco da instância de aplicação.
+
+### Backup assíncrono
+
+1. **Administração → Storage → "Backup assíncrono (S3)"** (visível só com backend S3 ativo).
+2. Clique em **"☁ Iniciar backup S3"**. Um job assíncrono é criado.
+3. Polling automático mostra progresso `X / Y anexos`.
+4. Ao concluir, clique em **"⬇ Baixar ZIP"**. URL pré-assinada com **TTL de 15 minutos**.
+5. Se a URL expirar, clique em **"Gerar nova URL"** (enquanto o ZIP temporário existir no S3).
+
+**O que está dentro do ZIP**:
+- Uma entrada por SHA256 único (anexos com mesmo conteúdo são deduplicados).
+- `manifest.json` (última entrada) mapeia cada SHA256 → lista de `stored_filename`s + tamanho + MIME.
+
+**Convenção de nome**:
+ZIP temporário fica em `<prefix>/_backup-tmp/<job-id>.zip`. Este prefixo é **reservado** — nenhum anexo real usa essa rota.
+
+### Restauração assíncrona
+
+1. **Administração → Storage → "Restauração assíncrona"** (visível para qualquer backend ativo).
+2. Selecione o ZIP gerado por esta aplicação.
+3. Escolha o comportamento se a chave de destino já existir:
+   - **Sobrescrever** (padrão) — substitui pelo conteúdo do ZIP.
+   - **Manter existente** — pula entradas que já existem.
+   - **Abortar na primeira colisão** — interrompe a operação.
+4. Clique em **"⬆ Iniciar restauração"**.
+5. Acompanhe os contadores: `gravados / mantidos / órfãos ignorados / hash inválido`.
+6. Entradas ignoradas (órfãs ou com hash inválido) aparecem em lista colapsável.
+
+**Cross-backend**: ZIP gerado em produção (backend S3) pode ser restaurado em desenvolvimento (backend local) e vice-versa. O manifesto é backend-agnóstico — usa apenas SHA256.
+
+**Órfãs**: entradas do ZIP cuja SHA256 não corresponde a nenhuma linha de `attachments` na base atual são **ignoradas** (não escritas no backend). São listadas no log da operação. Restauração nunca cria linhas novas em `attachments` — só reidrata arquivos para linhas existentes.
+
+### IAM mínimo (EC2 / role / usuário)
+
+```json
+{
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": [
+      "s3:GetObject", "s3:PutObject", "s3:DeleteObject",
+      "s3:ListBucket", "s3:DeleteObjects",
+      "s3:AbortMultipartUpload"
+    ],
+    "Resource": [
+      "arn:aws:s3:::SEU-BUCKET",
+      "arn:aws:s3:::SEU-BUCKET/*"
+    ]
+  }]
+}
+```
+
+- `s3:DeleteObjects` (batch) é necessário para o sweep de órfãos temporários no startup.
+- `s3:AbortMultipartUpload` cobre uploads multipart abortados (backup ou restore).
+- `PresignGetObject` é client-side; o destinatário usa `s3:GetObject` via URL assinada.
+
+### Limpeza automática (sweep)
+
+A cada startup, se o backend ativo for S3, a aplicação:
+1. Lista objetos sob `<prefix>/_backup-tmp/`.
+2. Remove qualquer objeto com idade **> 24h**.
+3. Loga `backup sweep: removed N stale temp object(s)`.
+
+Cobre crashes da aplicação que deixaram ZIPs intermediários órfãos.
+
+### Concorrência
+
+Uma operação ativa por backend por vez. Tentativa de iniciar segunda operação retorna **409 Conflict** com mensagem "Já existe uma operação em andamento para este backend".
+
+---
+
 ## Limpeza de órfãos
 
 Com o tempo, documentos excluídos podem deixar arquivos de anexo órfãos no disco (arquivos sem linha correspondente na tabela `attachments`). Para removê-los:

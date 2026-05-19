@@ -111,6 +111,12 @@ func testBackend(ctx context.Context, b storage.Backend) *testResult {
 
 func ms(start time.Time) int64 { return time.Since(start).Milliseconds() }
 
+// handleAdminStorageBackupAttachments is the legacy synchronous backup endpoint.
+// Streams a flat ZIP of every key in the local backend directly to the HTTP
+// response. Kept for backwards compatibility with the original UI flow.
+// New code should use the async pipeline at
+// POST /api/admin/storage/backup-start, which supports both local and S3
+// backends, deduplicates by SHA256, emits a manifest, and reports progress.
 func (s *Server) handleAdminStorageBackupAttachments() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -140,6 +146,13 @@ func (s *Server) handleAdminStorageBackupAttachments() http.HandlerFunc {
 	}
 }
 
+// handleAdminStorageRestoreAttachments is the legacy synchronous restore
+// endpoint. Accepts a flat ZIP and writes every entry to the local backend
+// using the entry name as the storage key. New code should use the async
+// pipeline at POST /api/admin/storage/restore-start, which validates against
+// the attachments table (skips orphans), supports cross-backend restore,
+// per-entry conflict resolution (overwrite/keep/abort), and integrity
+// verification by SHA256.
 func (s *Server) handleAdminStorageRestoreAttachments() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

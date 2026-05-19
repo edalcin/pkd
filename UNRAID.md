@@ -197,6 +197,8 @@ Os dados ficam em dois lugares fora do container:
 
 **Backup manual:** copie os dois diretórios acima para um local seguro. Recomenda-se incluir esse caminho na solução de backup do UNRAID (ex: Appdata Backup plugin).
 
+**Restauração cross-backend a partir de produção (S3):** quando você roda o PKD de produção em EC2 + S3 e quer reproduzir o estado em UNRAID (dev, backend local), gere um ZIP de anexos pela produção via **Administração → Storage → Backup assíncrono (S3)**, baixe o ZIP, e na instância UNRAID use **Administração → Storage → Restauração assíncrona** apontando para esse ZIP. O manifesto interno é backend-agnóstico — todos os anexos referenciados pela base local recebem o conteúdo correspondente. Ver `docs/operations.md` para detalhes do formato e do fluxo.
+
 ---
 
 ## Solução de problemas

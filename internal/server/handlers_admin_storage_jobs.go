@@ -82,12 +82,23 @@ func (s *Server) handleAdminStorageBackupStart() http.HandlerFunc {
 // runBackupJob is the worker goroutine spawned by handleAdminStorageBackupStart.
 // On any error, the temp object is best-effort deleted and the job ends
 // "failed". On success, a presigned download URL is attached to the job.
+// recover() guards against unhandled panics so the goroutine cannot crash
+// the entire process and so the job state always settles.
 func (s *Server) runBackupJob(job *Job, cap storage.S3Capable) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-	defer cancel()
-
 	tempKey := backupTempPrefix + job.ID + ".zip"
 	job.TempKey = tempKey
+
+	defer func() {
+		if r := recover(); r != nil {
+			// Best-effort cleanup of the temp object; ignore error because
+			// the next-startup sweep will catch it if this fails.
+			_ = cap.DeleteMany(context.Background(), []string{tempKey})
+			s.jobs.Finish(job, "failed", fmt.Sprintf("panic: %v", r))
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
 
 	atts, err := s.attachments.EnumerateForBackup(ctx)
 	if err != nil {
