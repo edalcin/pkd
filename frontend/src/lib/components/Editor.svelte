@@ -13,7 +13,7 @@
   import { DocLink } from '../editor/doclink-extension.js'
   import { MermaidCodeBlock } from '../editor/mermaid-code-block.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
@@ -356,6 +356,11 @@
     doc = { ...doc, icon }
     iconPickerOpen = false
     scheduleAutoSave()
+  }
+
+  async function handleToggleFavorite() {
+    const updated = await toggleFavorite(doc.id)
+    doc = updated
   }
 
   async function handleToggleLock() {
@@ -793,6 +798,12 @@
           title="Copiar link do documento"
           aria-label="Copiar link"
         ><i class="bx {linkCopied ? 'bx-check' : 'bx-link'}"></i></button>
+        <button
+          class="fav-btn {doc.is_favorite ? 'is-favorite' : ''}"
+          onclick={handleToggleFavorite}
+          title={doc.is_favorite ? 'Remover dos favoritos' : 'Favoritar documento'}
+          aria-label={doc.is_favorite ? 'Remover dos favoritos' : 'Favoritar documento'}
+        ><i class="bx {doc.is_favorite ? 'bxs-star' : 'bx-star'}"></i></button>
         <button
           class="lock-btn {doc.locked ? 'is-locked' : ''}"
           onclick={handleToggleLock}
@@ -1656,6 +1667,24 @@
   }
   .lock-btn:hover { background: var(--bg-hover); }
   .lock-btn.is-locked { color: var(--accent); }
+
+  .fav-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    transition: color .15s, background .15s;
+  }
+  .fav-btn:hover { background: var(--bg-hover); color: #f5c518; }
+  .fav-btn.is-favorite { color: #f5c518; }
 
   .archive-btn {
     flex-shrink: 0;
