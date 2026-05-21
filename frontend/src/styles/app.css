@@ -577,16 +577,29 @@ input:focus, textarea:focus, select:focus {
 .cal-day .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+/* Master-detail layout: controlado por classes JS, independente de @media */
+.topbar.topbar-mobile-list {
+  flex-direction: column;
+  height: auto;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.app-layout.mobile-detail .sidebar { display: none; }
+.app-layout.mobile-list .content-area { display: none; }
+
 @media (max-width: 640px) {
+  /* Sidebar em fluxo normal (sem drawer fixo) */
   .sidebar {
-    position: fixed;
-    inset: 48px 0 0 0;
+    position: static;
     width: 100% !important;
-    z-index: 50;
-    transform: translateX(-100%);
-    transition: transform .25s ease;
+    border-right: none;
+    transform: none;
+    z-index: auto;
+    transition: none;
   }
-  .sidebar.open { transform: translateX(0); }
   .resize-handle { display: none; }
   .doc-title { font-size: 1.4rem; }
   .tiptap-editor { flex: unset !important; overflow-y: visible !important; min-height: 200px; }

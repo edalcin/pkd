@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { authenticated, checkSession, logout } from './lib/stores/auth.js'
-  import { loadTree, textFilter, tagFilter, favoriteFilter, revealActiveSignal } from './lib/stores/documents.js'
+  import { loadTree, textFilter, tagFilter, favoriteFilter, revealActiveSignal, activeDoc } from './lib/stores/documents.js'
   import { loadTags } from './lib/stores/tags.js'
   import LoginPage from './lib/components/LoginPage.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
@@ -33,11 +33,6 @@
   function toggleTheme() {
     theme = theme === 'light' ? 'dark' : 'light'
   }
-
-  // ─── Sidebar (mobile) ─────────────────────────────────────
-  let sidebarOpen = $state(false)
-  function toggleSidebar() { sidebarOpen = !sidebarOpen }
-  function closeSidebar() { sidebarOpen = false }
 
   // ─── Sidebar resize (desktop) ─────────────────────────────
   let sidebarWidth = $state(Number(localStorage.getItem('pkd-sidebar-width')) || 260)
@@ -155,6 +150,13 @@
   })
 
   const route = $derived(getRoute())
+
+  const detailTitle = $derived(
+    route.view === 'doc' ? ($activeDoc?.title || 'Documento') :
+    route.view === 'graph' ? 'Grafo' :
+    route.view === 'calendar' ? 'Calendário' :
+    route.view === 'admin' ? 'Administração' : ''
+  )
 </script>
 
 {#if $authenticated === null}
@@ -176,71 +178,91 @@
 {:else}
   <div id="app">
     <!-- Top bar -->
-    <header class="topbar">
-      <!-- Hamburger (mobile) -->
-      <button class="icon-btn mobile-only" onclick={toggleSidebar} aria-label="Menu" title="Menu">
-        ☰
-      </button>
-
-      <!-- Desktop sidebar collapse toggle -->
-      <button class="icon-btn desktop-only" onclick={toggleSidebarCollapse}
-              title={sidebarCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}
-              aria-label={sidebarCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}>
-        {sidebarCollapsed ? '▶' : '◀'}
-      </button>
-
-      <!-- Logo / home link -->
-      <a href="#/" class="app-logo" onclick={closeSidebar}>PKD</a>
-
-      <!-- Document filter -->
-      <input
-        class="topbar-search"
-        type="search"
-        placeholder="Filtrar…"
-        autocomplete="off"
-        value={$textFilter}
-        oninput={onFilterInput}
-        aria-label="Filtrar documentos"
-      />
-      {#if hasActiveFilters}
-        <button class="topbar-reset-btn" onclick={resetFilters} title="Limpar todos os filtros" aria-label="Limpar todos os filtros">×</button>
-      {/if}
-
-      <!-- Nav icons -->
-      <a href="#/graph" class="icon-btn" title="Grafo" onclick={closeSidebar}>🕸️</a>
-      <a href="#/calendar" class="icon-btn" title="Calendário" onclick={closeSidebar}>📅</a>
-      <a href="#/admin" class="icon-btn" title="Administração" onclick={closeSidebar}>⚙️</a>
-
-      <!-- Share button (only in doc view) -->
-      {#if route.view === 'doc' && route.id}
-        <button class="icon-btn" title="Compartilhar" onclick={() => openShare(Number(route.id))}>🔗</button>
-      {/if}
-
-      <!-- Theme toggle -->
-      <button class="icon-btn" onclick={toggleTheme} title="Alternar tema" aria-label="Alternar tema">
-        {theme === 'light' ? '🌙' : '☀️'}
-      </button>
-
-      <!-- Logout -->
-      <button class="icon-btn" onclick={logout} title="Sair" aria-label="Sair">⏻</button>
-
-      <!-- Desktop assoc panel collapse toggle — rightmost, alinhado com painel direito -->
-      {#if route.view === 'doc' && route.id && !isMobile}
-        <button class="icon-btn desktop-only" onclick={toggleAssocCollapse}
-                title={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}
-                aria-label={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}>
-          {assocCollapsed ? '◀' : '▶'}
+    <header class="topbar" class:topbar-mobile-list={isMobile && route.view === 'home'}>
+      {#if isMobile}
+        {#if route.view === 'home'}
+          <!-- MOBILE LISTA: duas linhas -->
+          <div class="topbar-row topbar-row-icons">
+            <a href="#/" class="app-logo">PKD</a>
+            <span class="topbar-spacer"></span>
+            <a href="#/graph" class="icon-btn" title="Grafo">🕸️</a>
+            <a href="#/calendar" class="icon-btn" title="Calendário">📅</a>
+            <a href="#/admin" class="icon-btn" title="Administração">⚙️</a>
+            <button class="icon-btn" onclick={toggleTheme} title="Alternar tema" aria-label="Alternar tema">{theme === 'light' ? '🌙' : '☀️'}</button>
+            <button class="icon-btn" onclick={logout} title="Sair" aria-label="Sair">⏻</button>
+          </div>
+          <div class="topbar-row topbar-row-search">
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input class="topbar-search-mobile" type="search"
+                   placeholder="Buscar documentos…" autocomplete="off"
+                   value={$textFilter} oninput={onFilterInput}
+                   aria-label="Buscar documentos" />
+            {#if hasActiveFilters}
+              <button class="topbar-reset-btn" onclick={resetFilters} title="Limpar filtros" aria-label="Limpar filtros">×</button>
+            {/if}
+          </div>
+        {:else}
+          <!-- MOBILE DETALHE: linha única com voltar -->
+          <a href="#/" class="icon-btn" aria-label="Voltar" title="Voltar">←</a>
+          <span class="topbar-title">{detailTitle}</span>
+          {#if route.view === 'doc' && route.id}
+            <button class="icon-btn" title="Compartilhar" onclick={() => openShare(Number(route.id))}>🔗</button>
+          {/if}
+        {/if}
+      {:else}
+        <!-- DESKTOP: topbar original -->
+        <button class="icon-btn desktop-only" onclick={toggleSidebarCollapse}
+                title={sidebarCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}
+                aria-label={sidebarCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}>
+          {sidebarCollapsed ? '▶' : '◀'}
         </button>
+
+        <a href="#/" class="app-logo">PKD</a>
+
+        <input
+          class="topbar-search"
+          type="search"
+          placeholder="Filtrar…"
+          autocomplete="off"
+          value={$textFilter}
+          oninput={onFilterInput}
+          aria-label="Filtrar documentos"
+        />
+        {#if hasActiveFilters}
+          <button class="topbar-reset-btn" onclick={resetFilters} title="Limpar todos os filtros" aria-label="Limpar todos os filtros">×</button>
+        {/if}
+
+        <a href="#/graph" class="icon-btn" title="Grafo">🕸️</a>
+        <a href="#/calendar" class="icon-btn" title="Calendário">📅</a>
+        <a href="#/admin" class="icon-btn" title="Administração">⚙️</a>
+
+        {#if route.view === 'doc' && route.id}
+          <button class="icon-btn" title="Compartilhar" onclick={() => openShare(Number(route.id))}>🔗</button>
+        {/if}
+
+        <button class="icon-btn" onclick={toggleTheme} title="Alternar tema" aria-label="Alternar tema">
+          {theme === 'light' ? '🌙' : '☀️'}
+        </button>
+
+        <button class="icon-btn" onclick={logout} title="Sair" aria-label="Sair">⏻</button>
+
+        {#if route.view === 'doc' && route.id}
+          <button class="icon-btn desktop-only" onclick={toggleAssocCollapse}
+                  title={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}
+                  aria-label={assocCollapsed ? 'Mostrar painel de associações' : 'Ocultar painel de associações'}>
+            {assocCollapsed ? '◀' : '▶'}
+          </button>
+        {/if}
       {/if}
     </header>
 
     <!-- Main layout -->
-    <div class="app-layout">
+    <div class="app-layout" class:mobile-list={isMobile && route.view === 'home'} class:mobile-detail={isMobile && route.view !== 'home'}>
       <!-- Sidebar with mobile overlay -->
-      <aside class="sidebar {sidebarOpen ? 'open' : ''}"
+      <aside class="sidebar"
              style={!isMobile && sidebarCollapsed ? 'width:0;border-right:none' : `width:${sidebarWidth}px`}
              aria-label="Navegação">
-        <Sidebar onNavigate={() => sidebarOpen = false} onClearFilter={clearFilter} />
+        <Sidebar onClearFilter={clearFilter} />
       </aside>
       <!-- Drag handle for desktop resize -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -251,18 +273,6 @@
         aria-orientation="vertical"
         aria-label="Redimensionar painel lateral"
       ></div>
-
-      <!-- Overlay for mobile -->
-      {#if sidebarOpen}
-        <div
-          class="sidebar-overlay"
-          onclick={closeSidebar}
-          role="button"
-          aria-label="Fechar menu"
-          tabindex="0"
-          onkeydown={e => e.key === 'Enter' && closeSidebar()}
-        ></div>
-      {/if}
 
       <!-- Main content area -->
       <main class="content-area">
@@ -360,12 +370,8 @@
     transition: width .2s ease;
   }
 
-  .mobile-only { display: none; }
   .desktop-only { display: none; }
 
-  @media (max-width: 640px) {
-    .mobile-only { display: inline-flex; }
-  }
   @media (min-width: 641px) {
     .desktop-only { display: inline-flex; }
   }
@@ -387,14 +393,36 @@
     flex-shrink: 0;
   }
 
-  .sidebar-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.3);
-    z-index: 40;
+  .topbar-row {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .3rem .5rem;
   }
+  .topbar-row-icons { border-bottom: 1px solid var(--border); min-height: 44px; }
+  .topbar-row-search { gap: .4rem; }
+  .topbar-spacer { flex: 1; }
+  .search-icon { font-size: 1rem; flex-shrink: 0; opacity: .5; }
 
-  @media (min-width: 641px) {
-    .sidebar-overlay { display: none; }
+  .topbar-search-mobile {
+    flex: 1;
+    min-width: 0;
+    padding: .55rem .6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: .95rem;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .topbar-search-mobile:focus { outline: none; border-color: var(--accent); }
+
+  .topbar-title {
+    flex: 1;
+    font-weight: 600;
+    font-size: .9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
   }
 </style>
