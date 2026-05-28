@@ -46,6 +46,7 @@
   let storageTestResult = $state(null)
   let storageMigrateResult = $state(null)
   let storageCleanupResult = $state(null)
+  let storageReconcileResult = $state(null)
   let storageLoading = $state(false)
   let storageSwitching = $state(false)
   let storageRestoreResult = $state(null)
@@ -167,6 +168,17 @@
     storageMigrateResult = null
     try {
       storageMigrateResult = await apiPost('/api/admin/storage/migrate', {})
+    } finally {
+      storageLoading = false
+    }
+  }
+
+  async function reconcileStorage() {
+    if (!confirm('Verificar o bucket S3 e corrigir registros com storage_location incorreto? Isso atualiza apenas o banco — não move arquivos.')) return
+    storageLoading = true
+    storageReconcileResult = null
+    try {
+      storageReconcileResult = await apiPost('/api/admin/storage/reconcile', {})
     } finally {
       storageLoading = false
     }
@@ -1029,6 +1041,9 @@
             <button class="btn btn-ghost btn-sm" onclick={migrateStorage} disabled={storageLoading}>
               📦 Migrar para backend ativo
             </button>
+            <button class="btn btn-ghost btn-sm" onclick={reconcileStorage} disabled={storageLoading} title="Verifica o bucket S3 e corrige registros desatualizados no banco">
+              🔄 Reconciliar S3 ↔ DB
+            </button>
             <button class="btn btn-danger btn-sm" onclick={cleanupStorageSource} disabled={storageLoading}>
               🗑 Limpar origem
             </button>
@@ -1052,10 +1067,29 @@
         {#if storageMigrateResult}
           <div class="storage-result" style="margin-top:1rem">
             <h4>Migração:</h4>
-            <p>Copiados: <strong>{storageMigrateResult.copied}</strong> em {storageMigrateResult.duration_ms}ms</p>
+            <p>Encontrados: <strong>{storageMigrateResult.total_found ?? '?'}</strong> · Copiados: <strong>{storageMigrateResult.copied}</strong> em {storageMigrateResult.duration_ms}ms</p>
+            {#if (storageMigrateResult.total_found ?? 0) === 0}
+              <p class="muted" style="font-size:.85rem">Nenhum arquivo encontrado para migrar. Se esperava arquivos no S3, use <strong>Reconciliar S3 ↔ DB</strong> primeiro para corrigir registros desatualizados.</p>
+            {/if}
             {#if storageMigrateResult.errors?.length > 0}
-              <p style="color:var(--color-danger)">Erros:</p>
-              <ul>{#each storageMigrateResult.errors as e}<li>{e}</li>{/each}</ul>
+              <p style="color:var(--color-danger)">Erros ({storageMigrateResult.errors.length}):</p>
+              <ul>{#each storageMigrateResult.errors as e}<li style="font-size:.8rem;color:var(--color-danger)">{e}</li>{/each}</ul>
+            {/if}
+          </div>
+        {/if}
+
+        {#if storageReconcileResult}
+          <div class="storage-result" style="margin-top:1rem">
+            <h4>Reconciliação S3 ↔ DB:</h4>
+            <p>Registros corrigidos: <strong>{storageReconcileResult.fixed}</strong> em {storageReconcileResult.duration_ms}ms</p>
+            {#if storageReconcileResult.fixed > 0}
+              <p class="muted" style="font-size:.85rem">✅ Registros atualizados. Execute <strong>Migrar para backend ativo</strong> agora para copiar os arquivos.</p>
+            {:else}
+              <p class="muted" style="font-size:.85rem">Nenhuma inconsistência encontrada entre o S3 e o banco.</p>
+            {/if}
+            {#if storageReconcileResult.errors?.length > 0}
+              <p style="color:var(--color-danger)">Erros ({storageReconcileResult.errors.length}):</p>
+              <ul>{#each storageReconcileResult.errors as e}<li style="font-size:.8rem;color:var(--color-danger)">{e}</li>{/each}</ul>
             {/if}
           </div>
         {/if}

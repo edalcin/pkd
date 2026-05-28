@@ -247,15 +247,56 @@ func (s *AttachmentStore) ListOrphanedStoredFiles() ([]string, error) {
 	return orphans, nil
 }
 
+// ReconcileStorageLocations scans src bucket and, for each key that matches a
+// stored_filename in the DB but has a different storage_location, updates the DB
+// to reflect where the file actually lives. Returns (fixed, errors).
+// Use this when the DB storage_location is stale (e.g. after a DB restore).
+func (s *AttachmentStore) ReconcileStorageLocations(ctx context.Context, src storage.Backend) (int, []string) {
+	if src == nil {
+		return 0, []string{"source backend not configured"}
+	}
+	keys, err := src.List(ctx, "")
+	if err != nil {
+		return 0, []string{fmt.Sprintf("list %s: %v", src.Name(), err)}
+	}
+
+	fixed := 0
+	var errs []string
+	for _, key := range keys {
+		var id int64
+		var curLoc string
+		err := s.db.QueryRowContext(ctx,
+			`SELECT id, storage_location FROM attachments WHERE stored_filename = ?`, key).
+			Scan(&id, &curLoc)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue // orphan in bucket — not our concern here
+		}
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: db query: %v", key, err))
+			continue
+		}
+		if curLoc == src.Name() {
+			continue // already correct
+		}
+		if _, err := s.db.ExecContext(ctx,
+			`UPDATE attachments SET storage_location = ? WHERE id = ?`, src.Name(), id); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: db update: %v", key, err))
+			continue
+		}
+		fixed++
+	}
+	return fixed, errs
+}
+
 // MigrateToBackend copies all attachments with storage_location != target to the target backend,
 // verifying SHA256 integrity. Non-destructive: source files are not deleted.
-// Returns (copied, errors).
-func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.Backend) (int, []string) {
+// Returns (total_found, copied, errors).
+func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.Backend) (int, int, []string) {
 	rows, err := s.db.Query(`
 		SELECT id, stored_filename, mime_type, storage_location, content_sha256
 		FROM attachments WHERE storage_location != ?`, target.Name())
 	if err != nil {
-		return 0, []string{fmt.Sprintf("query failed: %v", err)}
+		return 0, 0, []string{fmt.Sprintf("query failed: %v", err)}
 	}
 	defer rows.Close()
 
@@ -271,15 +312,16 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 		var r row
 		var sha sql.NullString
 		if err := rows.Scan(&r.id, &r.key, &r.mime, &r.location, &sha); err != nil {
-			return 0, []string{fmt.Sprintf("scan: %v", err)}
+			return 0, 0, []string{fmt.Sprintf("scan: %v", err)}
 		}
 		r.sha256 = sha.String
 		todo = append(todo, r)
 	}
 	if err := rows.Err(); err != nil {
-		return 0, []string{fmt.Sprintf("rows: %v", err)}
+		return 0, 0, []string{fmt.Sprintf("rows: %v", err)}
 	}
 
+	totalFound := len(todo)
 	copied := 0
 	var errs []string
 
@@ -343,7 +385,7 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 		}
 		copied++
 	}
-	return copied, errs
+	return totalFound, copied, errs
 }
 
 // CleanupSource deletes files from the source backend for attachments that have

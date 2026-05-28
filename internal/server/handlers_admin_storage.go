@@ -207,10 +207,27 @@ func (s *Server) handleAdminStorageMigrate() http.HandlerFunc {
 		target := s.activeStorage()
 		start := time.Now()
 
-		copied, errs := s.attachments.MigrateToBackend(r.Context(), target)
+		totalFound, copied, errs := s.attachments.MigrateToBackend(r.Context(), target)
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"target":      target.Name(),
+			"total_found": totalFound,
 			"copied":      copied,
+			"errors":      errs,
+			"duration_ms": time.Since(start).Milliseconds(),
+		})
+	}
+}
+
+func (s *Server) handleAdminStorageReconcile() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.s3Backend == nil {
+			http.Error(w, "S3 not configured", http.StatusBadRequest)
+			return
+		}
+		start := time.Now()
+		fixed, errs := s.attachments.ReconcileStorageLocations(r.Context(), s.s3Backend)
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"fixed":       fixed,
 			"errors":      errs,
 			"duration_ms": time.Since(start).Milliseconds(),
 		})
