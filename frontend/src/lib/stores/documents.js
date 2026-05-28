@@ -158,6 +158,28 @@ export async function reorderDoc(id, parentId, beforeId) {
   await loadTree()
 }
 
+/** List all version snapshots for a document (no body_html). */
+export async function listVersions(docId) {
+  return apiGet(`/api/documents/${docId}/versions`)
+}
+
+/** Fetch a single version snapshot including body_html. */
+export async function getVersion(docId, versionId) {
+  return apiGet(`/api/documents/${docId}/versions/${versionId}`)
+}
+
+/** Restore a snapshot as the current document content.
+ *  currentVersion is the optimistic-lock token from the active document. */
+export async function restoreVersion(docId, versionId, currentVersion) {
+  const updated = await apiPost(
+    `/api/documents/${docId}/versions/${versionId}/restore`,
+    { version: currentVersion },
+  )
+  activeDoc.set(updated)
+  tree.update(nodes => updateTreeNode(nodes, docId, { title: updated.title, icon: updated.icon }))
+  return updated
+}
+
 /** Sort the entire tree by criterion: "alpha" | "created" | "updated". */
 export async function sortTree(by) {
   await apiPost('/api/tree/sort', { by })

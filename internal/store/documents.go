@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/edalcin/pkd/internal/model"
@@ -172,6 +173,9 @@ func (s *DocumentStore) UpdateAndSync(id int64, clientVersion int64, title, body
 			return fmt.Errorf("update: %w", err)
 		}
 		if err := scanDocFromTx(tx, id, &doc); err != nil {
+			return err
+		}
+		if err := snapshotIfChanged(tx, id, doc.Version, title, bodyHTML, icon); err != nil {
 			return err
 		}
 		if syncFn != nil {
@@ -986,6 +990,101 @@ func queryAttachmentIDsTx(tx *sql.Tx, docID int64) ([]int64, error) {
 		}
 	}
 	return ids, rows.Err()
+}
+
+// snapshotIfChanged inserts a document_versions row if the content (title +
+// body_html + icon) differs from the most-recent snapshot. It also prunes old
+// snapshots so at most versions.max_per_doc rows are kept per document.
+// Must be called inside an open transaction.
+func snapshotIfChanged(tx *sql.Tx, docID, docVersion int64, title, bodyHTML, icon string) error {
+	newHash := documentContentSHA256(title, bodyHTML, icon)
+
+	var lastHash string
+	err := tx.QueryRow(
+		`SELECT content_sha256 FROM document_versions WHERE document_id = ? ORDER BY id DESC LIMIT 1`,
+		docID,
+	).Scan(&lastHash)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("version snapshot hash check: %w", err)
+	}
+	if lastHash == newHash {
+		return nil
+	}
+
+	if _, err := tx.Exec(
+		`INSERT INTO document_versions (document_id, doc_version, title, body_html, icon, content_sha256)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		docID, docVersion, title, bodyHTML, icon, newHash,
+	); err != nil {
+		return fmt.Errorf("version snapshot insert: %w", err)
+	}
+
+	var maxStr string
+	if err := tx.QueryRow(`SELECT value FROM settings WHERE key = 'versions.max_per_doc'`).Scan(&maxStr); err != nil {
+		return fmt.Errorf("version snapshot read settings: %w", err)
+	}
+	maxN, err := strconv.Atoi(maxStr)
+	if err != nil || maxN <= 0 {
+		maxN = 50
+	}
+
+	if _, err := tx.Exec(`
+		DELETE FROM document_versions
+		WHERE document_id = ?
+		  AND id NOT IN (
+		    SELECT id FROM document_versions
+		    WHERE document_id = ?
+		    ORDER BY id DESC
+		    LIMIT ?
+		  )`, docID, docID, maxN,
+	); err != nil {
+		return fmt.Errorf("version snapshot prune: %w", err)
+	}
+	return nil
+}
+
+// ListVersions returns all snapshots for docID ordered newest-first, without body_html.
+func (s *DocumentStore) ListVersions(docID int64) ([]model.DocumentVersion, error) {
+	rows, err := s.db.Query(`
+		SELECT id, document_id, doc_version, title, icon, content_sha256, created_at
+		FROM document_versions
+		WHERE document_id = ?
+		ORDER BY id DESC`, docID)
+	if err != nil {
+		return nil, fmt.Errorf("list versions: %w", err)
+	}
+	defer rows.Close()
+
+	var versions []model.DocumentVersion
+	for rows.Next() {
+		var v model.DocumentVersion
+		var createdStr string
+		if err := rows.Scan(&v.ID, &v.DocumentID, &v.DocVersion, &v.Title, &v.Icon, &v.ContentSHA256, &createdStr); err != nil {
+			return nil, fmt.Errorf("list versions scan: %w", err)
+		}
+		v.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
+		versions = append(versions, v)
+	}
+	return versions, rows.Err()
+}
+
+// GetVersion returns a single snapshot including body_html.
+func (s *DocumentStore) GetVersion(docID, versionID int64) (*model.DocumentVersion, error) {
+	var v model.DocumentVersion
+	var createdStr string
+	err := s.db.QueryRow(`
+		SELECT id, document_id, doc_version, title, body_html, icon, content_sha256, created_at
+		FROM document_versions
+		WHERE id = ? AND document_id = ?`, versionID, docID).
+		Scan(&v.ID, &v.DocumentID, &v.DocVersion, &v.Title, &v.BodyHTML, &v.Icon, &v.ContentSHA256, &createdStr)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get version: %w", err)
+	}
+	v.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
+	return &v, nil
 }
 
 func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {

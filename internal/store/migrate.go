@@ -142,6 +142,13 @@ func Open(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("store.Open settings seed: %w", err)
 	}
 
+	// Seed default version retention limit if not yet set.
+	if _, err := db.Exec(`INSERT OR IGNORE INTO settings (key, value, updated_at)
+		VALUES ('versions.max_per_doc', '50', datetime('now'))`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open settings seed versions: %w", err)
+	}
+
 	// Data migration: backfill associated date from created_at for existing documents.
 	// Idempotent — only touches rows where assoc_year is still NULL.
 	if _, err := db.Exec(`

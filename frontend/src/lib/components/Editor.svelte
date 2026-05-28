@@ -13,10 +13,11 @@
   import { DocLink } from '../editor/doclink-extension.js'
   import { MermaidCodeBlock } from '../editor/mermaid-code-block.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc, restoreVersion } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
+  import VersionHistoryDialog from './VersionHistoryDialog.svelte'
   import { get } from 'svelte/store'
   import { autoSaveInterval } from '../stores/settings.js'
 
@@ -207,6 +208,7 @@
   let saveError = $state('')
   let conflictData = $state(null)
   let loading = $state(true)
+  let historyOpen = $state(false)
 
   // TipTap Editor instance (not reactive — managed manually)
   let editorInstance = null
@@ -817,6 +819,12 @@
           aria-label={doc.archived ? 'Desarquivar' : 'Arquivar'}
         ><i class="bx bx-archive"></i></button>
         <button
+          class="hist-btn"
+          onclick={() => historyOpen = true}
+          title="Histórico de versões"
+          aria-label="Histórico de versões"
+        ><i class="bx bx-history"></i></button>
+        <button
           class="save-icon-btn {saving ? 'saving' : ''}"
           onclick={performSave}
           disabled={saving || doc.locked || doc.archived}
@@ -1399,6 +1407,20 @@
     </div>
   {/if}
 
+  <!-- Version history dialog -->
+  {#if historyOpen && doc?.id}
+    <VersionHistoryDialog
+      docId={doc.id}
+      currentVersion={doc.version}
+      onClose={() => historyOpen = false}
+      onRestored={(updated) => {
+        doc = updated
+        editorInstance?.commands.setContent(updated.body_html, false)
+        historyOpen = false
+      }}
+    />
+  {/if}
+
   <!-- Version conflict dialog -->
   {#if conflictData}
     <div class="modal-backdrop">
@@ -1704,6 +1726,24 @@
   .archive-btn:hover:not(:disabled) { background: var(--bg-hover); }
   .archive-btn.is-archived { color: var(--accent); }
   .archive-btn:disabled { opacity: .4; cursor: default; }
+
+  .hist-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text);
+    transition: color .15s, background .15s;
+  }
+  .hist-btn:hover:not(:disabled) { background: var(--bg-hover); }
+  .hist-btn:disabled { opacity: .4; cursor: default; }
 
   .save-icon-btn {
     flex-shrink: 0;

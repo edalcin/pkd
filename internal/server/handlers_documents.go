@@ -405,6 +405,120 @@ func (s *Server) handleUnarchiveDocument() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleListVersions() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		versions, err := s.docs.ListVersions(id)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if versions == nil {
+			versions = []model.DocumentVersion{}
+		}
+		writeJSON(w, http.StatusOK, versions)
+	}
+}
+
+func (s *Server) handleGetVersion() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		vid, err := parseID(r, "vid")
+		if err != nil {
+			http.Error(w, "invalid version id", http.StatusBadRequest)
+			return
+		}
+		v, err := s.docs.GetVersion(id, vid)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, v)
+	}
+}
+
+func (s *Server) handleRestoreVersion() http.HandlerFunc {
+	type request struct {
+		Version int64 `json:"version"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		vid, err := parseID(r, "vid")
+		if err != nil {
+			http.Error(w, "invalid version id", http.StatusBadRequest)
+			return
+		}
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+
+		snap, err := s.docs.GetVersion(id, vid)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		// Re-derive plain text for FTS from the snapshotted HTML.
+		// The HTML is already sanitized; we only need plain text for search indexing.
+		plainText := security.ExtractPlainText(snap.BodyHTML)
+
+		docID := id
+		docHTML := snap.BodyHTML
+		doc, err := s.docs.UpdateAndSync(id, req.Version, snap.Title, snap.BodyHTML, plainText, snap.Icon,
+			func(tx *sql.Tx) error {
+				return s.links.SyncLinksFromHTML(tx, docID, docHTML)
+			},
+		)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, store.ErrLocked) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "document is locked"})
+			return
+		}
+		if errors.Is(err, store.ErrArchived) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "document is archived"})
+			return
+		}
+		if errors.Is(err, store.ErrVersionConflict) {
+			stored, _ := s.docs.GetByID(id)
+			writeJSON(w, http.StatusConflict, model.VersionConflict{
+				StoredVersion: stored.Version,
+				Stored:        stored,
+			})
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, doc)
+	}
+}
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 func parseID(r *http.Request, param string) (int64, error) {

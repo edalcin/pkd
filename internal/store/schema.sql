@@ -116,6 +116,26 @@ CREATE TABLE IF NOT EXISTS document_urls (
 CREATE INDEX IF NOT EXISTS idx_document_urls_document_id ON document_urls(document_id);
 
 -- ---------------------------------------------------------------------------
+-- document_versions (content snapshots for version history)
+-- Each row is a snapshot taken whenever body_html, title, or icon changes.
+-- Identical content (same content_sha256) is not re-snapshotted.
+-- Pruned to keep at most settings.versions.max_per_doc rows per document.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS document_versions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    document_id     INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    doc_version     INTEGER NOT NULL,
+    title           TEXT    NOT NULL,
+    body_html       TEXT    NOT NULL,
+    icon            TEXT    NOT NULL DEFAULT '',
+    content_sha256  TEXT    NOT NULL,
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_versions_doc_id_id
+    ON document_versions(document_id, id DESC);
+
+-- ---------------------------------------------------------------------------
 -- sessions (persistent across server restarts)
 -- Timestamps stored as Unix epoch integers for compact storage.
 -- ---------------------------------------------------------------------------

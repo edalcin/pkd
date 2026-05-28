@@ -56,3 +56,16 @@ type Ancestor struct {
 	Title string `json:"title"`
 	Icon  string `json:"icon,omitempty"`
 }
+
+// DocumentVersion is a content snapshot of a document at a given point in time.
+// BodyHTML is omitted from list responses (fetched individually via GetVersion).
+type DocumentVersion struct {
+	ID            int64     `json:"id"`
+	DocumentID    int64     `json:"document_id"`
+	DocVersion    int64     `json:"doc_version"`
+	Title         string    `json:"title"`
+	BodyHTML      string    `json:"body_html,omitempty"`
+	Icon          string    `json:"icon,omitempty"`
+	ContentSHA256 string    `json:"content_sha256"`
+	CreatedAt     time.Time `json:"created_at"`
+}
