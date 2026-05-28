@@ -27,6 +27,11 @@
   let attachmentsLoading = $state(false)
   let previewAtt = $state(null)
 
+  // Settings tab — version history
+  let versionsMaxPerDoc = $state('50')
+  let versionsSettingMsg = $state('')
+  let versionsSettingSaving = $state(false)
+
   // Tags tab — local editable copy
   let editableTags = $state([])
   let tagMsg = $state('')
@@ -81,10 +86,32 @@
   onMount(() => {
     loadTags()
     loadTrash()
+    apiGet('/api/admin/settings').then(data => {
+      if (data?.['versions.max_per_doc']) versionsMaxPerDoc = data['versions.max_per_doc']
+    })
   })
 
   async function loadTrash() {
     trash = (await apiGet('/api/admin/trash')) || []
+  }
+
+  async function saveVersionsSettings() {
+    const n = parseInt(versionsMaxPerDoc, 10)
+    if (!n || n < 1 || n > 10000) {
+      versionsSettingMsg = 'Valor inválido. Use um número entre 1 e 10000.'
+      return
+    }
+    versionsSettingSaving = true
+    versionsSettingMsg = ''
+    try {
+      await apiPut('/api/admin/settings', { key: 'versions.max_per_doc', value: String(n) })
+      versionsSettingMsg = 'Salvo!'
+      setTimeout(() => { versionsSettingMsg = '' }, 2000)
+    } catch {
+      versionsSettingMsg = 'Erro ao salvar.'
+    } finally {
+      versionsSettingSaving = false
+    }
   }
 
   async function loadAttachments() {
@@ -1203,6 +1230,27 @@
         {/each}
       </div>
     </div>
+
+    <div class="admin-section">
+      <h3>Histórico de versões</h3>
+      <p class="muted" style="margin-bottom:1rem">Número máximo de versões salvas por documento. Versões mais antigas são removidas automaticamente quando o limite é atingido.</p>
+      <div class="versions-setting-row">
+        <input
+          type="number"
+          min="1"
+          max="10000"
+          class="versions-max-input"
+          bind:value={versionsMaxPerDoc}
+        />
+        <span class="muted" style="font-size:.85rem">versões por documento</span>
+        <button class="btn btn-primary" onclick={saveVersionsSettings} disabled={versionsSettingSaving}>
+          {versionsSettingSaving ? 'Salvando…' : 'Salvar'}
+        </button>
+        {#if versionsSettingMsg}
+          <span class="versions-setting-msg">{versionsSettingMsg}</span>
+        {/if}
+      </div>
+    </div>
   {/if}
 </div>
 
@@ -1290,6 +1338,28 @@
 
   .autosave-option input[type="radio"] {
     accent-color: var(--accent);
+  }
+
+  .versions-setting-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+  }
+
+  .versions-max-input {
+    width: 80px;
+    padding: .4rem .6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: .875rem;
+  }
+
+  .versions-setting-msg {
+    font-size: .85rem;
+    color: var(--accent);
   }
 
   .admin-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1.25rem; }

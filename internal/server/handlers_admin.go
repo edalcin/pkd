@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/edalcin/pkd/internal/model"
@@ -384,6 +385,51 @@ func (s *Server) handleAdminRevokeShare() http.HandlerFunc {
 		// Cascade: revoke auto shares for all descendants.
 		for _, id := range s.collectDescendantIDs(docID) {
 			_ = s.shares.RevokeAutoForDocument(id)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleAdminGetSettings returns the editable subset of server-side settings.
+func (s *Server) handleAdminGetSettings() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		maxPerDoc, err := s.settings.VersionsMaxPerDoc()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{
+			"versions.max_per_doc": maxPerDoc,
+		})
+	}
+}
+
+// handleAdminSetSettings updates a whitelisted server-side setting.
+func (s *Server) handleAdminSetSettings() http.HandlerFunc {
+	type request struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		switch req.Key {
+		case "versions.max_per_doc":
+			n, err := strconv.Atoi(req.Value)
+			if err != nil || n < 1 || n > 10000 {
+				http.Error(w, "versions.max_per_doc must be an integer between 1 and 10000", http.StatusBadRequest)
+				return
+			}
+			if err := s.settings.SetVersionsMaxPerDoc(req.Value); err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+		default:
+			http.Error(w, "unknown setting key", http.StatusBadRequest)
+			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}

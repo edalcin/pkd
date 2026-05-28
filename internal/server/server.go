@@ -215,6 +215,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/documents/{id}/unarchive", s.handleUnarchiveDocument())
 		r.Get("/api/documents/{id}/versions", s.handleListVersions())
 		r.Get("/api/documents/{id}/versions/{vid}", s.handleGetVersion())
+		r.Delete("/api/documents/{id}/versions/{vid}", s.handleDeleteVersion())
 		r.Post("/api/documents/{id}/versions/{vid}/restore", s.handleRestoreVersion())
 		r.Patch("/api/documents/{id}/associated-date", s.handleUpdateAssocDate())
 			r.Get("/api/documents/{id}/children", s.handleListChildren())
@@ -279,6 +280,10 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/check-urls", s.handleAdminCheckURLs())
 		r.Get("/api/admin/shares", s.handleAdminListShares())
 		r.Delete("/api/admin/shares/{shareID}", s.handleAdminRevokeShare())
+
+		// Server-side settings
+		r.Get("/api/admin/settings", s.handleAdminGetSettings())
+		r.Put("/api/admin/settings", s.handleAdminSetSettings())
 
 		// Storage management
 		r.Get("/api/admin/storage/config", s.handleAdminStorageConfig())

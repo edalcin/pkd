@@ -46,3 +46,17 @@ func (s *SettingsStore) AttachmentsBackend() (string, error) {
 func (s *SettingsStore) SetAttachmentsBackend(name string) error {
 	return s.Set("attachments.backend", name)
 }
+
+// VersionsMaxPerDoc returns the configured per-document version retention limit.
+func (s *SettingsStore) VersionsMaxPerDoc() (string, error) {
+	v, err := s.Get("versions.max_per_doc")
+	if errors.Is(err, ErrNotFound) {
+		return "50", nil
+	}
+	return v, err
+}
+
+// SetVersionsMaxPerDoc persists the version retention limit.
+func (s *SettingsStore) SetVersionsMaxPerDoc(value string) error {
+	return s.Set("versions.max_per_doc", value)
+}

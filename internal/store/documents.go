@@ -1043,6 +1043,23 @@ func snapshotIfChanged(tx *sql.Tx, docID, docVersion int64, title, bodyHTML, ico
 	return nil
 }
 
+// DeleteVersion removes a single version snapshot. Returns ErrNotFound if the
+// version does not exist or does not belong to docID.
+func (s *DocumentStore) DeleteVersion(docID, versionID int64) error {
+	res, err := s.db.Exec(
+		`DELETE FROM document_versions WHERE id = ? AND document_id = ?`,
+		versionID, docID,
+	)
+	if err != nil {
+		return fmt.Errorf("delete version: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // ListVersions returns all snapshots for docID ordered newest-first, without body_html.
 func (s *DocumentStore) ListVersions(docID int64) ([]model.DocumentVersion, error) {
 	rows, err := s.db.Query(`

@@ -168,6 +168,11 @@ export async function getVersion(docId, versionId) {
   return apiGet(`/api/documents/${docId}/versions/${versionId}`)
 }
 
+/** Delete a single version snapshot. */
+export async function deleteVersion(docId, versionId) {
+  await apiDelete(`/api/documents/${docId}/versions/${versionId}`)
+}
+
 /** Restore a snapshot as the current document content.
  *  currentVersion is the optimistic-lock token from the active document. */
 export async function restoreVersion(docId, versionId, currentVersion) {

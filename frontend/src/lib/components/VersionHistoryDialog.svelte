@@ -1,5 +1,5 @@
 <script>
-  import { listVersions, getVersion, restoreVersion } from '../stores/documents.js'
+  import { listVersions, getVersion, restoreVersion, deleteVersion } from '../stores/documents.js'
 
   let { docId, currentVersion, onClose, onRestored } = $props()
 
@@ -10,6 +10,7 @@
   let loadingPreview = $state(false)
   let restoring = $state(false)
   let confirmRestore = $state(false)
+  let deletingId = $state(null)
 
   $effect(() => {
     if (docId) {
@@ -52,6 +53,22 @@
     })
   }
 
+  async function doDelete(v, e) {
+    e.stopPropagation()
+    if (!confirm(`Deletar versão de ${formatDate(v.created_at)}?`)) return
+    deletingId = v.id
+    try {
+      await deleteVersion(docId, v.id)
+      versions = versions.filter(x => x.id !== v.id)
+      if (selected?.id === v.id) {
+        selected = null
+        preview = null
+      }
+    } finally {
+      deletingId = null
+    }
+  }
+
   // Disable restore if the selected version is already the most-recent snapshot
   const isAlreadyCurrent = $derived(selected && versions.length > 0 && selected.id === versions[0].id)
 </script>
@@ -72,9 +89,12 @@
           <p class="hist-empty">Nenhuma versão salva ainda.</p>
         {:else}
           {#each versions as v, i}
-            <button
+            <div
               class="version-item {selected?.id === v.id ? 'active' : ''}"
               onclick={() => selectVersion(v)}
+              role="button"
+              tabindex="0"
+              onkeydown={e => e.key === 'Enter' && selectVersion(v)}
             >
               <span class="version-icon"><i class="bx {v.icon || 'bx-file'}"></i></span>
               <span class="version-info">
@@ -84,7 +104,14 @@
               {#if i === 0}
                 <span class="version-badge">Atual</span>
               {/if}
-            </button>
+              <button
+                class="version-delete-btn"
+                onclick={e => doDelete(v, e)}
+                disabled={deletingId === v.id}
+                title="Deletar esta versão"
+                aria-label="Deletar versão"
+              ><i class="bx {deletingId === v.id ? 'bx-loader-alt bx-spin' : 'bx-trash'}"></i></button>
+            </div>
           {/each}
         {/if}
       </div>
@@ -212,6 +239,27 @@
     font-size: .7rem;
     color: var(--text-muted);
   }
+
+  .version-delete-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: .9rem;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity .15s, color .15s, background .15s;
+  }
+  .version-item:hover .version-delete-btn,
+  .version-item.active .version-delete-btn { opacity: 1; }
+  .version-delete-btn:hover { color: var(--danger, #e53e3e); background: var(--bg-hover); }
+  .version-delete-btn:disabled { opacity: .4; cursor: default; }
 
   .version-badge {
     margin-left: auto;

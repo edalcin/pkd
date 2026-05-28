@@ -405,6 +405,29 @@ func (s *Server) handleUnarchiveDocument() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleDeleteVersion() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		vid, err := parseID(r, "vid")
+		if err != nil {
+			http.Error(w, "invalid version id", http.StatusBadRequest)
+			return
+		}
+		if err := s.docs.DeleteVersion(id, vid); errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		} else if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func (s *Server) handleListVersions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseID(r, "id")
