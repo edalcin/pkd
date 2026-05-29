@@ -254,7 +254,9 @@ type DanglingAttachment struct {
 	OriginalName    string
 	SizeBytes       int64
 	StorageLocation string
-	DocTrashed      bool // true when document exists but is in trash
+	DocTrashed      bool   // true when document exists but is in trash
+	DocID           int64  // 0 when document doesn't exist
+	DocTitle        string // empty when document doesn't exist
 }
 
 // ListDanglingAttachments returns attachments whose document either does not
@@ -262,7 +264,9 @@ type DanglingAttachment struct {
 func (s *AttachmentStore) ListDanglingAttachments() ([]*DanglingAttachment, error) {
 	rows, err := s.db.Query(`
 		SELECT a.id, a.stored_filename, a.original_name, a.size_bytes, a.storage_location,
-		       d.trashed_at IS NOT NULL AS doc_trashed
+		       d.trashed_at IS NOT NULL AS doc_trashed,
+		       COALESCE(d.id, 0) AS doc_id,
+		       COALESCE(d.title, '') AS doc_title
 		FROM attachments a
 		LEFT JOIN documents d ON d.id = a.document_id
 		WHERE d.id IS NULL OR d.trashed_at IS NOT NULL
@@ -275,7 +279,7 @@ func (s *AttachmentStore) ListDanglingAttachments() ([]*DanglingAttachment, erro
 	for rows.Next() {
 		da := &DanglingAttachment{}
 		var docTrashed int
-		if err := rows.Scan(&da.ID, &da.StoredFilename, &da.OriginalName, &da.SizeBytes, &da.StorageLocation, &docTrashed); err != nil {
+		if err := rows.Scan(&da.ID, &da.StoredFilename, &da.OriginalName, &da.SizeBytes, &da.StorageLocation, &docTrashed, &da.DocID, &da.DocTitle); err != nil {
 			return nil, err
 		}
 		da.DocTrashed = docTrashed == 1

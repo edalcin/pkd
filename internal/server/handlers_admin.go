@@ -20,7 +20,9 @@ type OrphanInfo struct {
 	SizeBytes    int64  `json:"size_bytes"`
 	AttachmentID int64  `json:"attachment_id,omitempty"` // >0 when DB record exists
 	OriginalName string `json:"original_name,omitempty"`
-	Reason       string `json:"reason"` // "no_db_record" | "trashed_doc" | "no_doc"
+	Reason       string `json:"reason"`               // "no_db_record" | "trashed_doc" | "no_doc"
+	DocID        int64  `json:"doc_id,omitempty"`     // trashed doc id (reason=trashed_doc only)
+	DocTitle     string `json:"doc_title,omitempty"`  // trashed doc title (reason=trashed_doc only)
 }
 
 func (s *Server) handleAdminListTrash() http.HandlerFunc {
@@ -312,6 +314,8 @@ func (s *Server) handleAdminListOrphans() http.HandlerFunc {
 				AttachmentID: da.ID,
 				OriginalName: da.OriginalName,
 				Reason:       reason,
+				DocID:        da.DocID,
+				DocTitle:     da.DocTitle,
 			})
 		}
 
@@ -351,17 +355,32 @@ func (s *Server) handleAdminDeleteOrphan() http.HandlerFunc {
 			return
 		}
 
-		// Type 2: dangling attachment record — delete record + file via store.
+		// Type 2: dangling attachment record — delete record + file (+ trashed doc if applicable).
 		if dangling, err := s.attachments.ListDanglingAttachments(); err == nil {
 			for _, da := range dangling {
-				if da.StoredFilename == key {
+				if da.StoredFilename != key {
+					continue
+				}
+				if da.DocTrashed && da.DocID > 0 {
+					// Permanently delete the trashed document (its attachments have RESTRICT FK).
+					if err := s.attachments.DeleteByDocument(da.DocID); err != nil {
+						http.Error(w, "internal error", http.StatusInternalServerError)
+						return
+					}
+					if err := s.docs.PermanentDelete(da.DocID); err != nil {
+						http.Error(w, "internal error", http.StatusInternalServerError)
+						return
+					}
+					_ = s.tags.PruneUnused()
+				} else {
+					// No document — just remove the dangling attachment record + file.
 					if err := s.attachments.Delete(da.ID); err != nil {
 						http.Error(w, "internal error", http.StatusInternalServerError)
 						return
 					}
-					w.WriteHeader(http.StatusNoContent)
-					return
 				}
+				w.WriteHeader(http.StatusNoContent)
+				return
 			}
 		}
 

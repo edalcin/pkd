@@ -146,7 +146,11 @@
 
   async function deleteOrphan(orphan) {
     const name = orphan.original_name || orphan.key.split('/').pop()
-    if (!confirm(`Eliminar "${name}"? Esta ação não pode ser desfeita.`)) return
+    let msg = `Eliminar "${name}"? Esta ação não pode ser desfeita.`
+    if (orphan.reason === 'trashed_doc' && orphan.doc_title) {
+      msg = `Eliminar "${name}"?\n\nO documento na lixeira "${orphan.doc_title}" também será excluído permanentemente.\n\nEsta ação não pode ser desfeita.`
+    }
+    if (!confirm(msg)) return
     await apiFetch(`/api/admin/attachments/orphans/item?key=${encodeURIComponent(orphan.key)}`, { method: 'DELETE' })
     allOrphans = allOrphans.filter(o => o.key !== orphan.key)
   }
@@ -842,8 +846,15 @@
           <div class="orphan-list">
             {#each allOrphans as orphan}
               <div class="orphan-row">
-                <span class="orphan-name" title={orphan.key}>{orphan.original_name || orphan.key.split('/').pop()}</span>
-                <span class="orphan-reason muted">{orphan.reason === 'trashed_doc' ? 'doc na lixeira' : orphan.reason === 'no_doc' ? 'sem documento' : 'sem registro'}</span>
+                <div class="orphan-info">
+                  <span class="orphan-name" title={orphan.key}>{orphan.original_name || orphan.key.split('/').pop()}</span>
+                  {#if orphan.reason === 'trashed_doc' && orphan.doc_title}
+                    <span class="orphan-doc muted">🗑 Doc na lixeira: "{orphan.doc_title}"</span>
+                  {:else if orphan.reason === 'no_doc'}
+                    <span class="orphan-doc muted">Documento não encontrado</span>
+                  {/if}
+                </div>
+                <span class="orphan-reason muted">{orphan.reason === 'trashed_doc' ? 'lixeira' : orphan.reason === 'no_doc' ? 'sem doc' : 'sem registro'}</span>
                 <span class="orphan-size muted">{formatBytes(orphan.size_bytes)}</span>
                 <button class="btn btn-ghost btn-sm" onclick={() => downloadOrphan(orphan.key)}>⬇ Baixar</button>
                 <button class="btn btn-danger btn-sm" onclick={() => deleteOrphan(orphan)}>🗑 Eliminar</button>
@@ -1618,9 +1629,23 @@
     background: var(--surface-alt, rgba(0,0,0,.04));
   }
 
-  .orphan-name {
+  .orphan-info {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    min-width: 0;
+  }
+
+  .orphan-name {
     font-size: .875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .orphan-doc {
+    font-size: .75rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
