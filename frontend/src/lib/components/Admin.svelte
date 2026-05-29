@@ -144,10 +144,11 @@
     a.click()
   }
 
-  async function deleteOrphan(key) {
-    if (!confirm(`Eliminar o arquivo órfão "${key.split('/').pop()}"? Esta ação não pode ser desfeita.`)) return
-    await apiFetch(`/api/admin/attachments/orphans/item?key=${encodeURIComponent(key)}`, { method: 'DELETE' })
-    allOrphans = allOrphans.filter(o => o.key !== key)
+  async function deleteOrphan(orphan) {
+    const name = orphan.original_name || orphan.key.split('/').pop()
+    if (!confirm(`Eliminar "${name}"? Esta ação não pode ser desfeita.`)) return
+    await apiFetch(`/api/admin/attachments/orphans/item?key=${encodeURIComponent(orphan.key)}`, { method: 'DELETE' })
+    allOrphans = allOrphans.filter(o => o.key !== orphan.key)
   }
 
   function setTab(id) {
@@ -841,10 +842,11 @@
           <div class="orphan-list">
             {#each allOrphans as orphan}
               <div class="orphan-row">
-                <span class="orphan-name" title={orphan.key}>{orphan.key.split('/').pop()}</span>
+                <span class="orphan-name" title={orphan.key}>{orphan.original_name || orphan.key.split('/').pop()}</span>
+                <span class="orphan-reason muted">{orphan.reason === 'trashed_doc' ? 'doc na lixeira' : orphan.reason === 'no_doc' ? 'sem documento' : 'sem registro'}</span>
                 <span class="orphan-size muted">{formatBytes(orphan.size_bytes)}</span>
                 <button class="btn btn-ghost btn-sm" onclick={() => downloadOrphan(orphan.key)}>⬇ Baixar</button>
-                <button class="btn btn-danger btn-sm" onclick={() => deleteOrphan(orphan.key)}>🗑 Eliminar</button>
+                <button class="btn btn-danger btn-sm" onclick={() => deleteOrphan(orphan)}>🗑 Eliminar</button>
               </div>
             {/each}
           </div>
@@ -1622,6 +1624,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .orphan-reason {
+    font-size: .75rem;
+    white-space: nowrap;
+    padding: .1rem .35rem;
+    border-radius: 3px;
+    background: var(--surface-alt, rgba(0,0,0,.06));
   }
 
   .orphan-size {

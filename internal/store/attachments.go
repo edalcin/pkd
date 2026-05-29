@@ -247,6 +247,43 @@ func (s *AttachmentStore) ListOrphanedStoredFiles() ([]string, error) {
 	return orphans, nil
 }
 
+// DanglingAttachment is an attachment whose document is in the trash or missing.
+type DanglingAttachment struct {
+	ID              int64
+	StoredFilename  string
+	OriginalName    string
+	SizeBytes       int64
+	StorageLocation string
+	DocTrashed      bool // true when document exists but is in trash
+}
+
+// ListDanglingAttachments returns attachments whose document either does not
+// exist or is in the trash. These files are inaccessible through normal UI.
+func (s *AttachmentStore) ListDanglingAttachments() ([]*DanglingAttachment, error) {
+	rows, err := s.db.Query(`
+		SELECT a.id, a.stored_filename, a.original_name, a.size_bytes, a.storage_location,
+		       d.trashed_at IS NOT NULL AS doc_trashed
+		FROM attachments a
+		LEFT JOIN documents d ON d.id = a.document_id
+		WHERE d.id IS NULL OR d.trashed_at IS NOT NULL
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []*DanglingAttachment
+	for rows.Next() {
+		da := &DanglingAttachment{}
+		var docTrashed int
+		if err := rows.Scan(&da.ID, &da.StoredFilename, &da.OriginalName, &da.SizeBytes, &da.StorageLocation, &docTrashed); err != nil {
+			return nil, err
+		}
+		da.DocTrashed = docTrashed == 1
+		result = append(result, da)
+	}
+	return result, rows.Err()
+}
+
 // ReconcileStorageLocations scans src bucket and, for each key that matches a
 // stored_filename in the DB but has a different storage_location, updates the DB
 // to reflect where the file actually lives. Returns (fixed, errors).

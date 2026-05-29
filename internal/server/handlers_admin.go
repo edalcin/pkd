@@ -16,8 +16,11 @@ import (
 )
 
 type OrphanInfo struct {
-	Key       string `json:"key"`
-	SizeBytes int64  `json:"size_bytes"`
+	Key          string `json:"key"`
+	SizeBytes    int64  `json:"size_bytes"`
+	AttachmentID int64  `json:"attachment_id,omitempty"` // >0 when DB record exists
+	OriginalName string `json:"original_name,omitempty"`
+	Reason       string `json:"reason"` // "no_db_record" | "trashed_doc" | "no_doc"
 }
 
 func (s *Server) handleAdminListTrash() http.HandlerFunc {
@@ -274,12 +277,14 @@ func (s *Server) handleAdminListAttachments() http.HandlerFunc {
 
 func (s *Server) handleAdminListOrphans() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		result := make([]OrphanInfo, 0)
+
+		// Type 1: local disk files with no attachment record in DB.
 		keys, err := s.attachments.ListOrphanedStoredFiles()
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		result := make([]OrphanInfo, 0, len(keys))
 		for _, key := range keys {
 			var size int64
 			rc, sz, err := s.localBackend.Get(r.Context(), key)
@@ -287,8 +292,29 @@ func (s *Server) handleAdminListOrphans() http.HandlerFunc {
 				rc.Close()
 				size = sz
 			}
-			result = append(result, OrphanInfo{Key: key, SizeBytes: size})
+			result = append(result, OrphanInfo{Key: key, SizeBytes: size, Reason: "no_db_record"})
 		}
+
+		// Type 2: attachment records whose document is trashed or missing.
+		dangling, err := s.attachments.ListDanglingAttachments()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		for _, da := range dangling {
+			reason := "no_doc"
+			if da.DocTrashed {
+				reason = "trashed_doc"
+			}
+			result = append(result, OrphanInfo{
+				Key:          da.StoredFilename,
+				SizeBytes:    da.SizeBytes,
+				AttachmentID: da.ID,
+				OriginalName: da.OriginalName,
+				Reason:       reason,
+			})
+		}
+
 		writeJSON(w, http.StatusOK, result)
 	}
 }
@@ -324,27 +350,54 @@ func (s *Server) handleAdminDeleteOrphan() http.HandlerFunc {
 			http.Error(w, "key required", http.StatusBadRequest)
 			return
 		}
-		if !s.isOrphanKey(r, key) {
-			http.Error(w, "not found", http.StatusNotFound)
-			return
+
+		// Type 2: dangling attachment record — delete record + file via store.
+		if dangling, err := s.attachments.ListDanglingAttachments(); err == nil {
+			for _, da := range dangling {
+				if da.StoredFilename == key {
+					if err := s.attachments.Delete(da.ID); err != nil {
+						http.Error(w, "internal error", http.StatusInternalServerError)
+						return
+					}
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
+			}
 		}
-		if err := s.localBackend.Delete(r.Context(), key); err != nil {
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
+
+		// Type 1: disk file with no DB record.
+		if keys, err := s.attachments.ListOrphanedStoredFiles(); err == nil {
+			for _, k := range keys {
+				if k == key {
+					if err := s.localBackend.Delete(r.Context(), key); err != nil {
+						http.Error(w, "internal error", http.StatusInternalServerError)
+						return
+					}
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
+			}
 		}
-		w.WriteHeader(http.StatusNoContent)
+
+		http.Error(w, "not found", http.StatusNotFound)
 	}
 }
 
-// isOrphanKey verifies that key exists as a local-backend orphan (not a valid attachment).
+// isOrphanKey verifies that key is a true orphan (type 1: no DB record) or
+// a dangling attachment (type 2: document trashed or missing).
 func (s *Server) isOrphanKey(r *http.Request, key string) bool {
-	orphans, err := s.attachments.ListOrphanedStoredFiles()
-	if err != nil {
-		return false
+	if keys, err := s.attachments.ListOrphanedStoredFiles(); err == nil {
+		for _, k := range keys {
+			if k == key {
+				return true
+			}
+		}
 	}
-	for _, k := range orphans {
-		if k == key {
-			return true
+	if dangling, err := s.attachments.ListDanglingAttachments(); err == nil {
+		for _, da := range dangling {
+			if da.StoredFilename == key {
+				return true
+			}
 		}
 	}
 	return false
