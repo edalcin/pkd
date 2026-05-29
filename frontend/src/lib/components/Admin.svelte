@@ -786,6 +786,41 @@
 
   <!-- Attachments -->
   {#if activeTab === 'attachments'}
+    {#if allOrphans.length > 0 || orphansLoading}
+      <div class="admin-section orphan-section">
+        <div class="section-header">
+          <h3>Arquivos órfãos{allOrphans.length > 0 ? ` (${allOrphans.length})` : ''}</h3>
+        </div>
+        {#if orphansLoading}
+          <p class="muted">Verificando…</p>
+        {:else if allOrphans.length === 0}
+          <p class="muted">Nenhum arquivo órfão encontrado.</p>
+        {:else}
+          <p class="muted" style="margin-bottom:.75rem">
+            Arquivos no disco sem registro no banco de dados. Podem ser resquícios de uploads com falha.
+          </p>
+          <div class="orphan-list">
+            {#each allOrphans as orphan}
+              <div class="orphan-row">
+                <div class="orphan-info">
+                  <span class="orphan-name" title={orphan.key}>{orphan.original_name || orphan.key.split('/').pop()}</span>
+                  {#if orphan.reason === 'trashed_doc' && orphan.doc_title}
+                    <span class="orphan-doc muted">🗑 Doc na lixeira: "{orphan.doc_title}"</span>
+                  {:else if orphan.reason === 'no_doc'}
+                    <span class="orphan-doc muted">Documento não encontrado</span>
+                  {/if}
+                </div>
+                <span class="orphan-reason muted">{orphan.reason === 'trashed_doc' ? 'lixeira' : orphan.reason === 'no_doc' ? 'sem doc' : 'sem registro'}</span>
+                <span class="orphan-size muted">{formatBytes(orphan.size_bytes)}</span>
+                <button class="btn btn-ghost btn-sm" onclick={() => downloadOrphan(orphan.key)}>⬇ Baixar</button>
+                <button class="btn btn-danger btn-sm" onclick={() => deleteOrphan(orphan)}>🗑 Eliminar</button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     <div class="admin-section">
       <div class="section-header">
         <h3>Arquivos anexados ({allAttachments.length})</h3>
@@ -829,41 +864,6 @@
         </div>
       {/if}
     </div>
-
-    {#if allOrphans.length > 0 || orphansLoading}
-      <div class="admin-section orphan-section">
-        <div class="section-header">
-          <h3>Arquivos órfãos{allOrphans.length > 0 ? ` (${allOrphans.length})` : ''}</h3>
-        </div>
-        {#if orphansLoading}
-          <p class="muted">Verificando…</p>
-        {:else if allOrphans.length === 0}
-          <p class="muted">Nenhum arquivo órfão encontrado.</p>
-        {:else}
-          <p class="muted" style="margin-bottom:.75rem">
-            Arquivos no disco sem registro no banco de dados. Podem ser resquícios de uploads com falha.
-          </p>
-          <div class="orphan-list">
-            {#each allOrphans as orphan}
-              <div class="orphan-row">
-                <div class="orphan-info">
-                  <span class="orphan-name" title={orphan.key}>{orphan.original_name || orphan.key.split('/').pop()}</span>
-                  {#if orphan.reason === 'trashed_doc' && orphan.doc_title}
-                    <span class="orphan-doc muted">🗑 Doc na lixeira: "{orphan.doc_title}"</span>
-                  {:else if orphan.reason === 'no_doc'}
-                    <span class="orphan-doc muted">Documento não encontrado</span>
-                  {/if}
-                </div>
-                <span class="orphan-reason muted">{orphan.reason === 'trashed_doc' ? 'lixeira' : orphan.reason === 'no_doc' ? 'sem doc' : 'sem registro'}</span>
-                <span class="orphan-size muted">{formatBytes(orphan.size_bytes)}</span>
-                <button class="btn btn-ghost btn-sm" onclick={() => downloadOrphan(orphan.key)}>⬇ Baixar</button>
-                <button class="btn btn-danger btn-sm" onclick={() => deleteOrphan(orphan)}>🗑 Eliminar</button>
-              </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
-    {/if}
   {/if}
 
   <!-- Cleanup -->
