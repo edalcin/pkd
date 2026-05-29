@@ -31,6 +31,8 @@
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
 | 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
 | 📅 **Calendário** | Navegue pelos documentos pela data de criação |
+| 🕰️ **Histórico de versões** | Snapshot automático a cada save com dedup SHA-256 (saves idênticos não geram versão). Visualize, compare e restaure qualquer versão anterior via botão `⏱` na barra do documento. Retenção configurável (padrão 50 versões/documento) |
+| ⭐ **Favoritar da barra** | Botão ⭐ na barra de ações do documento — alterna favorito sem precisar ir à sidebar |
 
 ### Árvore lateral
 
@@ -72,17 +74,18 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 📦 **Backup / Restauração de anexos** | Backend local: ZIP síncrono. Backend S3: backup **assíncrono** que monta o ZIP no próprio bucket (sem usar disco da instância) e oferece URL pré-assinada (TTL 15 min). Restauração **cross-backend**: ZIP gerado em S3 pode ser restaurado em backend local e vice-versa. Manifesto interno usa SHA256 (dedup natural + verificação de integridade). Job tracking com progresso e contadores (gravados / mantidos / órfãos / hash inválido). |
 | 🗑️ **Lixeira** | Documentos excluídos ficam em lixeira; restauráveis individualmente ou em lote |
 | 🏷️ **Tags** | Renomear, editar cor, excluir ou mesclar tags globalmente; botão para remover tags órfãs |
-| 📎 **Arquivos** | Grade com todos os anexos do sistema (thumbnail para imagens), listagem de arquivos órfãos com limpeza em lote |
+| 📎 **Arquivos** | Grade com todos os anexos do sistema (thumbnail para imagens); botão "Verificar Órfãos" lista arquivos sem documento associado — baixe individualmente ou elimine por arquivo com confirmação |
 | 🔗 **Links externos** | Tabela de gerenciamento de todos os links externos; testa validade (HTTP HEAD) e permite excluir inválidos em lote |
-| ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada, limpeza da origem; backup/restauração assíncrona com streaming multipart e URL pré-assinada |
-| 🧹 **Limpeza** | Remove anexos órfãos e executa `VACUUM` no banco |
+| ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada, reconciliação S3↔DB, limpeza da origem; backup/restauração assíncrona com streaming multipart e URL pré-assinada |
+| 🧹 **Limpeza** | Executa `VACUUM` no banco de dados para recuperar espaço em disco |
+| ⚙️ **Configurações** | Retenção de versões de documentos configurável (padrão 50 por documento) |
 
 ### Interface
 
 | | |
 |---|---|
 | 🌙 **Tema claro / escuro** | Alternância persistida no `localStorage` |
-| 📱 **Responsivo** | Layout mobile-first, alvos de toque ≥ 44 px |
+| 📱 **Mobile master-detail** | Em telas ≤ 640px: tela-lista (topbar 2 linhas, busca larga, árvore inteira) e tela-detalhe (botão ← para voltar). Sem drawer hambúrguer. Desktop (≥ 641px) inalterado |
 | 📲 **PWA** | Instalável como app; share target no celular; offline somente leitura |
 
 ### Integração com Notas
@@ -215,6 +218,16 @@ Arraste um arquivo ou clique em **"+ Anexar arquivo"**. Imagens exibem thumbnail
 ### Redimensionar imagens
 
 Insira uma imagem no editor (upload, URL ou colar). Passe o mouse sobre ela — uma alça azul aparece no canto inferior direito. Clique e arraste horizontalmente para ajustar a largura. Ao soltar, a nova largura é salva no documento automaticamente.
+
+### Histórico de versões
+
+Clique no botão `⏱` na barra de ações do documento. O dialog de histórico exibe todas as versões salvas com data/hora e preview do conteúdo.
+
+- **Restaurar** — clique em "Restaurar esta versão" para reverter o documento ao snapshot selecionado. A restauração reutiliza o fluxo normal de save (incluindo bloqueio otimista e sincronia de links).
+- **Excluir versão** — passe o mouse sobre uma versão para revelar o ícone de lixeira; confirme para excluí-la individualmente.
+- **Configurar retenção** — em **Administração → Configurações**, ajuste o campo "Máx. versões por documento" (padrão 50, aceita 1–10000).
+
+Saves idênticos não geram versão nova (dedup por SHA-256 do conteúdo).
 
 ### Arquivamento
 
@@ -382,6 +395,54 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-05-29
+
+**Gerenciador de arquivos órfãos em Administração → Arquivos**
+
+- Botão "🔍 Verificar Órfãos" ao lado de "↻ Atualizar" na aba Arquivos carrega a lista de arquivos no disco sem registro no banco (órfãos de uploads com falha ou exclusões incompletas)
+- Cada arquivo órfão exibe nome, tamanho, botão "⬇ Baixar" (download individual) e "🗑 Eliminar" (exclusão com confirmação)
+- Endpoints: `GET /api/admin/attachments/orphans` retorna lista completa com tamanhos; `GET /api/admin/attachments/orphans/download?key=…` faz download; `DELETE /api/admin/attachments/orphans/item?key=…` elimina
+- Segurança: download e delete verificam que a chave é de fato um órfão antes de agir
+- Aba Limpeza: passa a fazer apenas `VACUUM` (gerenciamento de órfãos movido para Arquivos)
+
+---
+
+### 2026-05-28
+
+**Histórico de versões de documentos**
+
+- Snapshot automático do conteúdo (título + corpo + ícone) a cada save, com dedup SHA-256 — saves idênticos não geram versão
+- Retenção padrão: 50 versões por documento; configurável em **Administração → Configurações → Versões**
+- Botão `⏱` na barra de ações do documento abre dialog de histórico: lista versões com data/hora, preview do conteúdo, restauração com confirmação
+- Excluir versão individual: ícone de lixeira por entrada (aparece no hover), com confirmação
+- Endpoints: `GET /api/documents/:id/versions`, `GET /api/documents/:id/versions/:vid`, `POST /api/documents/:id/versions/:vid/restore`, `DELETE /api/documents/:id/versions/:vid`
+- Nova tabela: `document_versions` (CASCADE ao excluir o documento, indexada por doc+id DESC)
+- Admin → Configurações: campo numérico para `versions.max_per_doc` (validado 1–10000)
+
+**Reconciliação S3 ↔ DB** (fix em Administração → Storage)
+
+- Novo botão "Reconciliar S3 ↔ DB": varre o bucket S3, identifica arquivos com `storage_location` incorreto no banco (comum após restore de backup do banco sem os arquivos S3) e corrige sem mover arquivos
+- Migração agora expõe `total_found` além de `copied` — quando `total_found=0` a UI sugere usar o reconcile antes de migrar
+- Endpoint: `POST /api/admin/storage/reconcile`
+
+---
+
+### 2026-05-21
+
+**Mobile master-detail**
+
+- Interface mobile (≤ 640 px) redesenhada: tela-lista com topbar de 2 linhas (ícones de ação na primeira linha, campo de busca largo na segunda) e árvore de documentos ocupando a tela inteira
+- Documentos, grafo, calendário e admin abrem em tela-detalhe com botão ← na topbar para voltar à lista
+- Drawer hambúrguer removido (padrão master-detail torna-o redundante)
+- Desktop (≥ 641 px) inalterado
+
+**Favoritar da barra de ações**
+
+- Botão ⭐ adicionado à barra de ações do documento (entre "Copiar link" e "Trancar")
+- Alterna favorito diretamente no documento aberto; sincroniza automaticamente com a árvore lateral
+
+---
 
 ### 2026-05-18
 

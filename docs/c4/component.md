@@ -1,6 +1,6 @@
 # C4 Level 3 — Component: PKD
 
-> **Versão**: v2.1 · **Data**: 2026-04-18
+> **Versão**: v2.3 · **Data**: 2026-05-29
 
 ## Descrição
 
@@ -20,8 +20,8 @@ C4Component
         Component(doc_handlers, "Document Handlers", "handlers_documents.go", "CRUD de documentos com versionamento, soft-delete, restore, move hierárquico. handleListChildren retorna filhos diretos para cards de sub-documentos. Chama UpdateAndSync para sincronizar links na mesma transação.")
         Component(link_handlers, "Link Handlers", "handlers_links.go", "GET/POST/DELETE /api/documents/{id}/links. Lista links de saída e backlinks com títulos e status trashed.")
         Component(att_handlers, "Attachment Handlers", "handlers_attachments.go", "Upload, download e delete de anexos. Content-Disposition: inline para PDFs, imagens, áudio, vídeo. Override de X-Frame-Options e CSP para permitir embed no browser.")
-        Component(admin_handlers, "Admin Handlers", "handlers_admin.go", "Lixeira (list/delete/empty), backup/restore do DB, limpeza. Tags: list-all, update (nome+cor), delete, prune-orphans. Attachments: list-all (com doc title), list-orphans.")
-        Component(storage_handlers, "Storage Admin Handlers", "handlers_admin_storage.go + _jobs.go + _restore.go", "Configuração de backend, migração local↔S3, teste de conexão. Backup assíncrono S3 (backup-start, jobs/{id}, jobs/{id}/download-url) e restauração cross-backend (restore-start). Endpoints legados síncronos mantidos.")
+        Component(admin_handlers, "Admin Handlers", "handlers_admin.go", "Lixeira (list/delete/empty), backup/restore do DB, VACUUM. Tags: list-all, update (nome+cor), delete, prune-orphans. Attachments: list-all (com doc title), list-orphans (retorna []OrphanInfo com key+size), download-orphan (GET ?key=), delete-orphan (DELETE ?key=). Versions: list, get, restore, delete. Settings: GET/PUT whitelisted keys (versions.max_per_doc).")
+        Component(storage_handlers, "Storage Admin Handlers", "handlers_admin_storage.go + _jobs.go + _restore.go", "Configuração de backend, migração local↔S3 (expõe total_found), teste de conexão, reconcile S3↔DB. Backup assíncrono S3 (backup-start, jobs/{id}, jobs/{id}/download-url) e restauração cross-backend (restore-start). Endpoints legados síncronos mantidos.")
         Component(jobs_mgr, "BackupJobManager", "jobs.go", "Tracking in-memory de jobs de backup/restore. sync.Mutex + LRU 50. Single-in-flight por backend (ErrJobInFlight → 409). Snapshot expõe progresso, presigned URL, RestoreSummary.")
         Component(backup_sweep, "BackupTempSweep", "backup_sweep.go", "Goroutine não-bloqueante no startup. Lista _backup-tmp/ via S3Capable.ListWithMetadata, deleta objetos > 24h via DeleteMany.")
         Component(graph_handler, "Graph Handler", "handlers_graph.go", "GET /api/graph. Retorna nodes + edges para D3.js. Suporta filtro por tag e toggle all-docs.")
@@ -31,7 +31,7 @@ C4Component
     }
 
     Container_Boundary(store_pkg, "internal/store") {
-        Component(doc_store, "DocumentStore", "documents.go", "Create, GetByID, Update, UpdateAndSync (aceita syncFn(*sql.Tx)), SoftDelete, Restore, Move, ListTree, ListChildren (filhos diretos para cards), PermanentDelete (remove filhos órfãos antes de deletar), EmptyTrash (detach children + delete trashed).")
+        Component(doc_store, "DocumentStore", "documents.go", "Create, GetByID, Update, UpdateAndSync (aceita syncFn(*sql.Tx)), SoftDelete, Restore, Move, ListTree, ListChildren (filhos diretos para cards), PermanentDelete (remove filhos órfãos antes de deletar), EmptyTrash (detach children + delete trashed). SnapshotIfChanged (SHA-256 dedup), ListVersions, GetVersion, RestoreVersion, DeleteVersion.")
         Component(link_store, "LinkStore", "links.go", "CreateLink, DeleteLink, GetLinksForDocument, GetGraphData, SyncLinksFromHTML (tokeniza HTML, diff, insert/delete no mesmo tx).")
         Component(tag_store, "TagStore", "tags.go", "ListWithCounts (INNER JOIN, exclui tags de docs na lixeira), ListAllWithCounts (LEFT JOIN, inclui todas — para admin), SetDocumentTags, RenameOrMerge, Update (nome+cor), Delete, PruneUnused.")
         Component(att_store, "AttachmentStore", "attachments.go", "CreateFile (valida prefixo reservado _backup-tmp/), GetByID, ListByDocument, ListAllWithDocument (join com título do doc), Delete, DeleteByDocument (limpa disco+DB para um doc), ListOrphans, FullPath. EnumerateForBackup, BackfillSHA256, LookupBySHA256 (backup/restore).")
@@ -108,7 +108,7 @@ C4Component
     title Component Diagram — PKD Svelte 5 SPA
 
     Container_Boundary(svelte_app, "frontend/src/") {
-        Component(app, "App.svelte", "Svelte 5, hash router", "Raiz da aplicação. Verifica sessão, tema, router hash-based (#/doc/:id, #/graph, #/calendar, #/admin). Monta sidebar + área de conteúdo.")
+        Component(app, "App.svelte", "Svelte 5, hash router", "Raiz da aplicação. Verifica sessão, tema, router hash-based (#/doc/:id, #/graph, #/calendar, #/admin). Mobile (≤640px): master-detail (tela-lista vs tela-detalhe com botão ←). Desktop: sidebar + área de conteúdo.")
 
         Container_Boundary(stores, "lib/stores/") {
             Component(auth_store, "auth.js", "Svelte writable", "authenticated (null|bool), login(), logout(), checkSession(). Lê pkd_csrf cookie via api.js.")
@@ -120,12 +120,13 @@ C4Component
         Container_Boundary(components_fe, "lib/components/") {
             Component(sidebar, "Sidebar.svelte", "Svelte 5", "Filtro de tags com chips coloridos, árvore de documentos delegada a TreeNode.svelte, botão novo documento.")
             Component(tree_node, "TreeNode.svelte", "Svelte 5 (recursivo)", "Nó da árvore: toggle expandir, drag-and-drop, ações contextuais.")
-            Component(editor, "Editor.svelte", "TipTap v2, Svelte 5", "Editor rico com auto-save 2s, conflito de versão 409. Toolbar: formatação, tabela, imagem por URL, alinhamento, destaque com cor. Cards de sub-documentos (filhos diretos) exibidos entre o editor e a área de associações. Chips de tag com cor inline. Upload de anexos, modal de preview, backlinks, links externos.")
+            Component(editor, "Editor.svelte", "TipTap v2, Svelte 5", "Editor rico com auto-save 2s, conflito de versão 409. Toolbar: formatação, tabela, imagem por URL, alinhamento, destaque com cor. Cards de sub-documentos (filhos diretos) exibidos entre o editor e a área de associações. Chips de tag com cor inline. Upload de anexos, modal de preview, backlinks, links externos. Barra de ações: ⭐ favoritar, ⏱ histórico de versões (VersionHistoryDialog), compartilhar, trancar, arquivar.")
             Component(graph_view, "GraphView.svelte", "D3.js (d3-force, d3-zoom)", "Simulação force-directed em $effect. Svelte {#each} renderiza SVG circles/lines. Filtro de tags e toggle all-docs.")
             Component(search_comp, "Search.svelte", "Svelte 5", "Input de busca universal com dropdown. Debounce 150ms.")
             Component(calendar, "Calendar.svelte", "Svelte 5", "Grade mensal de dias. Clicar num dia lista documentos criados naquele dia.")
-            Component(admin, "Admin.svelte", "Svelte 5", "Abas: Backup/Restore, Lixeira, Tags (color picker + inline edit + delete + prune), Arquivos (grid com thumbnail + orphans), Limpeza, Links.")
+            Component(admin, "Admin.svelte", "Svelte 5", "Abas: Backup/Restore, Lixeira, Tags (color picker + inline edit + delete + prune), Arquivos (grid com thumbnail + botão Verificar Órfãos → lista por arquivo com Baixar/Eliminar), Limpeza (VACUUM), Links, Storage (reconcile S3↔DB), Configurações (retenção de versões).")
             Component(share_dialog, "ShareDialog.svelte", "Svelte 5", "Gera link público, copia URL, revoga link.")
+            Component(version_dialog, "VersionHistoryDialog.svelte", "Svelte 5", "Lista versões do documento com data/hora. Preview de conteúdo. Restaurar (POST /versions/:vid/restore) e excluir (DELETE /versions/:vid) versão individual.")
         }
 
         Container_Boundary(editor_exts, "lib/editor/") {
@@ -166,7 +167,7 @@ C4Component
 | AttachmentStore | `store/attachments.go` | CreateFile (rejeita prefixo `_backup-tmp/`), GetByID, ListByDocument, **ListAllWithDocument**, Delete, **DeleteByDocument**, ListOrphans, **EnumerateForBackup**, **BackfillSHA256**, **LookupBySHA256** |
 | handlers_documents | `server/handlers_documents.go` | CRUD + **handleListChildren** (`GET /api/documents/{id}/children`) |
 | handlers_attachments | `server/handlers_attachments.go` | Upload multipart/octet-stream, **inline Content-Disposition**, override CSP para embed |
-| handlers_admin | `server/handlers_admin.go` | Lixeira, backup do DB, **handleAdminListAllTags**, **handleAdminUpdateTag**, **handleAdminDeleteTag**, **handleAdminPruneTags**, **handleAdminListAttachments**, **handleAdminListOrphans** |
+| handlers_admin | `server/handlers_admin.go` | Lixeira, VACUUM, **handleAdminListAllTags**, **handleAdminUpdateTag**, **handleAdminDeleteTag**, **handleAdminPruneTags**, **handleAdminListAttachments**, **handleAdminListOrphans** (retorna []OrphanInfo), **handleAdminDownloadOrphan**, **handleAdminDeleteOrphan**. Versões: list/get/restore/delete. Settings: GET/PUT. |
 | handlers_admin_storage | `server/handlers_admin_storage.go` + `_jobs.go` + `_restore.go` | Config de backend, migração local↔S3, teste de conexão. **handleAdminStorageBackupStart**, **handleAdminStorageGetJob**, **handleAdminStorageRegenerateDownloadURL**, **handleAdminStorageRestoreStart**. Endpoints legados síncronos (`backup-attachments` GET, `restore-attachments` POST) mantidos. |
 | BackupJobManager | `server/jobs.go` | Start/Get/Finish/SetDownloadURL. sync.Mutex + LRU 50. Single-in-flight por backend (`ErrJobInFlight` → 409). RestoreSummary com counters (written/kept/skipped_orphan/hash_mismatch) + SkippedEntry[]. |
 | backup pkg | `backup/manifest.go` + `writer.go` + `reader.go` + `sweep.go` | **Manifest** v1 (SHA256 → stored_filenames). **StreamingBackup** (archive/zip + io.TeeReader para backfill SHA256). **StreamingRestore** com 3 modos on_conflict + per-entry failure isolation. **S3RangeReaderAt** wrap GetRange como io.ReaderAt. **SweepStaleTempObjects** no startup. |

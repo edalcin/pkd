@@ -1,6 +1,6 @@
 # C4 Level 4 — Code: PKD
 
-> **Versão**: v2.1 · **Data**: 2026-04-18
+> **Versão**: v2.3 · **Data**: 2026-05-29
 
 ## Modelo de dados — Structs Go (`internal/model/`)
 
@@ -116,7 +116,18 @@ classDiagram
     LinksResponse --> LinkEntry
     GraphData --> GraphNode
     GraphData --> GraphEdge
+    class DocumentVersion {
+        +int64 ID
+        +int64 DocumentID
+        +string Title
+        +string BodyHTML
+        +string Icon
+        +string ContentSHA256
+        +time.Time CreatedAt
+    }
+
     Document --> VersionConflict : retornado em 409
+    Document "1" --> "*" DocumentVersion : document_id (CASCADE)
 ```
 
 ## Fluxo de sincronização de links (atomicidade)
@@ -322,10 +333,18 @@ O servidor Go serve apenas `/` → `index.html` (com `Cache-Control: no-cache` p
 | DELETE | `/api/admin/tags/{id}` | `handleAdminDeleteTag` | Remove tag e suas associações |
 | POST | `/api/admin/tags/prune` | `handleAdminPruneTags` | Remove tags sem nenhum documento |
 | GET | `/api/admin/attachments` | `handleAdminListAttachments` | Lista todos os anexos com título do documento |
-| GET | `/api/admin/attachments/orphans` | `handleAdminListOrphans` | Lista arquivos em disco sem registro no DB |
+| GET | `/api/admin/attachments/orphans` | `handleAdminListOrphans` | Lista órfãos como `[]OrphanInfo{key, size_bytes}` |
+| GET | `/api/admin/attachments/orphans/download` | `handleAdminDownloadOrphan` | Download de arquivo órfão (`?key=`); verifica se é órfão antes de servir |
+| DELETE | `/api/admin/attachments/orphans/item` | `handleAdminDeleteOrphan` | Exclui arquivo órfão (`?key=`); verifica se é órfão antes de deletar |
+| GET | `/api/documents/{id}/versions` | `handleListVersions` | Lista snapshots sem body_html |
+| GET | `/api/documents/{id}/versions/{vid}` | `handleGetVersion` | Snapshot completo com body_html |
+| POST | `/api/documents/{id}/versions/{vid}/restore` | `handleRestoreVersion` | Restaura snapshot; retorna Document atualizado |
+| DELETE | `/api/documents/{id}/versions/{vid}` | `handleDeleteVersion` | Exclui snapshot individual |
+| GET | `/api/admin/settings` | `handleAdminGetSettings` | Lê configurações persistidas (whitelist) |
+| PUT | `/api/admin/settings` | `handleAdminPutSettings` | Salva configuração (`versions.max_per_doc`) |
 | POST | `/api/admin/backup` | `handleAdminBackup` | Download do SQLite via VACUUM INTO |
 | POST | `/api/admin/restore` | `handleAdminRestore` | Restaura backup (requer confirmação) |
-| POST | `/api/admin/cleanup` | `handleAdminCleanup` | Remove anexos órfãos + VACUUM |
+| POST | `/api/admin/cleanup` | `handleAdminCleanup` | VACUUM no banco de dados |
 | POST | `/api/admin/check-urls` | `handleAdminCheckURLs` | Testa validade de links externos (HTTP HEAD) |
 
 ### Outros

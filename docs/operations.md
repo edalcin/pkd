@@ -123,20 +123,52 @@ Cobre crashes da aplicação que deixaram ZIPs intermediários órfãos.
 
 Uma operação ativa por backend por vez. Tentativa de iniciar segunda operação retorna **409 Conflict** com mensagem "Já existe uma operação em andamento para este backend".
 
+### Reconciliação S3 ↔ DB
+
+Após um restore do banco de dados sem os arquivos S3 correspondentes, o campo `storage_location` pode ficar desatualizado (`local` para arquivos que estão no S3). Isso causa migrações que retornam `copied=0` mesmo havendo arquivos.
+
+**Administração → Storage → "Reconciliar S3 ↔ DB"**
+
+Varre o bucket S3, compara as chaves com `stored_filename` na tabela `attachments` e corrige `storage_location` para `s3` nas linhas desatualizadas. Não move arquivos — apenas corrige o banco. Execute antes de uma migração quando `total_found=0` mas você sabe que há arquivos no S3.
+
+---
+
+## Histórico de versões
+
+O PKD snapshota o conteúdo (título + corpo + ícone) de cada documento a cada save.
+
+- **Dedup por SHA-256** — saves sem mudança de conteúdo não geram nova versão.
+- **Retenção padrão** — 50 versões por documento. Configurável em **Administração → Configurações → Máx. versões por documento**.
+- **Visualizar** — botão `⏱` na barra de ações do documento.
+- **Restaurar** — clique em "Restaurar esta versão" no dialog. Usa o fluxo normal de save (bloqueio otimista; retorna `409` em caso de conflito de versão).
+- **Excluir versão** — ícone de lixeira por entrada (hover-reveal), com confirmação.
+
+Versões são excluídas em cascata quando o documento é excluído permanentemente.
+
 ---
 
 ## Limpeza de órfãos
 
-Com o tempo, documentos excluídos podem deixar arquivos de anexo órfãos no disco (arquivos sem linha correspondente na tabela `attachments`). Para removê-los:
+Com o tempo, documentos excluídos ou uploads com falha podem deixar arquivos no disco sem linha correspondente na tabela `attachments`. O PKD oferece controle individual de cada arquivo órfão.
 
-**Administração → Limpeza → Iniciar limpeza**
+### Verificar e gerenciar
 
-Isso:
-1. Percorre o diretório de anexos.
-2. Exclui arquivos sem linha na tabela `attachments`.
-3. Executa `VACUUM` no banco para liberar espaço.
+1. **Administração → Arquivos**.
+2. Clique em **"🔍 Verificar Órfãos"** (ao lado de "↻ Atualizar").
+3. A lista de arquivos órfãos aparece abaixo dos anexos normais, com nome e tamanho de cada arquivo.
+4. Por arquivo:
+   - **"⬇ Baixar"** — faz download do arquivo antes de decidir eliminar.
+   - **"🗑 Eliminar"** — exclui o arquivo com confirmação. Irreversível.
 
-Seguro de executar a qualquer momento. Exibe quantos arquivos foram removidos.
+### VACUUM do banco
+
+Para recuperar espaço em disco no banco SQLite após exclusões:
+
+**Administração → Limpeza → Iniciar VACUUM**
+
+Executa `VACUUM` no banco. Não remove arquivos de anexo (use "Verificar Órfãos" para isso).
+
+Seguro de executar a qualquer momento.
 
 ---
 
