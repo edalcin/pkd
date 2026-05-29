@@ -7,12 +7,18 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"time"
 
 	"github.com/edalcin/pkd/internal/model"
 	"github.com/edalcin/pkd/internal/store"
 )
+
+type OrphanInfo struct {
+	Key       string `json:"key"`
+	SizeBytes int64  `json:"size_bytes"`
+}
 
 func (s *Server) handleAdminListTrash() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -163,23 +169,11 @@ func (s *Server) handleAdminRestore() http.HandlerFunc {
 
 func (s *Server) handleAdminCleanup() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// ListOrphanedStoredFiles returns logical keys (not absolute paths) for local-backend files.
-		orphans, err := s.attachments.ListOrphanedStoredFiles()
-		if err != nil {
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-		removed := 0
-		for _, key := range orphans {
-			if s.localBackend.Delete(r.Context(), key) == nil {
-				removed++
-			}
-		}
 		if _, err := s.db.Exec("VACUUM"); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]int{"orphans_removed": removed})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	}
 }
 
@@ -280,13 +274,80 @@ func (s *Server) handleAdminListAttachments() http.HandlerFunc {
 
 func (s *Server) handleAdminListOrphans() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orphans, err := s.attachments.ListOrphanedStoredFiles()
+		keys, err := s.attachments.ListOrphanedStoredFiles()
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]int{"count": len(orphans)})
+		result := make([]OrphanInfo, 0, len(keys))
+		for _, key := range keys {
+			var size int64
+			rc, sz, err := s.localBackend.Get(r.Context(), key)
+			if err == nil {
+				rc.Close()
+				size = sz
+			}
+			result = append(result, OrphanInfo{Key: key, SizeBytes: size})
+		}
+		writeJSON(w, http.StatusOK, result)
 	}
+}
+
+func (s *Server) handleAdminDownloadOrphan() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key := r.URL.Query().Get("key")
+		if key == "" {
+			http.Error(w, "key required", http.StatusBadRequest)
+			return
+		}
+		if !s.isOrphanKey(r, key) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		rc, size, err := s.localBackend.Get(r.Context(), key)
+		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		defer rc.Close()
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, path.Base(key)))
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+		io.Copy(w, rc) //nolint:errcheck
+	}
+}
+
+func (s *Server) handleAdminDeleteOrphan() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key := r.URL.Query().Get("key")
+		if key == "" {
+			http.Error(w, "key required", http.StatusBadRequest)
+			return
+		}
+		if !s.isOrphanKey(r, key) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err := s.localBackend.Delete(r.Context(), key); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// isOrphanKey verifies that key exists as a local-backend orphan (not a valid attachment).
+func (s *Server) isOrphanKey(r *http.Request, key string) bool {
+	orphans, err := s.attachments.ListOrphanedStoredFiles()
+	if err != nil {
+		return false
+	}
+	for _, k := range orphans {
+		if k == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) handleAdminUpdateTag() http.HandlerFunc {

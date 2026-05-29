@@ -23,7 +23,8 @@
 
   // Attachments tab
   let allAttachments = $state([])
-  let orphanCount = $state(0)
+  let allOrphans = $state([])
+  let orphansLoading = $state(false)
   let attachmentsLoading = $state(false)
   let previewAtt = $state(null)
 
@@ -118,15 +119,35 @@
   async function loadAttachments() {
     attachmentsLoading = true
     try {
-      const [atts, orphans] = await Promise.all([
-        apiGet('/api/admin/attachments'),
-        apiGet('/api/admin/attachments/orphans'),
-      ])
-      allAttachments = atts || []
-      orphanCount = orphans?.count ?? 0
+      allAttachments = (await apiGet('/api/admin/attachments')) || []
     } finally {
       attachmentsLoading = false
     }
+  }
+
+  async function loadOrphans() {
+    orphansLoading = true
+    try {
+      allOrphans = (await apiGet('/api/admin/attachments/orphans')) || []
+    } finally {
+      orphansLoading = false
+    }
+  }
+
+  async function downloadOrphan(key) {
+    const res = await apiFetch(`/api/admin/attachments/orphans/download?key=${encodeURIComponent(key)}`)
+    if (!res.ok) { alert('Erro ao baixar arquivo'); return }
+    const blob = await res.blob()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = key.split('/').pop()
+    a.click()
+  }
+
+  async function deleteOrphan(key) {
+    if (!confirm(`Eliminar o arquivo órfão "${key.split('/').pop()}"? Esta ação não pode ser desfeita.`)) return
+    await apiFetch(`/api/admin/attachments/orphans/item?key=${encodeURIComponent(key)}`, { method: 'DELETE' })
+    allOrphans = allOrphans.filter(o => o.key !== key)
   }
 
   function setTab(id) {
@@ -532,24 +553,11 @@
     allAttachments = allAttachments.filter(a => a.id !== att.id)
   }
 
-  async function handleCleanupOrphans() {
-    loading = true
-    try {
-      const data = await apiPost('/api/admin/cleanup')
-      cleanupResult = data
-      orphanCount = 0
-    } finally {
-      loading = false
-    }
-  }
-
   // Cleanup tab
   async function handleCleanup() {
     loading = true
     try {
-      const data = await apiPost('/api/admin/cleanup')
-      cleanupResult = data
-      orphanCount = 0
+      cleanupResult = await apiPost('/api/admin/cleanup')
     } finally {
       loading = false
     }
@@ -776,9 +784,14 @@
     <div class="admin-section">
       <div class="section-header">
         <h3>Arquivos anexados ({allAttachments.length})</h3>
-        <button class="btn btn-ghost btn-sm" onclick={loadAttachments} disabled={attachmentsLoading}>
-          {attachmentsLoading ? 'Carregando…' : '↻ Atualizar'}
-        </button>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-ghost btn-sm" onclick={loadAttachments} disabled={attachmentsLoading}>
+            {attachmentsLoading ? 'Carregando…' : '↻ Atualizar'}
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick={loadOrphans} disabled={orphansLoading}>
+            {orphansLoading ? 'Verificando…' : '🔍 Verificar Órfãos'}
+          </button>
+        </div>
       </div>
 
       {#if attachmentsLoading}
@@ -812,19 +825,29 @@
       {/if}
     </div>
 
-    {#if orphanCount > 0}
+    {#if allOrphans.length > 0 || orphansLoading}
       <div class="admin-section orphan-section">
         <div class="section-header">
-          <h3>Arquivos órfãos ({orphanCount})</h3>
+          <h3>Arquivos órfãos{allOrphans.length > 0 ? ` (${allOrphans.length})` : ''}</h3>
         </div>
-        <p class="muted" style="margin-bottom:.75rem">
-          Arquivos no disco sem registro no banco de dados. Podem ser resquícios de uploads com falha.
-        </p>
-        <button class="btn btn-danger" onclick={handleCleanupOrphans} disabled={loading}>
-          {loading ? 'Limpando…' : '🧹 Remover arquivos órfãos'}
-        </button>
-        {#if cleanupResult}
-          <p class="cleanup-result">✓ {cleanupResult.orphans_removed} arquivo(s) removido(s).</p>
+        {#if orphansLoading}
+          <p class="muted">Verificando…</p>
+        {:else if allOrphans.length === 0}
+          <p class="muted">Nenhum arquivo órfão encontrado.</p>
+        {:else}
+          <p class="muted" style="margin-bottom:.75rem">
+            Arquivos no disco sem registro no banco de dados. Podem ser resquícios de uploads com falha.
+          </p>
+          <div class="orphan-list">
+            {#each allOrphans as orphan}
+              <div class="orphan-row">
+                <span class="orphan-name" title={orphan.key}>{orphan.key.split('/').pop()}</span>
+                <span class="orphan-size muted">{formatBytes(orphan.size_bytes)}</span>
+                <button class="btn btn-ghost btn-sm" onclick={() => downloadOrphan(orphan.key)}>⬇ Baixar</button>
+                <button class="btn btn-danger btn-sm" onclick={() => deleteOrphan(orphan.key)}>🗑 Eliminar</button>
+              </div>
+            {/each}
+          </div>
         {/if}
       </div>
     {/if}
@@ -834,12 +857,12 @@
   {#if activeTab === 'cleanup'}
     <div class="admin-section">
       <h3>Limpeza do banco</h3>
-      <p class="muted" style="margin-bottom:.75rem">Remove anexos órfãos e executa VACUUM no banco de dados.</p>
+      <p class="muted" style="margin-bottom:.75rem">Executa VACUUM no banco de dados para recuperar espaço em disco.</p>
       <button class="btn btn-primary" onclick={handleCleanup} disabled={loading}>
-        {loading ? 'Limpando…' : '🧹 Iniciar limpeza'}
+        {loading ? 'Executando…' : '🧹 Iniciar VACUUM'}
       </button>
       {#if cleanupResult}
-        <p class="cleanup-result">✓ {cleanupResult.orphans_removed} anexos órfãos removidos.</p>
+        <p class="cleanup-result">✓ VACUUM concluído.</p>
       {/if}
     </div>
   {/if}
@@ -1575,6 +1598,35 @@
     border-radius: var(--radius);
     padding: .75rem 1rem;
     background: rgba(245, 158, 11, .06);
+  }
+
+  .orphan-list {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+    margin-top: .5rem;
+  }
+
+  .orphan-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .35rem .5rem;
+    border-radius: var(--radius-sm, 4px);
+    background: var(--surface-alt, rgba(0,0,0,.04));
+  }
+
+  .orphan-name {
+    flex: 1;
+    font-size: .875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .orphan-size {
+    font-size: .8rem;
+    white-space: nowrap;
   }
 
   .cleanup-result {
