@@ -242,7 +242,7 @@
       editorInstance.view.dispatch(tr)
       importImgsResult = { imported: Object.keys(mapping).length, failed }
       setTimeout(() => { importImgsResult = null }, 5000)
-      scheduleAutoSave()
+      await performSave()
       try { attachments = await apiGet(`/api/documents/${doc.id}/attachments`) } catch {}
     } finally {
       importingImgs = false
