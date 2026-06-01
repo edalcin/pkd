@@ -186,6 +186,45 @@ func (s *Server) handleAdminCleanup() http.HandlerFunc {
 	}
 }
 
+// DiskUsageResponse holds byte counts for each storage component.
+type DiskUsageResponse struct {
+	DBBytes          int64 `json:"db_bytes"`
+	DBWALBytes       int64 `json:"db_wal_bytes"`
+	DBSHMBytes       int64 `json:"db_shm_bytes"`
+	AttachmentsBytes int64 `json:"attachments_bytes"`
+	TotalBytes       int64 `json:"total_bytes"`
+}
+
+func statSize(path string) int64 {
+	if fi, err := os.Stat(path); err == nil {
+		return fi.Size()
+	}
+	return 0
+}
+
+// handleAdminDiskUsage reports disk space used by the SQLite database files
+// and the local attachments directory.
+// GET /api/admin/disk-usage
+func (s *Server) handleAdminDiskUsage() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp := DiskUsageResponse{
+			DBBytes:    statSize(s.cfg.DBPath),
+			DBWALBytes: statSize(s.cfg.DBPath + "-wal"),
+			DBSHMBytes: statSize(s.cfg.DBPath + "-shm"),
+		}
+
+		_ = filepath.Walk(s.cfg.AttachmentsPath, func(_ string, fi os.FileInfo, err error) error {
+			if err == nil && !fi.IsDir() {
+				resp.AttachmentsBytes += fi.Size()
+			}
+			return nil
+		})
+
+		resp.TotalBytes = resp.DBBytes + resp.DBWALBytes + resp.DBSHMBytes + resp.AttachmentsBytes
+		writeJSON(w, http.StatusOK, resp)
+	}
+}
+
 func (s *Server) handleAdminListURLs() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rows, err := s.urls.ListAllWithDocTitle()

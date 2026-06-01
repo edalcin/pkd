@@ -287,6 +287,9 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/api/admin/shares", s.handleAdminListShares())
 		r.Delete("/api/admin/shares/{shareID}", s.handleAdminRevokeShare())
 
+		// Disk usage
+		r.Get("/api/admin/disk-usage", s.handleAdminDiskUsage())
+
 		// Server-side settings
 		r.Get("/api/admin/settings", s.handleAdminGetSettings())
 		r.Put("/api/admin/settings", s.handleAdminSetSettings())

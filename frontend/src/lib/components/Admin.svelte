@@ -51,6 +51,8 @@
 
   // Storage tab
   let storageConfig = $state(null)
+  let diskUsage = $state(null)
+  let diskUsageLoading = $state(false)
   let storageTestResult = $state(null)
   let storageMigrateResult = $state(null)
   let storageCleanupResult = $state(null)
@@ -222,11 +224,27 @@
     if (id === 'tags') loadAdminTags()
     if (id === 'shares') loadShares()
     if (id === 'links') loadAdminURLs()
-    if (id === 'storage') loadStorageConfig()
+    if (id === 'storage') { loadStorageConfig(); loadDiskUsage() }
   }
 
   async function loadStorageConfig() {
     storageConfig = await apiGet('/api/admin/storage/config')
+  }
+
+  async function loadDiskUsage() {
+    diskUsageLoading = true
+    try {
+      diskUsage = await apiGet('/api/admin/disk-usage')
+    } finally {
+      diskUsageLoading = false
+    }
+  }
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 B'
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    const i = Math.floor(Math.log(bytes) / Math.log(1024))
+    return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i]
   }
 
   async function switchStorageBackend(backend) {
@@ -1144,6 +1162,37 @@
   <!-- Storage -->
   {#if activeTab === 'storage'}
     <div class="admin-section">
+      <h3>Uso de disco</h3>
+      {#if diskUsageLoading}
+        <p class="muted">Calculando...</p>
+      {:else if diskUsage}
+        <div class="disk-usage-grid">
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Banco de dados</span>
+            <span class="disk-usage-value">{formatBytes(diskUsage.db_bytes)}</span>
+          </div>
+          {#if diskUsage.db_wal_bytes > 0}
+            <div class="disk-usage-card">
+              <span class="disk-usage-label">WAL (SQLite)</span>
+              <span class="disk-usage-value">{formatBytes(diskUsage.db_wal_bytes)}</span>
+            </div>
+          {/if}
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Arquivos associados</span>
+            <span class="disk-usage-value">{formatBytes(diskUsage.attachments_bytes)}</span>
+          </div>
+          <div class="disk-usage-card disk-usage-total">
+            <span class="disk-usage-label">Total</span>
+            <span class="disk-usage-value">{formatBytes(diskUsage.total_bytes)}</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick={loadDiskUsage}>
+          🔄 Atualizar
+        </button>
+      {/if}
+    </div>
+
+    <div class="admin-section">
       <h3>Backend de armazenamento</h3>
 
       {#if !storageConfig}
@@ -2039,4 +2088,39 @@
   .preview-file-name { font-size: .9rem; font-weight: 500; text-align: center; }
   .preview-file-size { font-size: .8rem; color: var(--text-muted); }
   .preview-audio { width: 300px; max-width: 100%; }
+
+  .disk-usage-grid {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+  }
+
+  .disk-usage-card {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    padding: .75rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface, var(--bg));
+    min-width: 120px;
+  }
+
+  .disk-usage-total {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+  }
+
+  .disk-usage-label {
+    font-size: .75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .disk-usage-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
 </style>
