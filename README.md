@@ -74,7 +74,7 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 📦 **Backup / Restauração de anexos** | Backend local: ZIP síncrono. Backend S3: backup **assíncrono** que monta o ZIP no próprio bucket (sem usar disco da instância) e oferece URL pré-assinada (TTL 15 min). Restauração **cross-backend**: ZIP gerado em S3 pode ser restaurado em backend local e vice-versa. Manifesto interno usa SHA256 (dedup natural + verificação de integridade). Job tracking com progresso e contadores (gravados / mantidos / órfãos / hash inválido). |
 | 🗑️ **Lixeira** | Documentos excluídos ficam em lixeira; restauráveis individualmente ou em lote |
 | 🏷️ **Tags** | Renomear, editar cor, excluir ou mesclar tags globalmente; botão para remover tags órfãs |
-| 📎 **Arquivos** | Grade com todos os anexos do sistema (thumbnail para imagens); botão "Verificar Órfãos" lista arquivos sem documento associado — baixe individualmente ou elimine por arquivo com confirmação |
+| 📎 **Arquivos** | Grade com todos os anexos do sistema (thumbnail para imagens); botão "Verificar Órfãos" lista arquivos sem documento associado; seção "Imagens externas" lista documentos com imagens hospedadas fora do PKD e permite importá-las individualmente com um clique |
 | 🔗 **Links externos** | Tabela de gerenciamento de todos os links externos; testa validade (HTTP HEAD) e permite excluir inválidos em lote |
 | ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada, reconciliação S3↔DB, limpeza da origem; backup/restauração assíncrona com streaming multipart e URL pré-assinada |
 | 🧹 **Limpeza** | Executa `VACUUM` no banco de dados para recuperar espaço em disco |
@@ -265,6 +265,16 @@ Endpoints legados (`/api/admin/storage/backup-attachments` síncrono local) cont
 
 Detalhes operacionais em [`docs/operations.md`](docs/operations.md).
 
+### Importar imagens externas
+
+Ao colar conteúdo de outra página (blog, artigo, e-mail), imagens com URL externa ficam referenciadas no documento mas não são armazenadas no PKD — podem quebrar se o site original sair do ar.
+
+**No editor** — quando o documento aberto contém imagens externas, um botão `🌐⬇` aparece na barra de ferramentas. Clique para baixar e importar todas de uma vez; os `src` são reescritos para `/api/attachments/{id}` numa única transação (um passo de undo).
+
+**Em lote via Administração → Arquivos** — a seção "Imagens externas" lista todos os documentos com imagens externas, com o número de imagens por documento. Clique em "🌐⬇ Importar" ao lado de cada documento para importar individualmente.
+
+As imagens importadas passam a aparecer na grade de "Arquivos anexados" e ficam disponíveis mesmo se o site externo for removido.
+
 ### Exportar como Markdown
 
 Clique no botão **⬇ .md** na barra de ferramentas. O browser baixa imediatamente o arquivo `<título>.md` com o conteúdo do documento convertido para Markdown (headings `#`, código em triple-backtick, links `[[Documento]]` preservados).
@@ -395,6 +405,18 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-06-01
+
+**Importar imagens externas como attachments**
+
+- Ao colar conteúdo de outros sites ("corta-e-cola"), imagens hospedadas externamente (`<img src="https://...">`) podem ser convertidas em attachments internos
+- **No editor**: botão `🌐⬇` aparece na barra de ferramentas quando o documento contém imagens externas. Clicar baixa todas, cria attachments e reescreve os `src` numa única transação ProseMirror (um passo de undo)
+- **Na Administração → Arquivos**: nova seção "Imagens externas" lista todos os documentos afetados com contagem de imagens por documento. Botão "Importar" por linha executa a importação individualmente e atualiza a lista ao concluir
+- Endpoints: `POST /api/documents/{id}/attachments/from-url` (editor), `GET /api/admin/external-images`, `POST /api/admin/documents/{id}/import-external-images`
+- Segurança: fetch server-side protegido contra SSRF com bloqueio de IPs privados, loopback e metadata (169.254.x) via `net.Dialer.Control` pós-DNS
+
+---
 
 ### 2026-05-29
 

@@ -8,6 +8,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Adicionado
 
+- **Importar imagens externas como attachments** — conteúdo colado de outros sites frequentemente contém `<img src="https://...">` externos que podem quebrar se o site original sair do ar.
+  - **Editor**: botão `🌐⬇` na barra de ferramentas, visível apenas quando o documento aberto tem imagens externas. Um clique baixa todas as imagens, cria attachments inline e reescreve os `src` numa única transação ProseMirror (= um passo de undo).
+  - **Admin → Arquivos**: nova seção "Imagens externas" lista todos os documentos com imagens externas (contagem por documento); botão "Importar" por linha. Após importação a seção e a grade de anexados são atualizadas automaticamente.
+  - Endpoint `POST /api/documents/{id}/attachments/from-url` — baixa uma URL única e cria attachment inline; reutiliza `CreateFile` e respeita `PKD_MAX_IMAGE_MB`.
+  - Endpoint `GET /api/admin/external-images` — varre `body_html` de todos os documentos não-deletados.
+  - Endpoint `POST /api/admin/documents/{id}/import-external-images` — importa em lote, reescreve body e salva. Falhas individuais são não-fatais (contabilizadas em `failed`).
+  - Segurança: `imagefetch.go` implementa fetch SSRF-safe com `net.Dialer.Control` que rejeita conexões a endereços privados, loopback, não-especificados, link-local, multicast e os CIDRs adicionais `169.254.0.0/16` (metadata cloud) e `100.64.0.0/10` (CGNAT), verificados após resolução DNS.
+
+
+
 - **Backup assíncrono de anexos com backend S3** (`005-s3-attachments-backup` US1)
   - Novo endpoint `POST /api/admin/storage/backup-start` cria job assíncrono que gera ZIP diretamente no bucket S3 sem materializar no disco da instância de aplicação (`io.Pipe` + `manager.Uploader` para multipart streaming).
   - ZIP gravado em prefixo reservado `_backup-tmp/<job-id>.zip`.

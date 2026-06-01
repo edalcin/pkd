@@ -87,6 +87,24 @@ Quando `/api/capture` recebe uma URL, o servidor faz um HTTP GET externo:
 - Operação best-effort — falha silenciosa; a captura prossegue sem metadados OG se a URL falhar.
 - User-Agent identificável: `PKD/2.0 (+https://github.com/edalcin/pkd)`.
 
+> **Nota**: este fetch não tem guarda SSRF (débito pré-existente). Veja seção abaixo para o fetch de imagens externas que tem proteção completa.
+
+---
+
+## Fetch de imagens externas (SSRF-safe)
+
+Os endpoints `POST /api/documents/{id}/attachments/from-url` e `POST /api/admin/documents/{id}/import-external-images` permitem que o servidor busque URLs fornecidas pelo usuário autenticado. Isso é um vetor clássico de SSRF.
+
+| Controle | Mecanismo |
+|---|---|
+| **Validação de scheme** | Apenas `http://` e `https://` são aceitos; qualquer outro scheme é rejeitado antes de abrir conexão. |
+| **Bloqueio de IP pós-DNS** | `net.Dialer.Control` é chamado após resolução DNS, com o IP resolvido real. Rejeita: loopback (`IsLoopback`), privado RFC-1918 (`IsPrivate`), não-especificado `0.0.0.0`/`::` (`IsUnspecified`), link-local unicast/multicast (`IsLinkLocalUnicast`, `IsLinkLocalMulticast`), multicast (`IsMulticast`), `169.254.0.0/16` (metadata AWS/GCP — não coberto por `IsPrivate`) e `100.64.0.0/10` (CGNAT). Isso impede bypass via hostname que resolve para IP interno. |
+| **Limite de redirects** | Máximo 5 redirects; cada destino é re-validado pelo mesmo `Control`. Scheme diferente de `http`/`https` em redirect é rejeitado. |
+| **Validação de Content-Type** | Resposta com `Content-Type` que não comece com `image/` é rejeitada — impede uso do endpoint para exfiltrar conteúdo arbitrário (ex: HTML de serviços internos). |
+| **Limite de tamanho** | `io.LimitReader` a `PKD_MAX_IMAGE_MB` — resposta maior retorna erro, sem consumo de memória excessivo. |
+| **Timeout** | 10 segundos para conexão + leitura. |
+| **Autenticação** | Endpoints requerem sessão autenticada (`AuthRequired` middleware). Usuário não autenticado não pode disparar fetches externos. |
+
 ---
 
 ## Geração de links públicos
