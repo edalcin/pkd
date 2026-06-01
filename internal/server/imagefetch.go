@@ -93,23 +93,18 @@ func fetchExternalImage(ctx context.Context, rawURL string, maxBytes int64) ([]b
 
 // ssrfSafeDialer returns a net.Dialer whose Control function rejects connections
 // to private, loopback, and link-local IP ranges (including cloud metadata endpoints).
+// Uses Go's built-in IP helpers plus explicit CIDRs for ranges not covered by stdlib
+// (169.254.0.0/16 metadata, 100.64.0.0/10 CGNAT shared space).
 func ssrfSafeDialer() *net.Dialer {
-	privateRanges := []string{
-		"10.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-		"127.0.0.0/8",
-		"169.254.0.0/16", // link-local / AWS metadata
-		"100.64.0.0/10",  // shared address space
-		"::1/128",
-		"fc00::/7",  // unique local
-		"fe80::/10", // link-local IPv6
+	extraRanges := []string{
+		"169.254.0.0/16", // link-local / AWS+GCP metadata endpoint
+		"100.64.0.0/10",  // CGNAT shared address space
 	}
-	var nets []*net.IPNet
-	for _, cidr := range privateRanges {
+	var extraNets []*net.IPNet
+	for _, cidr := range extraRanges {
 		_, n, _ := net.ParseCIDR(cidr)
 		if n != nil {
-			nets = append(nets, n)
+			extraNets = append(extraNets, n)
 		}
 	}
 
@@ -124,9 +119,16 @@ func ssrfSafeDialer() *net.Dialer {
 			if ip == nil {
 				return fmt.Errorf("ssrf: could not parse ip %q", host)
 			}
-			for _, n := range nets {
+			// Block via Go stdlib helpers (covers loopback, private, unspecified,
+			// link-local unicast/multicast, and all multicast ranges).
+			if ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() ||
+				ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
+				return fmt.Errorf("ssrf: blocked address %s", ip)
+			}
+			// Block ranges not covered by stdlib helpers.
+			for _, n := range extraNets {
 				if n.Contains(ip) {
-					return fmt.Errorf("ssrf: blocked private address %s", ip)
+					return fmt.Errorf("ssrf: blocked address %s", ip)
 				}
 			}
 			return nil
