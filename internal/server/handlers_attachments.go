@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"mime"
@@ -188,6 +190,38 @@ func (s *Server) handleGetAttachment() http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			io.Copy(w, rc) //nolint:errcheck
 		}
+	}
+}
+
+// handleCreateAttachmentFromURL downloads an external image URL and stores it
+// as an inline attachment for the given document.
+// POST /api/documents/{id}/attachments/from-url  body: {"url":"https://..."}
+func (s *Server) handleCreateAttachmentFromURL() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		docID, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			URL string `json:"url"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.URL == "" {
+			http.Error(w, "url required", http.StatusBadRequest)
+			return
+		}
+		maxBytes := s.cfg.MaxImageMB * 1024 * 1024
+		data, mimeType, filename, err := fetchExternalImage(r.Context(), body.URL, maxBytes)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		att, err := s.attachments.CreateFile(r.Context(), s.activeStorage(), docID, filename, mimeType, "inline", bytes.NewReader(data), maxBytes)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusCreated, att)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/edalcin/pkd/internal/model"
+	"github.com/edalcin/pkd/internal/security"
 	"github.com/edalcin/pkd/internal/store"
 )
 
@@ -588,5 +589,71 @@ func (s *Server) handleAdminRenameTag() http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// ExternalImagesDoc describes a document that contains external image URLs.
+type ExternalImagesDoc struct {
+	DocID    int64  `json:"doc_id"`
+	DocTitle string `json:"doc_title"`
+	Count    int    `json:"count"`
+}
+
+// handleAdminListExternalImages scans all non-trashed documents and returns
+// those containing <img src="http..."> pointing outside the app.
+// GET /api/admin/external-images
+func (s *Server) handleAdminListExternalImages() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		docs, err := s.docs.ListWithBody()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		result := make([]ExternalImagesDoc, 0)
+		for _, d := range docs {
+			srcs := extractExternalImageSrcs(d.BodyHTML)
+			if len(srcs) > 0 {
+				result = append(result, ExternalImagesDoc{
+					DocID:    d.ID,
+					DocTitle: d.Title,
+					Count:    len(srcs),
+				})
+			}
+		}
+		writeJSON(w, http.StatusOK, result)
+	}
+}
+
+// ImportResult is returned by the import-external-images endpoint.
+type ImportResult struct {
+	Imported int `json:"imported"`
+	Failed   int `json:"failed"`
+}
+
+// handleAdminImportExternalImages downloads all external images in one
+// document, saves them as attachments, and rewrites the document body.
+// POST /api/admin/documents/{id}/import-external-images
+func (s *Server) handleAdminImportExternalImages() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		docID, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		doc, err := s.docs.GetByID(docID)
+		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		newHTML, imported, failed := s.importExternalImages(r.Context(), docID, doc.BodyHTML)
+		if imported > 0 {
+			plainText := security.ExtractPlainText(newHTML)
+			doc, err = s.docs.Update(docID, doc.Version, doc.Title, newHTML, plainText, doc.Icon)
+			if err != nil {
+				http.Error(w, "failed to save document", http.StatusInternalServerError)
+				return
+			}
+		}
+		writeJSON(w, http.StatusOK, ImportResult{Imported: imported, Failed: failed})
 	}
 }

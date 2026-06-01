@@ -255,6 +255,7 @@ func (s *Server) buildRouter() http.Handler {
 		// Attachments
 		r.Get("/api/documents/{id}/attachments", s.handleListAttachments())
 		r.Post("/api/documents/{id}/attachments", s.handleCreateAttachment())
+		r.Post("/api/documents/{id}/attachments/from-url", s.handleCreateAttachmentFromURL())
 		r.Get("/api/attachments/{id}", s.handleGetAttachment())
 		r.Delete("/api/attachments/{id}", s.handleDeleteAttachment())
 
@@ -276,6 +277,8 @@ func (s *Server) buildRouter() http.Handler {
 		r.Delete("/api/admin/tags/{id}", s.handleAdminDeleteTag())
 		r.Get("/api/admin/attachments", s.handleAdminListAttachments())
 		r.Get("/api/admin/attachments/orphans", s.handleAdminListOrphans())
+		r.Get("/api/admin/external-images", s.handleAdminListExternalImages())
+		r.Post("/api/admin/documents/{id}/import-external-images", s.handleAdminImportExternalImages())
 		r.Get("/api/admin/attachments/orphans/download", s.handleAdminDownloadOrphan())
 		r.Delete("/api/admin/attachments/orphans/item", s.handleAdminDeleteOrphan())
 		r.Get("/api/admin/urls", s.handleAdminListURLs())

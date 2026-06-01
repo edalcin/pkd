@@ -124,6 +124,7 @@
   let imgUrlValue = $state('')
   let imgUrlInputEl = $state(null)
   let imgUploading = $state(false)
+  let importingImgs = $state(false)
   let uploadImgInputEl = $state(null)
 
   function triggerImageUpload(e) {
@@ -175,6 +176,62 @@
     } finally {
       imgUploading = false
       e.target.value = ''
+    }
+  }
+
+  // Detect external images in the editor content (recalculated on each editorTick)
+  function getExternalImgSrcs() {
+    if (!editorInstance) return []
+    const srcs = new Set()
+    editorInstance.state.doc.descendants(node => {
+      if (node.type.name === 'image') {
+        const src = node.attrs?.src || ''
+        if ((src.startsWith('http://') || src.startsWith('https://')) && !src.includes('/api/attachments/')) {
+          srcs.add(src)
+        }
+      }
+    })
+    return [...srcs]
+  }
+
+  // Import all external images: fetch via backend, rewrite srcs in editor
+  async function importExternalImages(e) {
+    e?.preventDefault()
+    if (!doc || importingImgs) return
+    const srcs = getExternalImgSrcs()
+    if (srcs.length === 0) return
+    importingImgs = true
+    try {
+      const mapping = {}
+      for (const src of srcs) {
+        try {
+          const res = await apiFetch(`/api/documents/${doc.id}/attachments/from-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: src }),
+          })
+          if (res.ok) {
+            const att = await res.json()
+            if (att?.url) mapping[src] = att.url
+          }
+        } catch { /* skip failed image, keep original src */ }
+      }
+      if (Object.keys(mapping).length === 0) return
+      // Rewrite all affected image nodes in one transaction
+      const { tr, doc: pmDoc } = editorInstance.state
+      pmDoc.descendants((node, pos) => {
+        if (node.type.name === 'image') {
+          const newSrc = mapping[node.attrs?.src]
+          if (newSrc) {
+            tr.setNodeMarkup(pos, undefined, { ...node.attrs, src: newSrc })
+          }
+        }
+      })
+      editorInstance.view.dispatch(tr)
+      scheduleAutoSave()
+      try { attachments = await apiGet(`/api/documents/${doc.id}/attachments`) } catch {}
+    } finally {
+      importingImgs = false
     }
   }
 
@@ -971,6 +1028,12 @@
         <!-- Image: URL + upload -->
         <button class="tb-btn {imgUrlOpen ? 'active' : ''}" onmousedown={toggleImgUrl} title="Inserir imagem por URL">🖼</button>
         <button class="tb-btn" onmousedown={triggerImageUpload} title={imgUploading ? 'Enviando…' : 'Fazer upload de imagem'}>{imgUploading ? '⏳' : '📤'}</button>
+        {#if editorTick >= 0 && getExternalImgSrcs().length > 0}
+          <button class="tb-btn tb-btn-import-imgs" onmousedown={importExternalImages} disabled={importingImgs}
+            title={importingImgs ? 'Importando…' : `Importar ${getExternalImgSrcs().length} imagem(ns) externa(s) como anexo`}>
+            {importingImgs ? '⏳' : '🌐⬇'}
+          </button>
+        {/if}
 
         <!-- Table -->
         <button class="tb-btn" onmousedown={e => { e.preventDefault(); fmt(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }} title="Inserir tabela">⊞</button>
@@ -1523,6 +1586,10 @@
   .tb-btn.active {
     background: var(--accent);
     color: #fff;
+  }
+
+  .tb-btn-import-imgs {
+    color: var(--accent);
   }
 
   .tb-btn:disabled {

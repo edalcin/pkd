@@ -677,6 +677,36 @@ func (s *DocumentStore) listByQuery(view string, tagFilter []string, favoriteOnl
 	return scanDocRows(rows)
 }
 
+// DocWithBody is a minimal document projection used for content scanning.
+type DocWithBody struct {
+	ID      int64
+	Title   string
+	BodyHTML string
+}
+
+// ListWithBody returns id, title, and body_html for all non-trashed documents.
+// Used by the admin external-images scan.
+func (s *DocumentStore) ListWithBody() ([]DocWithBody, error) {
+	rows, err := s.db.Query(`
+		SELECT id, title, COALESCE(body_html, '')
+		FROM documents
+		WHERE deleted_at IS NULL AND trashed_at IS NULL
+		ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var docs []DocWithBody
+	for rows.Next() {
+		var d DocWithBody
+		if err := rows.Scan(&d.ID, &d.Title, &d.BodyHTML); err != nil {
+			return nil, err
+		}
+		docs = append(docs, d)
+	}
+	return docs, rows.Err()
+}
+
 // ListTrash returns all trashed documents with their trashed_at timestamp.
 func (s *DocumentStore) ListTrash() ([]*model.Document, error) {
 	rows, err := s.db.Query(`

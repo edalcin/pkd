@@ -28,6 +28,12 @@
   let attachmentsLoading = $state(false)
   let previewAtt = $state(null)
 
+  // External images tab
+  let externalImagesDocs = $state([])
+  let externalImagesLoading = $state(false)
+  let externalImagesImporting = $state({}) // { [docId]: true }
+  let externalImagesMsg = $state({}) // { [docId]: string }
+
   // Settings tab — version history
   let versionsMaxPerDoc = $state('50')
   let versionsSettingMsg = $state('')
@@ -134,6 +140,33 @@
     }
   }
 
+  async function loadExternalImages() {
+    externalImagesLoading = true
+    try {
+      externalImagesDocs = (await apiGet('/api/admin/external-images')) || []
+    } finally {
+      externalImagesLoading = false
+    }
+  }
+
+  async function importDocExternalImages(docId) {
+    externalImagesImporting = { ...externalImagesImporting, [docId]: true }
+    externalImagesMsg = { ...externalImagesMsg, [docId]: '' }
+    try {
+      const res = await apiFetch(`/api/admin/documents/${docId}/import-external-images`, { method: 'POST' })
+      if (!res.ok) {
+        externalImagesMsg = { ...externalImagesMsg, [docId]: 'Erro ao importar' }
+        return
+      }
+      const data = await res.json()
+      externalImagesMsg = { ...externalImagesMsg, [docId]: `${data.imported} importada(s)${data.failed ? ', ' + data.failed + ' falhou' : ''}` }
+      await loadExternalImages()
+      await loadAttachments()
+    } finally {
+      externalImagesImporting = { ...externalImagesImporting, [docId]: false }
+    }
+  }
+
   async function downloadOrphan(key) {
     const res = await apiFetch(`/api/admin/attachments/orphans/download?key=${encodeURIComponent(key)}`)
     if (!res.ok) { alert('Erro ao baixar arquivo'); return }
@@ -157,7 +190,7 @@
 
   function setTab(id) {
     activeTab = id
-    if (id === 'attachments' && allAttachments.length === 0) loadAttachments()
+    if (id === 'attachments' && allAttachments.length === 0) { loadAttachments(); loadOrphans(); loadExternalImages() }
     if (id === 'tags') loadAdminTags()
     if (id === 'shares') loadShares()
     if (id === 'links') loadAdminURLs()
@@ -786,6 +819,43 @@
 
   <!-- Attachments -->
   {#if activeTab === 'attachments'}
+    <!-- External images sub-section -->
+    {#if externalImagesDocs.length > 0 || externalImagesLoading}
+      <div class="admin-section">
+        <div class="section-header">
+          <h3>Imagens externas{externalImagesDocs.length > 0 ? ` (${externalImagesDocs.length} doc.)` : ''}</h3>
+          <button class="btn btn-ghost btn-sm" onclick={loadExternalImages} disabled={externalImagesLoading}>
+            {externalImagesLoading ? 'Verificando…' : '↻ Atualizar'}
+          </button>
+        </div>
+        <p class="muted" style="margin-bottom:.75rem">
+          Documentos com imagens hospedadas externamente (copiadas de outras páginas). Importar converte cada imagem em um anexo interno.
+        </p>
+        {#if externalImagesLoading}
+          <p class="muted">Verificando…</p>
+        {:else}
+          <div class="orphan-list">
+            {#each externalImagesDocs as item}
+              <div class="orphan-row">
+                <div class="orphan-info">
+                  <a href="#/doc/{item.doc_id}" class="orphan-name">{item.doc_title}</a>
+                  <span class="orphan-doc muted">{item.count} imagem(ns) externa(s)</span>
+                </div>
+                {#if externalImagesMsg[item.doc_id]}
+                  <span class="muted" style="font-size:.85em">{externalImagesMsg[item.doc_id]}</span>
+                {/if}
+                <button class="btn btn-primary btn-sm"
+                  onclick={() => importDocExternalImages(item.doc_id)}
+                  disabled={externalImagesImporting[item.doc_id]}>
+                  {externalImagesImporting[item.doc_id] ? '⏳ Importando…' : '🌐⬇ Importar'}
+                </button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     {#if allOrphans.length > 0 || orphansLoading}
       <div class="admin-section orphan-section">
         <div class="section-header">
