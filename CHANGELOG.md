@@ -16,7 +16,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   - Endpoint `POST /api/admin/documents/{id}/import-external-images` — importa em lote, reescreve body e salva. Falhas individuais são não-fatais (contabilizadas em `failed`).
   - Segurança: `imagefetch.go` implementa fetch SSRF-safe com `net.Dialer.Control` que rejeita conexões a endereços privados, loopback, não-especificados, link-local, multicast e os CIDRs adicionais `169.254.0.0/16` (metadata cloud) e `100.64.0.0/10` (CGNAT), verificados após resolução DNS.
 
+### Corrigido
 
+- **Botão de importação de imagens externas** — comportamento corrigido e aprimorado:
+  - Botão desabilitado durante a operação para evitar importações duplicadas por double-click.
+  - Desaparece imediatamente após a importação quando não restam mais imagens externas (driven por `$derived.by` com `editorTick` como dependência reativa explícita, garantindo recálculo síncrono pós-dispatch).
+  - Permanece visível e habilitado (com ícone ✓) quando a importação termina mas ainda existem imagens externas não importadas (ex: falhas parciais), permitindo retry.
+  - Feedback inline na toolbar: mostra "N importada(s) / N falhou" por 5 segundos após a operação.
+- **Editor não atualizava após import via Admin** — ao importar imagens pela aba Arquivos da Administração, o documento aberto no editor continuava exibindo os `src` externos (stale). Adicionado `docBodyRefreshedSignal` no store de documentos: Admin dispara o sinal após import; Editor escuta e atualiza o conteúdo via `editorInstance.commands.setContent` sem re-montar o editor nem recarregar a página.
 
 - **Backup assíncrono de anexos com backend S3** (`005-s3-attachments-backup` US1)
   - Novo endpoint `POST /api/admin/storage/backup-start` cria job assíncrono que gera ZIP diretamente no bucket S3 sem materializar no disco da instância de aplicação (`io.Pipe` + `manager.Uploader` para multipart streaming).

@@ -269,9 +269,9 @@ Detalhes operacionais em [`docs/operations.md`](docs/operations.md).
 
 Ao colar conteúdo de outra página (blog, artigo, e-mail), imagens com URL externa ficam referenciadas no documento mas não são armazenadas no PKD — podem quebrar se o site original sair do ar.
 
-**No editor** — quando o documento aberto contém imagens externas, um botão `🌐⬇` aparece na barra de ferramentas. Clique para baixar e importar todas de uma vez; os `src` são reescritos para `/api/attachments/{id}` numa única transação (um passo de undo).
+**No editor** — quando o documento aberto contém imagens externas, um botão `🌐⬇` aparece na barra de ferramentas. O botão fica desabilitado durante a importação (evita duplo-clique) e desaparece imediatamente ao concluir quando não restam mais imagens externas. Um feedback inline exibe quantas foram importadas e quantas falharam (visível por 5 segundos).
 
-**Em lote via Administração → Arquivos** — a seção "Imagens externas" lista todos os documentos com imagens externas, com o número de imagens por documento. Clique em "🌐⬇ Importar" ao lado de cada documento para importar individualmente.
+**Em lote via Administração → Arquivos** — a seção "Imagens externas" lista todos os documentos com imagens externas, com o número de imagens por documento. Clique em "🌐⬇ Importar" ao lado de cada documento para importar individualmente. Se o documento importado estiver aberto no editor, o conteúdo é atualizado automaticamente sem necessidade de recarregar a página.
 
 As imagens importadas passam a aparecer na grade de "Arquivos anexados" e ficam disponíveis mesmo se o site externo for removido.
 
@@ -411,8 +411,8 @@ graph TD
 **Importar imagens externas como attachments**
 
 - Ao colar conteúdo de outros sites ("corta-e-cola"), imagens hospedadas externamente (`<img src="https://...">`) podem ser convertidas em attachments internos
-- **No editor**: botão `🌐⬇` aparece na barra de ferramentas quando o documento contém imagens externas. Clicar baixa todas, cria attachments e reescreve os `src` numa única transação ProseMirror (um passo de undo)
-- **Na Administração → Arquivos**: nova seção "Imagens externas" lista todos os documentos afetados com contagem de imagens por documento. Botão "Importar" por linha executa a importação individualmente e atualiza a lista ao concluir
+- **No editor**: botão `🌐⬇` aparece na barra de ferramentas quando o documento contém imagens externas. Desabilitado durante a operação (evita duplo-clique); desaparece imediatamente após importação completa; exibe resultado inline ("N importada(s) / N falhou") por 5 s
+- **Na Administração → Arquivos**: nova seção "Imagens externas" lista todos os documentos afetados com contagem de imagens por documento. Botão "Importar" por linha; se o documento estiver aberto no editor, o conteúdo é sincronizado automaticamente sem recarregar a página
 - Endpoints: `POST /api/documents/{id}/attachments/from-url` (editor), `GET /api/admin/external-images`, `POST /api/admin/documents/{id}/import-external-images`
 - Segurança: fetch server-side protegido contra SSRF com bloqueio de IPs privados, loopback e metadata (169.254.x) via `net.Dialer.Control` pós-DNS
 
