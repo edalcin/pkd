@@ -252,6 +252,7 @@ type DanglingAttachment struct {
 	ID              int64
 	StoredFilename  string
 	OriginalName    string
+	MimeType        string
 	SizeBytes       int64
 	StorageLocation string
 	DocTrashed      bool   // true when document exists but is in trash
@@ -263,7 +264,7 @@ type DanglingAttachment struct {
 // exist or is in the trash. These files are inaccessible through normal UI.
 func (s *AttachmentStore) ListDanglingAttachments() ([]*DanglingAttachment, error) {
 	rows, err := s.db.Query(`
-		SELECT a.id, a.stored_filename, a.original_name, a.size_bytes, a.storage_location,
+		SELECT a.id, a.stored_filename, a.original_name, a.mime_type, a.size_bytes, a.storage_location,
 		       d.trashed_at IS NOT NULL AS doc_trashed,
 		       COALESCE(d.id, 0) AS doc_id,
 		       COALESCE(d.title, '') AS doc_title
@@ -279,7 +280,7 @@ func (s *AttachmentStore) ListDanglingAttachments() ([]*DanglingAttachment, erro
 	for rows.Next() {
 		da := &DanglingAttachment{}
 		var docTrashed int
-		if err := rows.Scan(&da.ID, &da.StoredFilename, &da.OriginalName, &da.SizeBytes, &da.StorageLocation, &docTrashed, &da.DocID, &da.DocTitle); err != nil {
+		if err := rows.Scan(&da.ID, &da.StoredFilename, &da.OriginalName, &da.MimeType, &da.SizeBytes, &da.StorageLocation, &docTrashed, &da.DocID, &da.DocTitle); err != nil {
 			return nil, err
 		}
 		da.DocTrashed = docTrashed == 1

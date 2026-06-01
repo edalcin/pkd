@@ -190,6 +190,32 @@
     allOrphans = allOrphans.filter(o => o.key !== orphan.key)
   }
 
+  let deletingAllOrphans = $state(false)
+
+  async function deleteAllOrphans() {
+    const hasTrashDocs = allOrphans.some(o => o.reason === 'trashed_doc')
+    let msg = `Eliminar todos os ${allOrphans.length} arquivos órfãos? Esta ação não pode ser desfeita.`
+    if (hasTrashDocs) msg += '\n\nDocumentos na lixeira associados também serão excluídos permanentemente.'
+    if (!confirm(msg)) return
+    deletingAllOrphans = true
+    try {
+      await apiFetch('/api/admin/attachments/orphans', { method: 'DELETE' })
+      allOrphans = []
+    } finally {
+      deletingAllOrphans = false
+    }
+  }
+
+  function previewOrphan(orphan) {
+    const name = orphan.original_name || orphan.key.split('/').pop()
+    // Type 2 (has attachment_id): use the standard attachment endpoint (inline, correct MIME).
+    // Type 1 (no DB record): use the admin download endpoint (images render fine in <img> tag).
+    const url = orphan.attachment_id
+      ? `/api/attachments/${orphan.attachment_id}`
+      : `/api/admin/attachments/orphans/download?key=${encodeURIComponent(orphan.key)}`
+    previewAtt = { original_name: name, url, mime_type: orphan.mime_type || '', size_bytes: orphan.size_bytes }
+  }
+
   function setTab(id) {
     activeTab = id
     if (id === 'attachments' && allAttachments.length === 0) { loadAttachments(); loadOrphans(); loadExternalImages() }
@@ -862,6 +888,11 @@
       <div class="admin-section orphan-section">
         <div class="section-header">
           <h3>Arquivos órfãos{allOrphans.length > 0 ? ` (${allOrphans.length})` : ''}</h3>
+          {#if allOrphans.length > 1}
+            <button class="btn btn-danger btn-sm" onclick={deleteAllOrphans} disabled={deletingAllOrphans}>
+              {deletingAllOrphans ? 'Eliminando…' : '🗑 Eliminar todos'}
+            </button>
+          {/if}
         </div>
         {#if orphansLoading}
           <p class="muted">Verificando…</p>
@@ -875,7 +906,9 @@
             {#each allOrphans as orphan}
               <div class="orphan-row">
                 <div class="orphan-info">
-                  <span class="orphan-name" title={orphan.key}>{orphan.original_name || orphan.key.split('/').pop()}</span>
+                  <button class="orphan-name orphan-name-btn" title="Clique para visualizar" onclick={() => previewOrphan(orphan)}>
+                    {orphan.original_name || orphan.key.split('/').pop()}
+                  </button>
                   {#if orphan.reason === 'trashed_doc' && orphan.doc_title}
                     <span class="orphan-doc muted">🗑 Doc na lixeira: "{orphan.doc_title}"</span>
                   {:else if orphan.reason === 'no_doc'}
@@ -1715,6 +1748,17 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  .orphan-name-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--accent);
+    text-align: left;
+    text-decoration: underline dotted;
+  }
+  .orphan-name-btn:hover { text-decoration: underline; }
 
   .orphan-doc {
     font-size: .75rem;

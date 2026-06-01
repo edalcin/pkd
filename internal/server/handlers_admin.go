@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -21,6 +23,7 @@ type OrphanInfo struct {
 	SizeBytes    int64  `json:"size_bytes"`
 	AttachmentID int64  `json:"attachment_id,omitempty"` // >0 when DB record exists
 	OriginalName string `json:"original_name,omitempty"`
+	MimeType     string `json:"mime_type,omitempty"`
 	Reason       string `json:"reason"`               // "no_db_record" | "trashed_doc" | "no_doc"
 	DocID        int64  `json:"doc_id,omitempty"`     // trashed doc id (reason=trashed_doc only)
 	DocTitle     string `json:"doc_title,omitempty"`  // trashed doc title (reason=trashed_doc only)
@@ -295,7 +298,11 @@ func (s *Server) handleAdminListOrphans() http.HandlerFunc {
 				rc.Close()
 				size = sz
 			}
-			result = append(result, OrphanInfo{Key: key, SizeBytes: size, Reason: "no_db_record"})
+			mt := mime.TypeByExtension(filepath.Ext(key))
+			if mt == "" {
+				mt = "application/octet-stream"
+			}
+			result = append(result, OrphanInfo{Key: key, SizeBytes: size, MimeType: mt, Reason: "no_db_record"})
 		}
 
 		// Type 2: attachment records whose document is trashed or missing.
@@ -314,6 +321,7 @@ func (s *Server) handleAdminListOrphans() http.HandlerFunc {
 				SizeBytes:    da.SizeBytes,
 				AttachmentID: da.ID,
 				OriginalName: da.OriginalName,
+				MimeType:     da.MimeType,
 				Reason:       reason,
 				DocID:        da.DocID,
 				DocTitle:     da.DocTitle,
@@ -421,6 +429,56 @@ func (s *Server) isOrphanKey(r *http.Request, key string) bool {
 		}
 	}
 	return false
+}
+
+// handleAdminDeleteAllOrphans deletes every orphan (type 1 + type 2) in one call.
+// DELETE /api/admin/attachments/orphans
+func (s *Server) handleAdminDeleteAllOrphans() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		deleted, failed := 0, 0
+
+		// Type 2: dangling attachment records (document trashed or missing).
+		dangling, err := s.attachments.ListDanglingAttachments()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		for _, da := range dangling {
+			if da.DocTrashed && da.DocID > 0 {
+				if err := s.attachments.DeleteByDocument(da.DocID); err != nil {
+					failed++
+					continue
+				}
+				if err := s.docs.PermanentDelete(da.DocID); err != nil {
+					failed++
+					continue
+				}
+				_ = s.tags.PruneUnused()
+			} else {
+				if err := s.attachments.Delete(da.ID); err != nil {
+					failed++
+					continue
+				}
+			}
+			deleted++
+		}
+
+		// Type 1: disk files with no DB record.
+		keys, err := s.attachments.ListOrphanedStoredFiles()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		for _, key := range keys {
+			if err := s.localBackend.Delete(r.Context(), key); err != nil {
+				failed++
+				continue
+			}
+			deleted++
+		}
+
+		writeJSON(w, http.StatusOK, map[string]int{"deleted": deleted, "failed": failed})
+	}
 }
 
 func (s *Server) handleAdminUpdateTag() http.HandlerFunc {
