@@ -13,7 +13,7 @@
   import { DocLink } from '../editor/doclink-extension.js'
   import { MermaidCodeBlock } from '../editor/mermaid-code-block.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc, restoreVersion } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, docBodyRefreshedSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc, restoreVersion } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
@@ -125,6 +125,7 @@
   let imgUrlInputEl = $state(null)
   let imgUploading = $state(false)
   let importingImgs = $state(false)
+  let importImgsResult = $state(null) // {imported, failed} — shown briefly after import
   let uploadImgInputEl = $state(null)
 
   function triggerImageUpload(e) {
@@ -179,9 +180,11 @@
     }
   }
 
-  // Detect external images in the editor content (recalculated on each editorTick)
-  function getExternalImgSrcs() {
-    if (!editorInstance) return []
+  // $derived: list of unique external image srcs in the current editor state.
+  // Re-computed each time editorTick changes (i.e. on every TipTap transaction),
+  // which guarantees immediate update after the import dispatch rewrites the srcs.
+  let externalImgSrcs = $derived.by(() => {
+    if (editorTick < 0 || !editorInstance) return [] // reads editorTick as reactive dep
     const srcs = new Set()
     editorInstance.state.doc.descendants(node => {
       if (node.type.name === 'image') {
@@ -192,13 +195,15 @@
       }
     })
     return [...srcs]
-  }
+  })
 
-  // Import all external images: fetch via backend, rewrite srcs in editor
+  // Import all external images: fetch via backend, rewrite srcs in one transaction.
+  // Uses a snapshot of externalImgSrcs taken at call time to avoid re-fetching
+  // images that were already rewritten by a previous import in the same session.
   async function importExternalImages(e) {
     e?.preventDefault()
     if (!doc || importingImgs) return
-    const srcs = getExternalImgSrcs()
+    const srcs = externalImgSrcs // snapshot — avoids re-fetching already-imported
     if (srcs.length === 0) return
     importingImgs = true
     try {
@@ -216,8 +221,15 @@
           }
         } catch { /* skip failed image, keep original src */ }
       }
-      if (Object.keys(mapping).length === 0) return
-      // Rewrite all affected image nodes in one transaction
+      const failed = srcs.length - Object.keys(mapping).length
+      if (Object.keys(mapping).length === 0) {
+        importImgsResult = { imported: 0, failed }
+        setTimeout(() => { importImgsResult = null }, 5000)
+        return
+      }
+      // Rewrite all affected image nodes in one ProseMirror transaction.
+      // dispatch() triggers onTransaction → editorTick++ → externalImgSrcs recomputes
+      // → empty list (if all mapped) → button disappears immediately.
       const { tr, doc: pmDoc } = editorInstance.state
       pmDoc.descendants((node, pos) => {
         if (node.type.name === 'image') {
@@ -228,6 +240,8 @@
         }
       })
       editorInstance.view.dispatch(tr)
+      importImgsResult = { imported: Object.keys(mapping).length, failed }
+      setTimeout(() => { importImgsResult = null }, 5000)
       scheduleAutoSave()
       try { attachments = await apiGet(`/api/documents/${doc.id}/attachments`) } catch {}
     } finally {
@@ -400,6 +414,21 @@
   // Reload links when a relationship is created from the sidebar
   $effect(() => {
     if ($linksRefreshSignal && doc) loadLinks(doc.id)
+  })
+
+  // Reload editor content when the document body is updated externally (e.g. admin image import).
+  // Uses setContent to update in place — no editor re-mount, no docId change needed.
+  $effect(() => {
+    const sig = $docBodyRefreshedSignal
+    if (sig === Number(docId) && doc && editorInstance) {
+      loadDoc(sig).then(freshDoc => {
+        if (!freshDoc || !editorInstance) return
+        editorInstance.commands.setContent(freshDoc.body_html || '', false)
+        doc = freshDoc
+        titleValue = freshDoc.title
+        try { apiGet(`/api/documents/${sig}/attachments`).then(a => { attachments = a || [] }) } catch {}
+      })
+    }
   })
 
   // Auto-save: interval configured by user (0 = disabled); skip for locked docs
@@ -1028,11 +1057,18 @@
         <!-- Image: URL + upload -->
         <button class="tb-btn {imgUrlOpen ? 'active' : ''}" onmousedown={toggleImgUrl} title="Inserir imagem por URL">🖼</button>
         <button class="tb-btn" onmousedown={triggerImageUpload} title={imgUploading ? 'Enviando…' : 'Fazer upload de imagem'}>{imgUploading ? '⏳' : '📤'}</button>
-        {#if editorTick >= 0 && getExternalImgSrcs().length > 0}
-          <button class="tb-btn tb-btn-import-imgs" onmousedown={importExternalImages} disabled={importingImgs}
-            title={importingImgs ? 'Importando…' : `Importar ${getExternalImgSrcs().length} imagem(ns) externa(s) como anexo`}>
-            {importingImgs ? '⏳' : '🌐⬇'}
+        {#if externalImgSrcs.length > 0 || importingImgs || importImgsResult}
+          <button class="tb-btn tb-btn-import-imgs" onmousedown={importExternalImages}
+            disabled={importingImgs || externalImgSrcs.length === 0}
+            title={importingImgs ? 'Importando…' : externalImgSrcs.length > 0 ? `Importar ${externalImgSrcs.length} imagem(ns) externa(s) como anexo` : 'Importação concluída'}>
+            {importingImgs ? '⏳' : externalImgSrcs.length > 0 ? '🌐⬇' : '✓'}
           </button>
+          {#if importImgsResult}
+            <span class="tb-import-result {importImgsResult.failed > 0 && importImgsResult.imported === 0 ? 'tb-import-error' : ''}">
+              {importImgsResult.imported > 0 ? `${importImgsResult.imported} importada(s)` : ''}
+              {importImgsResult.failed > 0 ? `${importImgsResult.failed} falhou` : ''}
+            </span>
+          {/if}
         {/if}
 
         <!-- Table -->
@@ -1590,6 +1626,16 @@
 
   .tb-btn-import-imgs {
     color: var(--accent);
+  }
+
+  .tb-import-result {
+    font-size: .8em;
+    color: var(--accent);
+    white-space: nowrap;
+    align-self: center;
+  }
+  .tb-import-result.tb-import-error {
+    color: var(--danger, #ef4444);
   }
 
   .tb-btn:disabled {

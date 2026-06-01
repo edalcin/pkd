@@ -37,6 +37,10 @@ export const revealActiveSignal = writable(0)
 /** Incremented whenever a link is created from the sidebar, so Editor reloads. */
 export const linksRefreshSignal = writable(0)
 
+/** Set to a doc ID when that document's body was externally updated (e.g. admin import).
+ *  Editor watches this and reloads content via setContent if the doc is currently open. */
+export const docBodyRefreshedSignal = writable(null)
+
 /** When set to a doc ID, Editor should focus the title input after loading that doc. */
 export const focusTitleForDocId = writable(null)
 

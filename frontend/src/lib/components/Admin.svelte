@@ -3,6 +3,7 @@
   import { apiGet, apiPost, apiPut, apiDelete, apiFetch } from '../api.js'
   import { loadTags, tags } from '../stores/tags.js'
   import { autoSaveInterval } from '../stores/settings.js'
+  import { docBodyRefreshedSignal } from '../stores/documents.js'
 
   const AUTOSAVE_OPTIONS = [
     { value: 5000,  label: '5 segundos' },
@@ -160,6 +161,7 @@
       }
       const data = await res.json()
       externalImagesMsg = { ...externalImagesMsg, [docId]: `${data.imported} importada(s)${data.failed ? ', ' + data.failed + ' falhou' : ''}` }
+      docBodyRefreshedSignal.set(docId) // signal editor to reload if doc is open
       await loadExternalImages()
       await loadAttachments()
     } finally {
