@@ -1320,7 +1320,16 @@
                   <p class="muted" style="font-size:.85rem">Nenhuma inconsistência encontrada.</p>
                 {/if}
               {:else if storageOpJob.kind === 'cleanup'}
-                <p>Removidos: <strong>{op?.succeeded ?? '?'}</strong></p>
+                <p>
+                  Candidatos: <strong>{op?.total_found ?? '?'}</strong>
+                  · Removidos: <strong>{op?.succeeded ?? '?'}</strong>
+                  {#if (op?.skipped ?? 0) > 0}
+                    · <span style="color:var(--color-warning,#b45309)">Ignorados (sem cópia no destino): <strong>{op.skipped}</strong></span>
+                  {/if}
+                </p>
+                {#if (op?.skipped ?? 0) > 0}
+                  <p class="muted" style="font-size:.85rem">⚠️ Arquivos ignorados não foram apagados — não foi encontrada cópia confirmada no backend ativo. Execute <strong>Migrar</strong> novamente para copiá-los.</p>
+                {/if}
               {/if}
               {#if op?.errors?.length > 0}
                 <p style="color:var(--color-danger)">Erros ({op.errors.length}):</p>

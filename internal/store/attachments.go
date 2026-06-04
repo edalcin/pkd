@@ -467,15 +467,25 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 	return totalFound, copied, errs
 }
 
-// CleanupSource deletes files from the source backend for attachments that have
-// been migrated to target (storage_location == target.Name()). Does not touch DB rows.
+// CleanupResult holds the outcome of a CleanupSource operation.
+type CleanupResult struct {
+	Total   int      // candidate files (storage_location == target in DB)
+	Deleted int      // successfully deleted from source
+	Skipped int      // not found in target backend — skipped to avoid data loss
+	Errors  []string // per-file errors (delete failures)
+}
+
+// CleanupSource deletes files from the source backend only after verifying the
+// file actually exists in the target backend. Files absent from the target are
+// skipped and counted in CleanupResult.Skipped to prevent data loss.
+// Does not touch DB rows.
 // onProgress is called with (processed, total) after each file is handled;
 // pass nil to skip progress reporting.
-func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target storage.Backend, onProgress func(processed, total int64)) (int, []string) {
+func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target storage.Backend, onProgress func(processed, total int64)) CleanupResult {
 	rows, err := s.db.Query(`
 		SELECT stored_filename FROM attachments WHERE storage_location = ?`, target.Name())
 	if err != nil {
-		return 0, []string{fmt.Sprintf("query: %v", err)}
+		return CleanupResult{Errors: []string{fmt.Sprintf("query: %v", err)}}
 	}
 	defer rows.Close()
 
@@ -483,7 +493,7 @@ func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target stor
 	for rows.Next() {
 		var k string
 		if err := rows.Scan(&k); err != nil {
-			return 0, []string{fmt.Sprintf("scan: %v", err)}
+			return CleanupResult{Errors: []string{fmt.Sprintf("scan: %v", err)}}
 		}
 		keys = append(keys, k)
 	}
@@ -493,19 +503,30 @@ func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target stor
 		onProgress(0, total)
 	}
 
-	removed := 0
-	var errs []string
+	res := CleanupResult{Total: len(keys)}
 	for i, k := range keys {
+		// Verify file actually exists in target before deleting from source.
+		rc, _, verifyErr := target.Get(ctx, k)
+		if verifyErr != nil {
+			// Not found (or unreachable) in target — skip to avoid data loss.
+			res.Skipped++
+			if onProgress != nil {
+				onProgress(int64(i+1), total)
+			}
+			continue
+		}
+		rc.Close()
+
 		if err := source.Delete(ctx, k); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: %v", k, err))
+			res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", k, err))
 		} else {
-			removed++
+			res.Deleted++
 		}
 		if onProgress != nil {
 			onProgress(int64(i+1), total)
 		}
 	}
-	return removed, errs
+	return res
 }
 
 // AttachmentForBackup carries the columns needed to compose a backup ZIP entry.

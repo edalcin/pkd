@@ -346,14 +346,15 @@ func (s *Server) runCleanupJob(job *Job, source, target storage.Backend) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	removed, errs := s.attachments.CleanupSource(ctx, source, target, func(processed, total int64) {
+	res := s.attachments.CleanupSource(ctx, source, target, func(processed, total int64) {
 		atomic.StoreInt64(&job.Total, total)
 		atomic.StoreInt64(&job.Processed, processed)
 	})
 	job.StorageOp = &StorageOpSummary{
-		TotalFound: job.Total,
-		Succeeded:  int64(removed),
-		Errors:     errs,
+		TotalFound: int64(res.Total),
+		Succeeded:  int64(res.Deleted),
+		Skipped:    int64(res.Skipped),
+		Errors:     res.Errors,
 	}
 	s.jobs.Finish(job, "succeeded", "")
 }

@@ -49,6 +49,7 @@ type Job struct {
 type StorageOpSummary struct {
 	TotalFound int64    `json:"total_found"`
 	Succeeded  int64    `json:"succeeded"` // copied | fixed | removed
+	Skipped    int64    `json:"skipped"`   // cleanup: candidates not found in target — not deleted
 	Errors     []string `json:"errors,omitempty"`
 }
 
