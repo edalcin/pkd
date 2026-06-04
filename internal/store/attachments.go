@@ -469,8 +469,8 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 
 // CleanupResult holds the outcome of a CleanupSource operation.
 type CleanupResult struct {
-	Total   int      // candidate files (storage_location == target in DB)
-	Deleted int      // successfully deleted from source
+	Total   int      // all files listed in source backend
+	Deleted int      // successfully deleted from source (confirmed in target)
 	Skipped int      // not found in target backend — skipped to avoid data loss
 	Errors  []string // per-file errors (delete failures)
 }
@@ -478,24 +478,15 @@ type CleanupResult struct {
 // CleanupSource deletes files from the source backend only after verifying the
 // file actually exists in the target backend. Files absent from the target are
 // skipped and counted in CleanupResult.Skipped to prevent data loss.
+// Scans source.List() directly so it catches all source files regardless of
+// what the DB storage_location field says (handles orphans and partial migrations).
 // Does not touch DB rows.
 // onProgress is called with (processed, total) after each file is handled;
 // pass nil to skip progress reporting.
 func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target storage.Backend, onProgress func(processed, total int64)) CleanupResult {
-	rows, err := s.db.Query(`
-		SELECT stored_filename FROM attachments WHERE storage_location = ?`, target.Name())
+	keys, err := source.List(ctx, "")
 	if err != nil {
-		return CleanupResult{Errors: []string{fmt.Sprintf("query: %v", err)}}
-	}
-	defer rows.Close()
-
-	var keys []string
-	for rows.Next() {
-		var k string
-		if err := rows.Scan(&k); err != nil {
-			return CleanupResult{Errors: []string{fmt.Sprintf("scan: %v", err)}}
-		}
-		keys = append(keys, k)
+		return CleanupResult{Errors: []string{fmt.Sprintf("list source: %v", err)}}
 	}
 
 	total := int64(len(keys))
