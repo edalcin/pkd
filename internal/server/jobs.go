@@ -18,7 +18,7 @@ import (
 // are removed by the next startup sweep.
 type Job struct {
 	ID           string    `json:"id"`
-	Kind         string    `json:"kind"`         // "backup"
+	Kind         string    `json:"kind"`         // "backup" | "migrate" | "reconcile" | "cleanup"
 	BackendKind  string    `json:"backend_kind"` // "local" | "s3"
 	State        string    `json:"state"`        // "running" | "succeeded" | "failed"
 	Processed    int64     `json:"processed"`
@@ -37,6 +37,19 @@ type Job struct {
 
 	// Restore is non-nil for restore jobs and carries per-entry outcomes.
 	Restore *RestoreSummary `json:"restore,omitempty"`
+
+	// StorageOp is non-nil for migrate/reconcile/cleanup jobs and carries the
+	// final operation counters once the job completes.
+	StorageOp *StorageOpSummary `json:"storage_op,omitempty"`
+}
+
+// StorageOpSummary carries the result of a migrate, reconcile, or cleanup job.
+// Processed/Total on the parent Job give live progress; this struct holds the
+// final audit counters set once the goroutine finishes.
+type StorageOpSummary struct {
+	TotalFound int64    `json:"total_found"`
+	Succeeded  int64    `json:"succeeded"` // copied | fixed | removed
+	Errors     []string `json:"errors,omitempty"`
 }
 
 // RestoreSummary aggregates counters and skipped entries from a restore job.

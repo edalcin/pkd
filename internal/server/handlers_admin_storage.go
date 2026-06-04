@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/edalcin/pkd/internal/storage"
@@ -202,39 +204,109 @@ func (s *Server) handleAdminStorageRestoreAttachments() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleAdminStorageMigrate() http.HandlerFunc {
+func (s *Server) handleAdminStorageMigrateStart() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		target := s.activeStorage()
-		start := time.Now()
-
-		totalFound, copied, errs := s.attachments.MigrateToBackend(r.Context(), target)
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"target":      target.Name(),
-			"total_found": totalFound,
-			"copied":      copied,
-			"errors":      errs,
-			"duration_ms": time.Since(start).Milliseconds(),
-		})
-	}
-}
-
-func (s *Server) handleAdminStorageReconcile() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if s.s3Backend == nil {
-			http.Error(w, "S3 not configured", http.StatusBadRequest)
+		kind := s.currentBackendKind()
+		job, err := s.jobs.Start("migrate", kind, 0)
+		if err != nil {
+			if errors.Is(err, ErrJobInFlight) {
+				http.Error(w, "Já existe uma operação em andamento para este backend", http.StatusConflict)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		start := time.Now()
-		fixed, errs := s.attachments.ReconcileStorageLocations(r.Context(), s.s3Backend)
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"fixed":       fixed,
-			"errors":      errs,
-			"duration_ms": time.Since(start).Milliseconds(),
-		})
+		go s.runMigrateJob(job)
+		writeJSON(w, http.StatusAccepted, map[string]string{"job_id": job.ID})
 	}
 }
 
-func (s *Server) handleAdminStorageCleanupSource() http.HandlerFunc {
+func (s *Server) runMigrateJob(job *Job) {
+	defer func() {
+		if r := recover(); r != nil {
+			s.jobs.Finish(job, "failed", fmt.Sprintf("panic: %v", r))
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
+	target := s.activeStorage()
+	totalFound, copied, errs := s.attachments.MigrateToBackend(ctx, target, func(processed, total int64) {
+		atomic.StoreInt64(&job.Total, total)
+		atomic.StoreInt64(&job.Processed, processed)
+	})
+	job.StorageOp = &StorageOpSummary{
+		TotalFound: int64(totalFound),
+		Succeeded:  int64(copied),
+		Errors:     errs,
+	}
+	s.jobs.Finish(job, "succeeded", "")
+}
+
+func (s *Server) handleAdminStorageReconcileStart() http.HandlerFunc {
+	type request struct {
+		Backend string `json:"backend"` // "s3" | "local"
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Backend == "" {
+			req.Backend = "s3" // default
+		}
+
+		var src storage.Backend
+		switch req.Backend {
+		case "s3":
+			if s.s3Backend == nil {
+				http.Error(w, "S3 not configured", http.StatusBadRequest)
+				return
+			}
+			src = s.s3Backend
+		case "local":
+			src = s.localBackend
+		default:
+			http.Error(w, `backend must be "s3" or "local"`, http.StatusBadRequest)
+			return
+		}
+
+		// Gate key: "reconcile-<backend>" keeps reconcile ops independent of
+		// backup/migrate jobs while still preventing duplicate reconcile runs.
+		gateKey := "reconcile-" + req.Backend
+		job, err := s.jobs.Start("reconcile", gateKey, 0)
+		if err != nil {
+			if errors.Is(err, ErrJobInFlight) {
+				http.Error(w, "Já existe uma operação em andamento para este backend", http.StatusConflict)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		go s.runReconcileJob(job, src)
+		writeJSON(w, http.StatusAccepted, map[string]string{"job_id": job.ID})
+	}
+}
+
+func (s *Server) runReconcileJob(job *Job, src storage.Backend) {
+	defer func() {
+		if r := recover(); r != nil {
+			s.jobs.Finish(job, "failed", fmt.Sprintf("panic: %v", r))
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
+	fixed, errs := s.attachments.ReconcileStorageLocations(ctx, src, func(processed, total int64) {
+		atomic.StoreInt64(&job.Total, total)
+		atomic.StoreInt64(&job.Processed, processed)
+	})
+	job.StorageOp = &StorageOpSummary{
+		TotalFound: job.Total,
+		Succeeded:  int64(fixed),
+		Errors:     errs,
+	}
+	s.jobs.Finish(job, "succeeded", "")
+}
+
+func (s *Server) handleAdminStorageCleanupSourceStart() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		target := s.activeStorage()
 
@@ -250,10 +322,38 @@ func (s *Server) handleAdminStorageCleanupSource() http.HandlerFunc {
 			source = s.s3Backend
 		}
 
-		removed, errs := s.attachments.CleanupSource(r.Context(), source, target)
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"removed": removed,
-			"errors":  errs,
-		})
+		kind := s.currentBackendKind()
+		job, err := s.jobs.Start("cleanup", kind, 0)
+		if err != nil {
+			if errors.Is(err, ErrJobInFlight) {
+				http.Error(w, "Já existe uma operação em andamento para este backend", http.StatusConflict)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		go s.runCleanupJob(job, source, target)
+		writeJSON(w, http.StatusAccepted, map[string]string{"job_id": job.ID})
 	}
+}
+
+func (s *Server) runCleanupJob(job *Job, source, target storage.Backend) {
+	defer func() {
+		if r := recover(); r != nil {
+			s.jobs.Finish(job, "failed", fmt.Sprintf("panic: %v", r))
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
+	removed, errs := s.attachments.CleanupSource(ctx, source, target, func(processed, total int64) {
+		atomic.StoreInt64(&job.Total, total)
+		atomic.StoreInt64(&job.Processed, processed)
+	})
+	job.StorageOp = &StorageOpSummary{
+		TotalFound: job.Total,
+		Succeeded:  int64(removed),
+		Errors:     errs,
+	}
+	s.jobs.Finish(job, "succeeded", "")
 }

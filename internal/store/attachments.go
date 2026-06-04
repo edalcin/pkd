@@ -293,7 +293,9 @@ func (s *AttachmentStore) ListDanglingAttachments() ([]*DanglingAttachment, erro
 // stored_filename in the DB but has a different storage_location, updates the DB
 // to reflect where the file actually lives. Returns (fixed, errors).
 // Use this when the DB storage_location is stale (e.g. after a DB restore).
-func (s *AttachmentStore) ReconcileStorageLocations(ctx context.Context, src storage.Backend) (int, []string) {
+// onProgress is called with (processed, total) after each key is evaluated;
+// pass nil to skip progress reporting.
+func (s *AttachmentStore) ReconcileStorageLocations(ctx context.Context, src storage.Backend, onProgress func(processed, total int64)) (int, []string) {
 	if src == nil {
 		return 0, []string{"source backend not configured"}
 	}
@@ -302,30 +304,45 @@ func (s *AttachmentStore) ReconcileStorageLocations(ctx context.Context, src sto
 		return 0, []string{fmt.Sprintf("list %s: %v", src.Name(), err)}
 	}
 
+	total := int64(len(keys))
+	if onProgress != nil {
+		onProgress(0, total)
+	}
+	progress := func(i int) {
+		if onProgress != nil {
+			onProgress(int64(i+1), total)
+		}
+	}
+
 	fixed := 0
 	var errs []string
-	for _, key := range keys {
+	for i, key := range keys {
 		var id int64
 		var curLoc string
 		err := s.db.QueryRowContext(ctx,
 			`SELECT id, storage_location FROM attachments WHERE stored_filename = ?`, key).
 			Scan(&id, &curLoc)
 		if errors.Is(err, sql.ErrNoRows) {
+			progress(i)
 			continue // orphan in bucket — not our concern here
 		}
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("%s: db query: %v", key, err))
+			progress(i)
 			continue
 		}
 		if curLoc == src.Name() {
+			progress(i)
 			continue // already correct
 		}
 		if _, err := s.db.ExecContext(ctx,
 			`UPDATE attachments SET storage_location = ? WHERE id = ?`, src.Name(), id); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: db update: %v", key, err))
+			progress(i)
 			continue
 		}
 		fixed++
+		progress(i)
 	}
 	return fixed, errs
 }
@@ -333,7 +350,9 @@ func (s *AttachmentStore) ReconcileStorageLocations(ctx context.Context, src sto
 // MigrateToBackend copies all attachments with storage_location != target to the target backend,
 // verifying SHA256 integrity. Non-destructive: source files are not deleted.
 // Returns (total_found, copied, errors).
-func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.Backend) (int, int, []string) {
+// onProgress is called with (processed, total) after each file is handled;
+// pass nil to skip progress reporting.
+func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.Backend, onProgress func(processed, total int64)) (int, int, []string) {
 	rows, err := s.db.Query(`
 		SELECT id, stored_filename, mime_type, storage_location, content_sha256
 		FROM attachments WHERE storage_location != ?`, target.Name())
@@ -367,11 +386,21 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 	copied := 0
 	var errs []string
 
-	for _, r := range todo {
+	if onProgress != nil {
+		onProgress(0, int64(totalFound))
+	}
+	progress := func(i int) {
+		if onProgress != nil {
+			onProgress(int64(i+1), int64(totalFound))
+		}
+	}
+
+	for i, r := range todo {
 		src := s.BackendForLocation(r.location)
 		rc, size, err := src.Get(ctx, r.key)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("%s: read failed: %v", r.key, err))
+			progress(i)
 			continue
 		}
 
@@ -380,6 +409,7 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 		rc.Close()
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("%s: buffer failed: %v", r.key, err))
+			progress(i)
 			continue
 		}
 		_ = size
@@ -389,12 +419,14 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 		checksum := hex.EncodeToString(sum[:])
 		if r.sha256 != "" && r.sha256 != checksum {
 			errs = append(errs, fmt.Sprintf("%s: SHA256 mismatch (expected %s, got %s)", r.key, r.sha256, checksum))
+			progress(i)
 			continue
 		}
 
 		// Write to target.
 		if err := target.Put(ctx, r.key, bytes.NewReader(data), int64(len(data)), r.mime); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: write failed: %v", r.key, err))
+			progress(i)
 			continue
 		}
 
@@ -402,12 +434,14 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 		trc, _, err := target.Get(ctx, r.key)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("%s: verify read failed: %v", r.key, err))
+			progress(i)
 			continue
 		}
 		tData, err := io.ReadAll(trc)
 		trc.Close()
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("%s: verify read failed: %v", r.key, err))
+			progress(i)
 			continue
 		}
 		tSum := sha256.Sum256(tData)
@@ -415,6 +449,7 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 		if tChecksum != checksum {
 			errs = append(errs, fmt.Sprintf("%s: target SHA256 mismatch after write", r.key))
 			target.Delete(ctx, r.key) // remove corrupt copy
+			progress(i)
 			continue
 		}
 
@@ -423,16 +458,20 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 			UPDATE attachments SET storage_location = ?, content_sha256 = ? WHERE id = ?`,
 			target.Name(), checksum, r.id); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: DB update failed: %v", r.key, err))
+			progress(i)
 			continue
 		}
 		copied++
+		progress(i)
 	}
 	return totalFound, copied, errs
 }
 
 // CleanupSource deletes files from the source backend for attachments that have
 // been migrated to target (storage_location == target.Name()). Does not touch DB rows.
-func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target storage.Backend) (int, []string) {
+// onProgress is called with (processed, total) after each file is handled;
+// pass nil to skip progress reporting.
+func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target storage.Backend, onProgress func(processed, total int64)) (int, []string) {
 	rows, err := s.db.Query(`
 		SELECT stored_filename FROM attachments WHERE storage_location = ?`, target.Name())
 	if err != nil {
@@ -449,14 +488,22 @@ func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target stor
 		keys = append(keys, k)
 	}
 
+	total := int64(len(keys))
+	if onProgress != nil {
+		onProgress(0, total)
+	}
+
 	removed := 0
 	var errs []string
-	for _, k := range keys {
+	for i, k := range keys {
 		if err := source.Delete(ctx, k); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: %v", k, err))
-			continue
+		} else {
+			removed++
 		}
-		removed++
+		if onProgress != nil {
+			onProgress(int64(i+1), total)
+		}
 	}
 	return removed, errs
 }

@@ -54,13 +54,15 @@
   let diskUsage = $state(null)
   let diskUsageLoading = $state(false)
   let storageTestResult = $state(null)
-  let storageMigrateResult = $state(null)
-  let storageCleanupResult = $state(null)
-  let storageReconcileResult = $state(null)
   let storageLoading = $state(false)
   let storageSwitching = $state(false)
   let storageRestoreResult = $state(null)
   let storageRestoreInput = $state(null)
+
+  // Async storage ops (migrate / reconcile / cleanup) — share a single job slot
+  let storageOpJob = $state(null) // { id, kind, state, processed, total, storage_op, error_message }
+  let storageOpPolling = $state(false)
+  let storageOpError = $state(null)
 
   // Async S3 backup job (005-s3-attachments-backup)
   let s3BackupJob = $state(null) // { id, state, processed, total, download_url, url_expires_at, error_message, size_bytes }
@@ -260,26 +262,59 @@
     }
   }
 
-  async function migrateStorage() {
-    if (!confirm('Migrar todos os arquivos para o backend ativo? Operação pode demorar alguns segundos.')) return
+  async function startStorageOp(endpoint, body = {}) {
+    storageOpJob = null
+    storageOpError = null
     storageLoading = true
-    storageMigrateResult = null
     try {
-      storageMigrateResult = await apiPost('/api/admin/storage/migrate', {})
+      const res = await apiFetch('/api/admin/storage/' + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (res.status === 409) {
+        storageOpError = 'Já existe uma operação em andamento para este backend.'
+        return
+      }
+      if (!res.ok) {
+        storageOpError = 'Erro ao iniciar operação: ' + (await res.text())
+        return
+      }
+      const { job_id } = await res.json()
+      storageOpJob = { id: job_id, state: 'running', processed: 0, total: 0 }
+      pollStorageOpJob()
     } finally {
       storageLoading = false
     }
   }
 
-  async function reconcileStorage() {
-    if (!confirm('Verificar o bucket S3 e corrigir registros com storage_location incorreto? Isso atualiza apenas o banco — não move arquivos.')) return
-    storageLoading = true
-    storageReconcileResult = null
+  async function pollStorageOpJob() {
+    if (!storageOpJob?.id || storageOpPolling) return
+    storageOpPolling = true
     try {
-      storageReconcileResult = await apiPost('/api/admin/storage/reconcile', {})
+      while (storageOpJob && storageOpJob.state === 'running') {
+        await new Promise(r => setTimeout(r, 2000))
+        const res = await apiFetch(`/api/admin/storage/jobs/${storageOpJob.id}`)
+        if (!res.ok) {
+          storageOpJob = { ...storageOpJob, state: 'failed', error_message: 'Falha ao consultar status' }
+          break
+        }
+        storageOpJob = await res.json()
+      }
     } finally {
-      storageLoading = false
+      storageOpPolling = false
     }
+  }
+
+  async function migrateStorage() {
+    if (!confirm('Migrar todos os arquivos para o backend ativo? Operação pode demorar em grandes volumes.')) return
+    await startStorageOp('migrate-start')
+  }
+
+  async function reconcileStorage(backend = 's3') {
+    const label = backend === 'local' ? 'LOCAL' : 'S3'
+    if (!confirm(`Verificar o backend ${label} e corrigir registros com storage_location incorreto? Isso atualiza apenas o banco — não move arquivos.`)) return
+    await startStorageOp('reconcile-start', { backend })
   }
 
   async function backupAttachments() {
@@ -437,13 +472,7 @@
 
   async function cleanupStorageSource() {
     if (!confirm('Remover arquivos da origem após migração confirmada? Esta ação não pode ser desfeita.')) return
-    storageLoading = true
-    storageCleanupResult = null
-    try {
-      storageCleanupResult = await apiPost('/api/admin/storage/cleanup-source', {})
-    } finally {
-      storageLoading = false
-    }
+    await startStorageOp('cleanup-source-start')
   }
 
   async function loadShares() {
@@ -1218,17 +1247,22 @@
         {/if}
 
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1.5rem">
-          <button class="btn btn-ghost btn-sm" onclick={testStorage} disabled={storageLoading}>
+          <button class="btn btn-ghost btn-sm" onclick={testStorage} disabled={storageLoading || storageOpJob?.state === 'running'}>
             🔍 Testar conexão
           </button>
           {#if storageConfig.s3_configured}
-            <button class="btn btn-ghost btn-sm" onclick={migrateStorage} disabled={storageLoading}>
+            <button class="btn btn-ghost btn-sm" onclick={migrateStorage} disabled={storageLoading || storageOpJob?.state === 'running'}>
               📦 Migrar para backend ativo
             </button>
-            <button class="btn btn-ghost btn-sm" onclick={reconcileStorage} disabled={storageLoading} title="Verifica o bucket S3 e corrige registros desatualizados no banco">
+            <button class="btn btn-ghost btn-sm" onclick={() => reconcileStorage('s3')} disabled={storageLoading || storageOpJob?.state === 'running'} title="Verifica o bucket S3 e corrige registros desatualizados no banco">
               🔄 Reconciliar S3 ↔ DB
             </button>
-            <button class="btn btn-danger btn-sm" onclick={cleanupStorageSource} disabled={storageLoading}>
+          {/if}
+          <button class="btn btn-ghost btn-sm" onclick={() => reconcileStorage('local')} disabled={storageLoading || storageOpJob?.state === 'running'} title="Verifica o disco local e corrige registros desatualizados no banco">
+            🔄 Reconciliar LOCAL ↔ DB
+          </button>
+          {#if storageConfig.s3_configured}
+            <button class="btn btn-danger btn-sm" onclick={cleanupStorageSource} disabled={storageLoading || storageOpJob?.state === 'running'}>
               🗑 Limpar origem
             </button>
           {/if}
@@ -1248,43 +1282,52 @@
           </div>
         {/if}
 
-        {#if storageMigrateResult}
-          <div class="storage-result" style="margin-top:1rem">
-            <h4>Migração:</h4>
-            <p>Encontrados: <strong>{storageMigrateResult.total_found ?? '?'}</strong> · Copiados: <strong>{storageMigrateResult.copied}</strong> em {storageMigrateResult.duration_ms}ms</p>
-            {#if (storageMigrateResult.total_found ?? 0) === 0}
-              <p class="muted" style="font-size:.85rem">Nenhum arquivo encontrado para migrar. Se esperava arquivos no S3, use <strong>Reconciliar S3 ↔ DB</strong> primeiro para corrigir registros desatualizados.</p>
-            {/if}
-            {#if storageMigrateResult.errors?.length > 0}
-              <p style="color:var(--color-danger)">Erros ({storageMigrateResult.errors.length}):</p>
-              <ul>{#each storageMigrateResult.errors as e}<li style="font-size:.8rem;color:var(--color-danger)">{e}</li>{/each}</ul>
-            {/if}
+        {#if storageOpError}
+          <div class="storage-result" style="margin-top:1rem;border-color:var(--color-danger)">
+            <p style="color:var(--color-danger)">{storageOpError}</p>
           </div>
         {/if}
 
-        {#if storageReconcileResult}
+        {#if storageOpJob}
+          {@const opLabels = { migrate: 'Migração', reconcile: 'Reconciliação', cleanup: 'Limpeza da origem' }}
+          {@const opLabel = opLabels[storageOpJob.kind] ?? storageOpJob.kind}
+          {@const pct = storageOpJob.total > 0 ? Math.round((storageOpJob.processed / storageOpJob.total) * 100) : 0}
           <div class="storage-result" style="margin-top:1rem">
-            <h4>Reconciliação S3 ↔ DB:</h4>
-            <p>Registros corrigidos: <strong>{storageReconcileResult.fixed}</strong> em {storageReconcileResult.duration_ms}ms</p>
-            {#if storageReconcileResult.fixed > 0}
-              <p class="muted" style="font-size:.85rem">✅ Registros atualizados. Execute <strong>Migrar para backend ativo</strong> agora para copiar os arquivos.</p>
-            {:else}
-              <p class="muted" style="font-size:.85rem">Nenhuma inconsistência encontrada entre o S3 e o banco.</p>
-            {/if}
-            {#if storageReconcileResult.errors?.length > 0}
-              <p style="color:var(--color-danger)">Erros ({storageReconcileResult.errors.length}):</p>
-              <ul>{#each storageReconcileResult.errors as e}<li style="font-size:.8rem;color:var(--color-danger)">{e}</li>{/each}</ul>
-            {/if}
-          </div>
-        {/if}
-
-        {#if storageCleanupResult}
-          <div class="storage-result" style="margin-top:1rem">
-            <h4>Limpeza da origem:</h4>
-            <p>Removidos: <strong>{storageCleanupResult.removed}</strong></p>
-            {#if storageCleanupResult.errors?.length > 0}
-              <p style="color:var(--color-danger)">Erros:</p>
-              <ul>{#each storageCleanupResult.errors as e}<li>{e}</li>{/each}</ul>
+            <h4>{opLabel}</h4>
+            {#if storageOpJob.state === 'running'}
+              <div class="storage-op-progress">
+                <progress class="storage-op-bar" max={storageOpJob.total || 1} value={storageOpJob.processed}></progress>
+                <span class="storage-op-pct">
+                  {#if storageOpJob.total > 0}
+                    {storageOpJob.processed} / {storageOpJob.total} ({pct}%)
+                  {:else}
+                    <span class="muted">Iniciando…</span>
+                  {/if}
+                </span>
+              </div>
+            {:else if storageOpJob.state === 'succeeded'}
+              {@const op = storageOpJob.storage_op}
+              {#if storageOpJob.kind === 'migrate'}
+                <p>Encontrados: <strong>{op?.total_found ?? '?'}</strong> · Copiados: <strong>{op?.succeeded ?? '?'}</strong></p>
+                {#if (op?.total_found ?? 0) === 0}
+                  <p class="muted" style="font-size:.85rem">Nenhum arquivo encontrado para migrar. Se esperava arquivos no S3, use <strong>Reconciliar S3 ↔ DB</strong> primeiro.</p>
+                {/if}
+              {:else if storageOpJob.kind === 'reconcile'}
+                <p>Registros corrigidos: <strong>{op?.succeeded ?? '?'}</strong></p>
+                {#if (op?.succeeded ?? 0) > 0}
+                  <p class="muted" style="font-size:.85rem">✅ Registros atualizados. Execute <strong>Migrar para backend ativo</strong> para copiar os arquivos.</p>
+                {:else}
+                  <p class="muted" style="font-size:.85rem">Nenhuma inconsistência encontrada.</p>
+                {/if}
+              {:else if storageOpJob.kind === 'cleanup'}
+                <p>Removidos: <strong>{op?.succeeded ?? '?'}</strong></p>
+              {/if}
+              {#if op?.errors?.length > 0}
+                <p style="color:var(--color-danger)">Erros ({op.errors.length}):</p>
+                <ul>{#each op.errors as e}<li style="font-size:.8rem;color:var(--color-danger)">{e}</li>{/each}</ul>
+              {/if}
+            {:else if storageOpJob.state === 'failed'}
+              <p style="color:var(--color-danger)">❌ Falhou: {storageOpJob.error_message}</p>
             {/if}
           </div>
         {/if}

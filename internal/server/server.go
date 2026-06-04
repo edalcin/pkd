@@ -298,9 +298,9 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/api/admin/storage/config", s.handleAdminStorageConfig())
 		r.Put("/api/admin/storage/config", s.handleAdminStorageSetBackend())
 		r.Post("/api/admin/storage/test", s.handleAdminStorageTest())
-		r.Post("/api/admin/storage/migrate", s.handleAdminStorageMigrate())
-		r.Post("/api/admin/storage/reconcile", s.handleAdminStorageReconcile())
-		r.Post("/api/admin/storage/cleanup-source", s.handleAdminStorageCleanupSource())
+		r.Post("/api/admin/storage/migrate-start", s.handleAdminStorageMigrateStart())
+		r.Post("/api/admin/storage/reconcile-start", s.handleAdminStorageReconcileStart())
+		r.Post("/api/admin/storage/cleanup-source-start", s.handleAdminStorageCleanupSourceStart())
 		r.Get("/api/admin/storage/backup-attachments", s.handleAdminStorageBackupAttachments())
 		r.Post("/api/admin/storage/restore-attachments", s.handleAdminStorageRestoreAttachments())
 
