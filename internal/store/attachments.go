@@ -475,11 +475,13 @@ type CleanupResult struct {
 	Errors  []string // per-file errors (delete failures)
 }
 
-// CleanupSource deletes files from the source backend only after verifying the
-// file actually exists in the target backend. Files absent from the target are
-// skipped and counted in CleanupResult.Skipped to prevent data loss.
-// Scans source.List() directly so it catches all source files regardless of
-// what the DB storage_location field says (handles orphans and partial migrations).
+// CleanupSource deletes files from the source backend. Scans source.List()
+// directly to catch all source files regardless of DB storage_location.
+// Deletion rules per file:
+//   - exists in target → delete (confirmed migrated)
+//   - not in target AND not in DB (orphan) → delete (no record references it)
+//   - not in target AND in DB (not yet migrated) → skip to prevent data loss
+//
 // Does not touch DB rows.
 // onProgress is called with (processed, total) after each file is handled;
 // pass nil to skip progress reporting.
@@ -496,22 +498,35 @@ func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target stor
 
 	res := CleanupResult{Total: len(keys)}
 	for i, k := range keys {
-		// Verify file actually exists in target before deleting from source.
-		rc, _, verifyErr := target.Get(ctx, k)
-		if verifyErr != nil {
-			// Not found (or unreachable) in target — skip to avoid data loss.
-			res.Skipped++
-			if onProgress != nil {
-				onProgress(int64(i+1), total)
-			}
-			continue
-		}
-		rc.Close()
+		shouldDelete := false
 
-		if err := source.Delete(ctx, k); err != nil {
-			res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", k, err))
+		rc, _, verifyErr := target.Get(ctx, k)
+		if verifyErr == nil {
+			// Confirmed in target — safe to delete from source.
+			rc.Close()
+			shouldDelete = true
 		} else {
-			res.Deleted++
+			// Not in target. Check DB: orphan = safe to delete; tracked = skip.
+			var id int64
+			dbErr := s.db.QueryRowContext(ctx,
+				`SELECT id FROM attachments WHERE stored_filename = ?`, k).Scan(&id)
+			if errors.Is(dbErr, sql.ErrNoRows) {
+				// Orphan: no DB record references this file.
+				shouldDelete = true
+			} else if dbErr != nil {
+				res.Errors = append(res.Errors, fmt.Sprintf("%s: db check: %v", k, dbErr))
+			} else {
+				// Tracked in DB but not yet in target — skip to avoid data loss.
+				res.Skipped++
+			}
+		}
+
+		if shouldDelete {
+			if err := source.Delete(ctx, k); err != nil {
+				res.Errors = append(res.Errors, fmt.Sprintf("%s: %v", k, err))
+			} else {
+				res.Deleted++
+			}
 		}
 		if onProgress != nil {
 			onProgress(int64(i+1), total)
