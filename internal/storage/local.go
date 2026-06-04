@@ -82,7 +82,18 @@ func (b *LocalBackend) Delete(ctx context.Context, key string) error {
 	if os.IsNotExist(err) {
 		return nil
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	// Remove empty parent directories up to (not including) basePath.
+	dir := filepath.Dir(path)
+	for dir != b.basePath && len(dir) > len(b.basePath) {
+		if rmErr := os.Remove(dir); rmErr != nil {
+			break // not empty or other error — stop
+		}
+		dir = filepath.Dir(dir)
+	}
+	return nil
 }
 
 func (b *LocalBackend) List(ctx context.Context, prefix string) ([]string, error) {
