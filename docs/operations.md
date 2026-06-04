@@ -123,13 +123,46 @@ Cobre crashes da aplicação que deixaram ZIPs intermediários órfãos.
 
 Uma operação ativa por backend por vez. Tentativa de iniciar segunda operação retorna **409 Conflict** com mensagem "Já existe uma operação em andamento para este backend".
 
-### Reconciliação S3 ↔ DB
+### Migração, reconciliação e limpeza (operações assíncronas)
 
-Após um restore do banco de dados sem os arquivos S3 correspondentes, o campo `storage_location` pode ficar desatualizado (`local` para arquivos que estão no S3). Isso causa migrações que retornam `copied=0` mesmo havendo arquivos.
+Todas as operações abaixo são **assíncronas**: ao clicar o botão é criado um job em background; a UI exibe barra de progresso (`X / Y arquivos`) e relatório final ao concluir. Somente uma operação pode estar ativa por backend por vez — uma segunda tentativa retorna **409 Conflict**.
 
-**Administração → Storage → "Reconciliar S3 ↔ DB"**
+#### Migrar para backend ativo
 
-Varre o bucket S3, compara as chaves com `stored_filename` na tabela `attachments` e corrige `storage_location` para `s3` nas linhas desatualizadas. Não move arquivos — apenas corrige o banco. Execute antes de uma migração quando `total_found=0` mas você sabe que há arquivos no S3.
+**Administração → Storage → "📦 Migrar para backend ativo"** (visível com S3 configurado)
+
+Copia todos os anexos cujo `storage_location` difere do backend ativo para o backend ativo, verificando SHA256 de origem e destino. Não-destrutivo: os arquivos da origem **não são removidos**. Idempotente — pode ser repetido com segurança após falha.
+
+Relatório ao concluir: `total_found / copiados / erros`.
+
+Se `total_found = 0` mas você sabe que há arquivos no outro backend, execute primeiro **Reconciliar** para corrigir `storage_location` no banco.
+
+#### Reconciliar S3 ↔ DB / LOCAL ↔ DB
+
+Corrige o campo `storage_location` no banco de dados quando ele está desatualizado em relação ao que existe fisicamente nos backends. Não move arquivos — apenas corrige registros.
+
+| Botão | Quando usar |
+|---|---|
+| **🔄 Reconciliar S3 ↔ DB** | Após restore do DB sem os arquivos S3 correspondentes (o banco diz `local` mas o arquivo está no S3). |
+| **🔄 Reconciliar LOCAL ↔ DB** | Após restore do DB sem os arquivos locais correspondentes (o banco diz `s3` mas o arquivo está no disco). Sempre visível, mesmo sem S3 configurado. |
+
+Fluxo: varre o backend selecionado, compara chaves com `stored_filename` na tabela `attachments` e corrige `storage_location`. Orphans (chaves no backend sem linha no DB) são ignorados.
+
+Relatório ao concluir: `registros corrigidos / erros`. Se corrigidos > 0, execute **Migrar** em seguida para copiar os arquivos para o backend ativo.
+
+#### Limpar origem
+
+**Administração → Storage → "🗑 Limpar origem"** (visível com S3 configurado)
+
+Remove os arquivos do backend de **origem** (o que não é o ativo) para os anexos já migrados. Antes de excluir cada arquivo, **verifica se ele realmente existe no backend ativo** via `Get`. Arquivos sem cópia confirmada no destino são **ignorados** (contados como `skipped`) — não são apagados para evitar perda de dados.
+
+Relatório ao concluir: `candidatos / removidos / ignorados (sem cópia no destino) / erros`.
+
+Se `skipped > 0`: execute **Migrar** novamente para garantir que esses arquivos sejam copiados antes de tentar limpar novamente.
+
+**Ordem recomendada de uso**:
+1. Migrar → aguardar `copiados = total_found`, sem erros
+2. Limpar origem → confirmar `ignorados = 0` antes de considerar concluído
 
 ---
 

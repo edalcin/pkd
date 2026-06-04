@@ -76,7 +76,7 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 🏷️ **Tags** | Renomear, editar cor, excluir ou mesclar tags globalmente; botão para remover tags órfãs |
 | 📎 **Arquivos** | Grade com todos os anexos do sistema (thumbnail para imagens); botão "Verificar Órfãos" lista arquivos sem documento associado; seção "Imagens externas" lista documentos com imagens hospedadas fora do PKD e permite importá-las individualmente com um clique |
 | 🔗 **Links externos** | Tabela de gerenciamento de todos os links externos; testa validade (HTTP HEAD) e permite excluir inválidos em lote |
-| ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada, reconciliação S3↔DB, limpeza da origem; backup/restauração assíncrona com streaming multipart e URL pré-assinada |
+| ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada com progresso em tempo real; reconciliação S3↔DB e LOCAL↔DB (corrige `storage_location` sem mover arquivos); limpeza da origem com verificação de cópia no destino antes de apagar; backup/restauração assíncrona com streaming multipart e URL pré-assinada |
 | 🧹 **Limpeza** | Executa `VACUUM` no banco de dados para recuperar espaço em disco |
 | ⚙️ **Configurações** | Retenção de versões de documentos configurável (padrão 50 por documento) |
 
@@ -244,9 +244,18 @@ Ao desarquivar o documento pai, **todos os filhos** são desarquivados em cascat
 Configure as variáveis `PKD_S3_BUCKET` e `PKD_S3_REGION` para habilitar o backend S3. Depois acesse **Administração → Storage**:
 
 1. **Testar conexão** — verifica credenciais e acesso ao bucket
-2. **Migrar para S3** — copia todos os anexos do armazenamento local para o S3 com verificação SHA256; em caso de falha o processo pode ser repetido com segurança
-3. **Ativar S3** — troca o backend ativo; novas uploads vão para o S3
-4. **Limpar origem** — remove os arquivos locais após confirmar a migração
+2. **Migrar para backend ativo** — copia todos os anexos do backend de origem para o ativo com verificação SHA256 por arquivo; exibe barra de progresso em tempo real e relatório final; idempotente (pode ser repetido após falha)
+3. **Ativar S3** — troca o backend ativo; novos uploads vão para o S3
+4. **Reconciliar S3 ↔ DB** — corrige `storage_location` no banco quando ele diverge do que existe no bucket (ex: após restore do DB); não move arquivos
+5. **Reconciliar LOCAL ↔ DB** — mesmo que acima, para o backend local; sempre visível mesmo sem S3
+6. **Limpar origem** — remove arquivos do backend anterior; **verifica** que existe cópia confirmada no backend ativo antes de cada exclusão; arquivos sem cópia são ignorados e reportados
+
+Todas as operações (Migrar, Reconciliar, Limpar) são **assíncronas** com job tracking: barra de progresso durante execução e relatório detalhado ao concluir. Somente uma operação por backend por vez (segunda tentativa retorna 409).
+
+Fluxo completo Local → S3:
+```
+Testar conexão → Migrar → Ativar S3 → Limpar origem (verificar ignorados = 0)
+```
 
 ### Backup e restauração de anexos (S3)
 

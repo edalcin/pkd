@@ -8,6 +8,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Adicionado
 
+- **Progresso em tempo real para Migrar / Reconciliar / Limpar origem** — as três operações de storage eram síncronas e bloqueavam o request sem feedback. Agora são assíncronas com job tracking (mesmo padrão do backup S3):
+  - Endpoints renomeados: `/migrate-start`, `/reconcile-start`, `/cleanup-source-start` retornam `202 Accepted + job_id`; polling via `GET /api/admin/storage/jobs/{id}` existente.
+  - Barra de progresso `<progress>` com `X / Y arquivos (N%)` durante execução.
+  - Relatório final ao concluir: `total_found / copiados|corrigidos|removidos / erros`.
+  - `BackupJobManager` passa a rastrear jobs de `kind = "migrate" | "reconcile" | "cleanup"` além de `"backup"`. Novo struct `StorageOpSummary` (total_found, succeeded, skipped, errors) como campo `Job.StorageOp`.
+  - Callbacks `onProgress(processed, total int64)` adicionados a `MigrateToBackend`, `ReconcileStorageLocations` e `CleanupSource` em `store/attachments.go`.
+  - Gate de concorrência: migrate/cleanup usam `currentBackendKind()` como chave; reconcile usa `reconcile-<backend>`.
+
+- **Reconciliar LOCAL ↔ DB** — novo botão sempre visível (mesmo sem S3 configurado). Usa a mesma função `ReconcileStorageLocations` passando o backend local como origem. Útil após restore do DB quando os arquivos estão no disco mas o banco registra `storage_location = 's3'`.
+
+### Corrigido
+
+- **Limpar origem verifica cópia antes de apagar** — `CleanupSource` agora chama `target.Get(key)` para confirmar que o arquivo existe no backend ativo antes de deletá-lo da origem. Arquivos sem cópia confirmada são contados em `skipped` e **não são apagados**, prevenindo perda de dados. O relatório final exibe `candidatos / removidos / ignorados (sem cópia no destino)` com aviso orientando re-execução da migração se `skipped > 0`.
+
+### Documentação
+
+- `docs/operations.md` — seção "Migração, reconciliação e limpeza" reescrita para refletir comportamento assíncrono, novo botão LOCAL↔DB e semântica segura do Limpar origem.
+- `README.md` — tabela de funcionalidades e seção "Armazenamento S3" atualizadas.
+- `docs/c4/component.md` — descrições de `BackupJobManager`, `storage_handlers` e `AttachmentStore` atualizadas.
+
 - **Importar imagens externas como attachments** — conteúdo colado de outros sites frequentemente contém `<img src="https://...">` externos que podem quebrar se o site original sair do ar.
   - **Editor**: botão `🌐⬇` na barra de ferramentas, visível apenas quando o documento aberto tem imagens externas. Um clique baixa todas as imagens, cria attachments inline e reescreve os `src` numa única transação ProseMirror (= um passo de undo).
   - **Admin → Arquivos**: nova seção "Imagens externas" lista todos os documentos com imagens externas (contagem por documento); botão "Importar" por linha. Após importação a seção e a grade de anexados são atualizadas automaticamente.
