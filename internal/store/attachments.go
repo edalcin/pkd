@@ -532,6 +532,10 @@ func (s *AttachmentStore) CleanupSource(ctx context.Context, source, target stor
 			onProgress(int64(i+1), total)
 		}
 	}
+	// After all file deletions, sweep empty directories from local backends.
+	if pruner, ok := source.(storage.DirPruner); ok {
+		pruner.PruneEmptyDirs(ctx) //nolint:errcheck — best-effort
+	}
 	return res
 }
 

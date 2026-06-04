@@ -33,6 +33,13 @@ type ObjectMeta struct {
 	LastModified time.Time
 }
 
+// DirPruner is an optional interface for backends that support removing
+// empty subdirectories after a batch deletion. CleanupSource calls it once
+// after all file deletions so that leftover empty directories are swept away.
+type DirPruner interface {
+	PruneEmptyDirs(ctx context.Context) error
+}
+
 // S3Capable is implemented by backends that can stream a backup ZIP entirely
 // inside object storage (no temp file on the application host) and produce a
 // short-lived download URL. Local backends do not implement this interface.

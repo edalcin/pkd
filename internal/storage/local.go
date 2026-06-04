@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/edalcin/pkd/internal/security"
@@ -92,6 +93,26 @@ func (b *LocalBackend) Delete(ctx context.Context, key string) error {
 			break // not empty or other error — stop
 		}
 		dir = filepath.Dir(dir)
+	}
+	return nil
+}
+
+// PruneEmptyDirs removes empty subdirectories under basePath, deepest first.
+// Called after a batch deletion to sweep up any leftover empty directories that
+// per-file cleanup missed (e.g. when sibling files were skipped, not deleted).
+func (b *LocalBackend) PruneEmptyDirs(_ context.Context) error {
+	var dirs []string
+	filepath.Walk(b.basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil || !info.IsDir() || path == b.basePath {
+			return nil
+		}
+		dirs = append(dirs, path)
+		return nil
+	})
+	// Sort deepest-first by path length so children are attempted before parents.
+	sort.Slice(dirs, func(i, j int) bool { return len(dirs[i]) > len(dirs[j]) })
+	for _, dir := range dirs {
+		os.Remove(dir) // best-effort: silently fails if not empty
 	}
 	return nil
 }
