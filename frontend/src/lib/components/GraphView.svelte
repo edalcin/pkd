@@ -3,6 +3,7 @@
   import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force'
   import { select } from 'd3-selection'
   import { zoom, zoomIdentity } from 'd3-zoom'
+  import { drag } from 'd3-drag'
   import { apiGet } from '../api.js'
 
   let svgEl = $state(null)
@@ -138,20 +139,55 @@
       .attr('stroke-width', 1.5)
       .attr('marker-end', d => d.edge_type === 'hierarchy' ? 'url(#arrowhead)' : null)
 
+    // Track drag vs click
+    let didDrag = false
+
+    const dragBehavior = drag()
+      .on('start', function(event, d) {
+        didDrag = false
+        if (!event.active) simulation.alphaTarget(0.3).restart()
+        d.fx = d.x
+        d.fy = d.y
+        select(this).attr('cursor', 'grabbing')
+      })
+      .on('drag', function(event, d) {
+        didDrag = true
+        d.fx = event.x
+        d.fy = event.y
+      })
+      .on('end', function(event, d) {
+        if (!event.active) simulation.alphaTarget(0)
+        if (didDrag) {
+          // thicker stroke = visually pinned; dblclick resets to 2
+          select(this).select('circle').attr('stroke-width', 3.5)
+        }
+        select(this).attr('cursor', 'grab')
+      })
+
     // Nodes group
     const nodeEls = g.append('g')
       .selectAll('g')
       .data(ns)
       .enter().append('g')
       .attr('class', 'graph-node')
-      .attr('cursor', 'pointer')
+      .attr('cursor', 'grab')
+      .call(dragBehavior)
       .on('click', (_, d) => {
+        if (didDrag) { didDrag = false; return }
         if (d.node_type === 'tag') {
           tagFilter = d.title.replace(/^#/, '')
           loadGraph()
         } else {
           window.location.hash = `/doc/${d.id}`
         }
+      })
+      .on('dblclick', (event, d) => {
+        event.stopPropagation()
+        d.fx = null
+        d.fy = null
+        simulation.alphaTarget(0.1).restart()
+        select(event.currentTarget).select('circle')
+          .attr('stroke-width', 2)
       })
 
     nodeEls.append('circle')
@@ -274,3 +310,4 @@
     text-align: center;
   }
 </style>
+
