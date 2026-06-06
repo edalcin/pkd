@@ -5,7 +5,7 @@
   import { zoom, zoomIdentity } from 'd3-zoom'
   import { drag } from 'd3-drag'
   import { apiGet } from '../api.js'
-  import { textFilter } from '../stores/documents.js'
+  import { textFilter, tree } from '../stores/documents.js'
 
   let svgEl = $state(null)
   let rawNodes = $state([])
@@ -20,11 +20,23 @@
   let tagFilter = $state('')
   let simulation = null
 
+  // IDs of docs currently in the tree (mirrors sidebar FTS5 filter result)
+  const treeDocIds = $derived.by(() => {
+    const ids = new Set()
+    function collect(nodes) {
+      for (const n of nodes) {
+        ids.add(n.id)
+        if (n.children?.length) collect(n.children)
+      }
+    }
+    collect($tree)
+    return ids
+  })
+
   // Derived count of matching doc nodes (for empty-state check, evaluated before effect)
   const filteredDocCount = $derived.by(() => {
-    const q = $textFilter.toLowerCase().trim()
-    if (!q) return rawNodes.filter(n => n.node_type !== 'tag').length
-    return rawNodes.filter(n => n.node_type !== 'tag' && n.title.toLowerCase().includes(q)).length
+    if (!$textFilter) return rawNodes.filter(n => n.node_type !== 'tag').length
+    return rawNodes.filter(n => n.node_type !== 'tag' && treeDocIds.has(n.id)).length
   })
 
   // Tag color palette
@@ -79,12 +91,8 @@
       }
     }
 
-    // Text filter: match doc nodes by title substring
-    const matchIds = new Set(
-      rawNodes
-        .filter(n => n.node_type !== 'tag' && n.title.toLowerCase().includes(q))
-        .map(n => n.id)
-    )
+    // Text filter: use same doc set as sidebar (FTS5 result via tree store)
+    const matchIds = treeDocIds
 
     const visibleEdges = rawEdges.filter(e => {
       if (e.edge_type === 'link' && !showLinks) return false
