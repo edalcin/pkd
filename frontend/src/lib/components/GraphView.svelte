@@ -5,6 +5,7 @@
   import { zoom, zoomIdentity } from 'd3-zoom'
   import { drag } from 'd3-drag'
   import { apiGet } from '../api.js'
+  import { textFilter } from '../stores/documents.js'
 
   let svgEl = $state(null)
   let rawNodes = $state([])
@@ -18,6 +19,13 @@
   let showTagEdges = $state(true)
   let tagFilter = $state('')
   let simulation = null
+
+  // Derived count of matching doc nodes (for empty-state check, evaluated before effect)
+  const filteredDocCount = $derived.by(() => {
+    const q = $textFilter.toLowerCase().trim()
+    if (!q) return rawNodes.filter(n => n.node_type !== 'tag').length
+    return rawNodes.filter(n => n.node_type !== 'tag' && n.title.toLowerCase().includes(q)).length
+  })
 
   // Tag color palette
   const COLORS = [
@@ -48,25 +56,55 @@
     }
   })
 
-  // Returns the subset of nodes and edges to render based on active toggles.
+  // Returns the subset of nodes and edges to render based on active toggles and text filter.
   function getFilteredData() {
+    const q = $textFilter.toLowerCase().trim()
+
+    if (!q) {
+      const visibleEdges = rawEdges.filter(e => {
+        if (e.edge_type === 'link') return showLinks
+        if (e.edge_type === 'tag') return showTagEdges
+        if (e.edge_type === 'hierarchy') return showHierarchy
+        return true
+      })
+      if (showAll) return { nodes: rawNodes, edges: visibleEdges }
+      const connectedIDs = new Set()
+      for (const e of visibleEdges) {
+        connectedIDs.add(e.source)
+        connectedIDs.add(e.target)
+      }
+      return {
+        nodes: rawNodes.filter(n => connectedIDs.has(n.id)),
+        edges: visibleEdges,
+      }
+    }
+
+    // Text filter: match doc nodes by title substring
+    const matchIds = new Set(
+      rawNodes
+        .filter(n => n.node_type !== 'tag' && n.title.toLowerCase().includes(q))
+        .map(n => n.id)
+    )
+
     const visibleEdges = rawEdges.filter(e => {
-      if (e.edge_type === 'link') return showLinks
-      if (e.edge_type === 'tag') return showTagEdges
-      if (e.edge_type === 'hierarchy') return showHierarchy
-      return true
+      if (e.edge_type === 'link' && !showLinks) return false
+      if (e.edge_type === 'tag' && !showTagEdges) return false
+      if (e.edge_type === 'hierarchy' && !showHierarchy) return false
+      // tag edges: keep if the doc side matches
+      if (e.edge_type === 'tag') return matchIds.has(e.source) || matchIds.has(e.target)
+      // doc-doc edges: both endpoints must match
+      return matchIds.has(e.source) && matchIds.has(e.target)
     })
 
-    if (showAll) return { nodes: rawNodes, edges: visibleEdges }
-
-    // Only include nodes that participate in at least one visible edge.
-    const connectedIDs = new Set()
+    // Always include matching docs (even isolated) plus nodes reachable via edges
+    const visibleIds = new Set(matchIds)
     for (const e of visibleEdges) {
-      connectedIDs.add(e.source)
-      connectedIDs.add(e.target)
+      visibleIds.add(e.source)
+      visibleIds.add(e.target)
     }
+
     return {
-      nodes: rawNodes.filter(n => connectedIDs.has(n.id)),
+      nodes: rawNodes.filter(n => visibleIds.has(n.id)),
       edges: visibleEdges,
     }
   }
@@ -249,6 +287,11 @@
           Mostrar todos os documentos
         </button>
       {/if}
+    </div>
+  {:else if $textFilter && filteredDocCount === 0}
+    <div class="empty-state">
+      <span class="emoji">🔍</span>
+      <p>Nenhum documento encontrado para "<strong>{$textFilter}</strong>".</p>
     </div>
   {:else}
     <!-- Controls -->
