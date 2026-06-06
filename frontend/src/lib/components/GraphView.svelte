@@ -336,6 +336,40 @@
       class="graph-svg"
       aria-label="Grafo de conexões entre documentos"
     ></svg>
+
+    <div class="graph-legend">
+      <div class="legend-title">Legenda</div>
+      <div class="legend-section-label">Nós</div>
+      <div class="legend-item">
+        <svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#94a3b8" stroke="var(--bg-panel)" stroke-width="2"/></svg>
+        <span>Documento</span>
+      </div>
+      <div class="legend-item">
+        <svg width="14" height="14">
+          {#each [0,1,2] as i}
+            <circle cx={3 + i * 5} cy="7" r="3" fill={['#818cf8','#34d399','#f59e0b'][i]}/>
+          {/each}
+        </svg>
+        <span>Doc. c/ tag</span>
+      </div>
+      <div class="legend-item">
+        <svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#e879f9" stroke="#c026d3" stroke-width="2" stroke-dasharray="3,2"/></svg>
+        <span>Tag</span>
+      </div>
+      <div class="legend-section-label">Arestas</div>
+      <div class="legend-item">
+        <svg width="22" height="10"><line x1="1" y1="5" x2="21" y2="5" stroke="#60a5fa" stroke-width="1.5" stroke-opacity=".8"/></svg>
+        <span>Link</span>
+      </div>
+      <div class="legend-item">
+        <svg width="22" height="10"><line x1="1" y1="5" x2="21" y2="5" stroke="var(--accent)" stroke-width="1.5" stroke-opacity=".8" stroke-dasharray="6,3"/></svg>
+        <span>Hierarquia</span>
+      </div>
+      <div class="legend-item">
+        <svg width="22" height="10"><line x1="1" y1="5" x2="21" y2="5" stroke="#e879f9" stroke-width="1.5" stroke-opacity=".7" stroke-dasharray="2,3"/></svg>
+        <span>Rel. com tag</span>
+      </div>
+    </div>
   {/if}
 </div>
 
@@ -359,6 +393,50 @@
     font-size: .75rem;
     color: var(--text-muted);
     text-align: center;
+  }
+
+  .graph-legend {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: .5rem .625rem;
+    box-shadow: var(--shadow);
+  }
+
+  .legend-title {
+    font-size: .7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: .15rem;
+  }
+
+  .legend-section-label {
+    font-size: .65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-top: .25rem;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .75rem;
+    color: var(--text-muted);
+  }
+
+  .legend-item svg {
+    flex-shrink: 0;
   }
 </style>
 
