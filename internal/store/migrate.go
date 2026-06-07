@@ -180,5 +180,29 @@ func Open(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("store.Open icon data migration: %w", err)
 	}
 
+	// Rebuild the FTS5 search index from the documents table on every startup.
+	// documents_fts uses content='' (contentless) so it must be maintained by the
+	// application; delete-all + re-insert is idempotent and fast for personal-KB
+	// sizes (<10k docs). The JOIN filter in ftsSearch handles trashed rows at query
+	// time, but rebuilding here ensures the index reflects the current document set.
+	if _, err := db.Exec(`INSERT INTO documents_fts(documents_fts) VALUES('delete-all')`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open fts5 delete-all: %w", err)
+	}
+	if _, err := db.Exec(`
+		INSERT INTO documents_fts(rowid, title, body_text, tags)
+		SELECT d.id, d.title, d.body_text,
+		       COALESCE((
+		           SELECT group_concat(t.name, ' ')
+		           FROM document_tags dt
+		           JOIN tags t ON t.id = dt.tag_id
+		           WHERE dt.document_id = d.id
+		       ), '')
+		FROM documents d
+		WHERE d.trashed_at IS NULL`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open fts5 rebuild: %w", err)
+	}
+
 	return db, nil
 }

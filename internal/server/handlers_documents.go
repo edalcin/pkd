@@ -33,6 +33,7 @@ func (s *Server) handleCreateDocument() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		_ = s.search.IndexDoc(doc.ID, doc.Title, "", nil)
 		writeJSON(w, http.StatusCreated, doc)
 	}
 }
@@ -114,6 +115,7 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		_ = s.search.IndexDoc(doc.ID, doc.Title, plainText, nil)
 		writeJSON(w, http.StatusOK, doc)
 	}
 }

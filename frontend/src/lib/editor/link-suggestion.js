@@ -19,9 +19,11 @@ function debounce(fn, ms) {
 }
 
 const fetchSuggestions = debounce(async (query) => {
-  if (!query) return []
+  // Strip trailing ] so the [Title] typing pattern works naturally
+  const q = query.endsWith(']') ? query.slice(0, -1) : query
+  if (!q) return []
   try {
-    const results = await apiGet(`/api/search?q=${encodeURIComponent(query)}&limit=10`)
+    const results = await apiGet(`/api/search?q=${encodeURIComponent(q)}&limit=10`)
     return results.slice(0, 10)
   } catch {
     return []
@@ -107,6 +109,10 @@ export function buildLinkSuggestion(onSelect) {
           renderList(props.items, props)
         },
         onKeyDown({ event }) {
+          if (event.key === ']' && currentItems.length > 0) {
+            selectItem(selectedIndex)
+            return true
+          }
           if (!currentItems.length) return false
           if (event.key === 'ArrowDown') {
             selectedIndex = (selectedIndex + 1) % currentItems.length

@@ -69,21 +69,40 @@ func (s *SearchStore) Search(q string, limit int) ([]SearchHit, error) {
 }
 
 func (s *SearchStore) ftsSearch(q string, limit int) ([]SearchHit, error) {
-	// Wrap in quotes for FTS5 phrase search; escape internal quotes
+	// Wrap in quotes for FTS5 phrase search; escape internal quotes.
+	// JOIN with documents to retrieve real titles (documents_fts is content=''
+	// so highlight/snippet return empty strings) and filter trashed rows.
 	safe := `"` + strings.ReplaceAll(q, `"`, `""`) + `"`
 	rows, err := s.db.Query(fmt.Sprintf(`
-		SELECT rowid,
-		       highlight(documents_fts, 0, '<mark>', '</mark>') AS title_hl,
-		       snippet(documents_fts, 1, '<mark>', '</mark>', '…', 32) AS snippet
+		SELECT d.id, d.title, substr(d.body_text, 1, 200) AS snippet
 		FROM documents_fts
+		JOIN documents d ON d.id = documents_fts.rowid
 		WHERE documents_fts MATCH ?
-		ORDER BY rank
+		  AND d.trashed_at IS NULL
+		ORDER BY documents_fts.rank
 		LIMIT %d`, limit), safe)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	return scanHits(rows)
+}
+
+// IndexDoc upserts a document into the FTS5 index outside a transaction.
+// Call after Create or Update to keep the index current.
+func (s *SearchStore) IndexDoc(docID int64, title, bodyText string, tagNames []string) error {
+	tags := strings.Join(tagNames, " ")
+	if _, err := s.db.Exec(
+		`INSERT INTO documents_fts(documents_fts, rowid, title, body_text, tags) VALUES ('delete', ?, '', '', '')`,
+		docID,
+	); err != nil && !strings.Contains(err.Error(), "no such rowid") {
+		return err
+	}
+	_, err := s.db.Exec(
+		`INSERT INTO documents_fts(rowid, title, body_text, tags) VALUES (?, ?, ?, ?)`,
+		docID, title, bodyText, tags,
+	)
+	return err
 }
 
 func (s *SearchStore) likeSearch(q string, limit int) ([]SearchHit, error) {
