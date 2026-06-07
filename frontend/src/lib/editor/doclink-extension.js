@@ -1,4 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
+import Suggestion from '@tiptap/suggestion'
+import { buildLinkSuggestion } from './link-suggestion.js'
 
 /**
  * docLink — TipTap inline node for bidirectional document links.
@@ -42,7 +44,7 @@ export const DocLink = Node.create({
   },
 
   renderText({ node }) {
-    return `[[${node.attrs.docTitle || node.attrs.docId}]]`
+    return `[${node.attrs.docTitle || node.attrs.docId}]`
   },
 
   addNodeView() {
@@ -61,5 +63,14 @@ export const DocLink = Node.create({
 
       return { dom }
     }
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      Suggestion({
+        editor: this.editor,
+        ...buildLinkSuggestion(),
+      }),
+    ]
   },
 })

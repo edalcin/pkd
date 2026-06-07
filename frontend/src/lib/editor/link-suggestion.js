@@ -36,7 +36,7 @@ const fetchSuggestions = debounce(async (query) => {
  */
 export function buildLinkSuggestion(onSelect) {
   return {
-    char: '[[',
+    char: '[',
     allowSpaces: true,
     startOfLine: false,
 

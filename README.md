@@ -27,6 +27,7 @@
 | ⬇️ **Exportar como Markdown** | Botão `⬇ .md` no toolbar converte o documento para Markdown e baixa o arquivo `.md` no browser |
 | 🎯 **Modo foco** | Botão de tela cheia abre o editor em uma janela separada, sem distrações; estado de conteúdo sincronizado ao fechar |
 | 🔗 **Notas relacionadas** | Relacione documentos pelo painel "Notas relacionadas"; as relações são **simétricas** — ambos os documentos exibem a mesma lista de relacionados, sem distinção de direção |
+| 🔗 **Links inline no editor** | Digite `[` no editor para abrir autocomplete de documentos internos; selecione para inserir um chip de link clicável diretamente no texto |
 | 📍 **Breadcrumb de hierarquia** | Ancestrais clicáveis exibidos abaixo do título no editor — navegue para qualquer nível da hierarquia com um clique |
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
 | 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
@@ -286,7 +287,17 @@ As imagens importadas passam a aparecer na grade de "Arquivos anexados" e ficam 
 
 ### Exportar como Markdown
 
-Clique no botão **⬇ .md** na barra de ferramentas. O browser baixa imediatamente o arquivo `<título>.md` com o conteúdo do documento convertido para Markdown (headings `#`, código em triple-backtick, links `[[Documento]]` preservados).
+Clique no botão **⬇ .md** na barra de ferramentas. O browser baixa imediatamente o arquivo `<título>.md` com o conteúdo do documento convertido para Markdown (headings `#`, código em triple-backtick, links `[Documento]` preservados).
+
+### Links inline no editor
+
+Digite `[` em qualquer posição do editor. Um dropdown de autocomplete aparece buscando documentos pelo título em tempo real (FTS5). Continue digitando para filtrar os resultados; use ↑/↓ para navegar, `Enter` ou clique para confirmar.
+
+Ao selecionar, o texto digitado é substituído por um **chip de link** clicável com o título do documento. Clicar no chip navega para o documento vinculado. Os links são bidirecionais — ambos os documentos exibem a relação no painel "Notas relacionadas" e no Graph View (aresta de tipo _link_).
+
+No export Markdown (botão `⬇ .md`), chips de link são convertidos para `[Título do Documento]`.
+
+---
 
 ### Graph View
 
@@ -414,6 +425,18 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-06-07
+
+**Links inline no editor (`[Título]`)**
+
+- Digite `[` no editor para ativar autocomplete de documentos internos com busca FTS5 em tempo real
+- Selecionar um resultado substitui o texto digitado por um chip de link clicável (`docLink` inline node)
+- Clicar no chip navega para o documento vinculado (`#/doc/{id}`)
+- Links bidirecionais: sincronizados automaticamente na tabela `document_links` a cada save (parser HTML existente via `data-doc-link`)
+- Export Markdown: chips renderizam como `[Título do Documento]`
+
+---
 
 ### 2026-06-01
 
