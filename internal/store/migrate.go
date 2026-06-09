@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"log"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -178,6 +179,41 @@ func Open(dbPath string) (*sql.DB, error) {
 	`); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("store.Open icon data migration: %w", err)
+	}
+
+	// Warn about duplicate document titles and attempt to create a unique index.
+	// If duplicates exist the index creation will be skipped; application-layer
+	// checks in UpdateAndSync still prevent new duplicates from being introduced.
+	{
+		dupRows, qErr := db.Query(`
+			SELECT title, COUNT(*) AS cnt
+			FROM documents
+			WHERE trashed_at IS NULL
+			GROUP BY title COLLATE NOCASE
+			HAVING cnt > 1`)
+		if qErr == nil {
+			var hasDups bool
+			for dupRows.Next() {
+				var t string
+				var cnt int
+				if dupRows.Scan(&t, &cnt) == nil {
+					if !hasDups {
+						log.Printf("WARNING: duplicate document titles found — unique index not applied until resolved:")
+						hasDups = true
+					}
+					log.Printf("  title=%q  count=%d", t, cnt)
+				}
+			}
+			dupRows.Close()
+			if !hasDups {
+				if _, idxErr := db.Exec(
+					`CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_title_unique ON documents(title COLLATE NOCASE) WHERE trashed_at IS NULL`,
+				); idxErr != nil && !strings.Contains(idxErr.Error(), "UNIQUE") {
+					db.Close()
+					return nil, fmt.Errorf("store.Open idx_documents_title_unique: %w", idxErr)
+				}
+			}
+		}
 	}
 
 	// Rebuild the FTS5 search index from the documents table on every startup.

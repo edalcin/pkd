@@ -27,6 +27,16 @@ var ErrLocked = errors.New("document is locked")
 // ErrArchived is returned when an operation is blocked because the document is archived (read-only).
 var ErrArchived = errors.New("document is archived")
 
+// DuplicateTitleError is returned when a title already belongs to another active document.
+type DuplicateTitleError struct {
+	ExistingID    int64
+	ExistingTitle string
+}
+
+func (e *DuplicateTitleError) Error() string {
+	return fmt.Sprintf("duplicate title %q (id=%d)", e.ExistingTitle, e.ExistingID)
+}
+
 const nowISO = "strftime('%Y-%m-%dT%H:%M:%fZ','now')"
 
 // iconLeaf is the default icon for documents with no children.
@@ -43,6 +53,26 @@ type DocumentStore struct {
 // NewDocumentStore wraps db.
 func NewDocumentStore(db *sql.DB) *DocumentStore {
 	return &DocumentStore{db: db}
+}
+
+// SuggestTitles returns up to 3 available "base (N)" title variants.
+// excludeID, if non-nil, is excluded from the uniqueness check (for self-updates).
+func (s *DocumentStore) SuggestTitles(base string, excludeID *int64) []string {
+	var suggestions []string
+	for n := 2; len(suggestions) < 3 && n <= 100; n++ {
+		candidate := fmt.Sprintf("%s (%d)", base, n)
+		q := `SELECT COUNT(*) FROM documents WHERE title = ? COLLATE NOCASE AND trashed_at IS NULL`
+		args := []interface{}{candidate}
+		if excludeID != nil {
+			q += ` AND id != ?`
+			args = append(args, *excludeID)
+		}
+		var cnt int
+		if s.db.QueryRow(q, args...).Scan(&cnt) == nil && cnt == 0 {
+			suggestions = append(suggestions, candidate)
+		}
+	}
+	return suggestions
 }
 
 // syncParentIcon updates the parent's icon based on whether it has remaining
@@ -80,9 +110,25 @@ func syncParentIcon(tx *sql.Tx, parentID *int64) error {
 }
 
 // Create inserts a new document and returns it with server-assigned fields.
+// If title is already taken (case-insensitive, non-trashed), it is automatically
+// disambiguated to "Title (2)", "Title (3)", etc.
 func (s *DocumentStore) Create(parentID *int64, title string) (*model.Document, error) {
 	var doc model.Document
 	err := WithTx(s.db, func(tx *sql.Tx) error {
+		// Auto-disambiguate: find the next available title variant
+		actualTitle := title
+		baseTitle := title
+		for n := 2; n <= 200; n++ {
+			var cnt int
+			if err := tx.QueryRow(
+				`SELECT COUNT(*) FROM documents WHERE title = ? COLLATE NOCASE AND trashed_at IS NULL`,
+				actualTitle,
+			).Scan(&cnt); err != nil || cnt == 0 {
+				break
+			}
+			actualTitle = fmt.Sprintf("%s (%d)", baseTitle, n)
+		}
+
 		// Determine next position among siblings
 		var maxPos sql.NullInt64
 		if parentID == nil {
@@ -109,7 +155,7 @@ func (s *DocumentStore) Create(parentID *int64, title string) (*model.Document, 
 		res, err := tx.Exec(`
 			INSERT INTO documents (parent_id, title, icon, position, created_at, updated_at)
 			VALUES (?, ?, ?, ?, `+nowISO+`, `+nowISO+`)`,
-			parentArg, title, iconLeaf, pos)
+			parentArg, actualTitle, iconLeaf, pos)
 		if err != nil {
 			return fmt.Errorf("insert: %w", err)
 		}
@@ -163,7 +209,20 @@ func (s *DocumentStore) UpdateAndSync(id int64, clientVersion int64, title, body
 		if storedVersion != clientVersion {
 			return ErrVersionConflict
 		}
-		_, err := tx.Exec(`
+		// Enforce title uniqueness among active (non-trashed) documents
+		var dupID int64
+		var dupTitle string
+		err := tx.QueryRow(
+			`SELECT id, title FROM documents WHERE title = ? COLLATE NOCASE AND trashed_at IS NULL AND id != ? LIMIT 1`,
+			title, id,
+		).Scan(&dupID, &dupTitle)
+		if err == nil {
+			return &DuplicateTitleError{ExistingID: dupID, ExistingTitle: dupTitle}
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("title check: %w", err)
+		}
+		_, err = tx.Exec(`
 			UPDATE documents
 			SET title = ?, body_html = ?, body_text = ?, icon = ?,
 			    version = version + 1, updated_at = `+nowISO+`

@@ -18,6 +18,7 @@
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
   import VersionHistoryDialog from './VersionHistoryDialog.svelte'
+  import DuplicateTitleDialog from './DuplicateTitleDialog.svelte'
   import { get } from 'svelte/store'
   import { autoSaveInterval } from '../stores/settings.js'
 
@@ -278,6 +279,7 @@
   let linkCopied = $state(false)
   let saveError = $state('')
   let conflictData = $state(null)
+  let titleConflictData = $state(null)
   let loading = $state(true)
   let historyOpen = $state(false)
 
@@ -499,7 +501,11 @@
         icon: doc.icon || '',
       })
       if (result?._conflict) {
-        conflictData = result
+        if (result.conflict_type === 'title') {
+          titleConflictData = result
+        } else {
+          conflictData = result
+        }
         return
       }
       doc = result
@@ -538,6 +544,26 @@
   async function handleConflictReload() {
     conflictData = null
     await loadDocument()
+  }
+
+  function handleTitleConflictNavigate() {
+    if (!titleConflictData) return
+    const id = titleConflictData.existing_doc.id
+    titleConflictData = null
+    window.location.hash = `/doc/${id}`
+  }
+
+  async function handleTitleConflictUseSuggestion(suggestion) {
+    if (!titleConflictData) return
+    titleValue = suggestion
+    titleConflictData = null
+    await performSave()
+  }
+
+  function handleTitleConflictClose() {
+    if (!doc) return
+    titleValue = doc.title
+    titleConflictData = null
   }
 
   // Tags + autocomplete
@@ -1532,6 +1558,16 @@
         </div>
       </div>
     </div>
+  {/if}
+
+  <!-- Title conflict dialog -->
+  {#if titleConflictData}
+    <DuplicateTitleDialog
+      conflict={titleConflictData}
+      onNavigate={handleTitleConflictNavigate}
+      onUseSuggestion={handleTitleConflictUseSuggestion}
+      onClose={handleTitleConflictClose}
+    />
   {/if}
 {:else}
   <div class="editor-area empty-state">

@@ -106,8 +106,19 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 		if errors.Is(err, store.ErrVersionConflict) {
 			stored, _ := s.docs.GetByID(id)
 			writeJSON(w, http.StatusConflict, model.VersionConflict{
+				ConflictType:  "version",
 				StoredVersion: stored.Version,
 				Stored:        stored,
+			})
+			return
+		}
+		var dupErr *store.DuplicateTitleError
+		if errors.As(err, &dupErr) {
+			existingDoc := &model.Document{ID: dupErr.ExistingID, Title: dupErr.ExistingTitle}
+			writeJSON(w, http.StatusConflict, model.TitleConflict{
+				ConflictType: "title",
+				ExistingDoc:  existingDoc,
+				Suggestions:  s.docs.SuggestTitles(req.Title, &id),
 			})
 			return
 		}

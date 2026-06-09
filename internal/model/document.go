@@ -46,8 +46,17 @@ type DocumentTreeNode struct {
 // VersionConflict is returned as the body of a 409 response when a document
 // save is rejected because the client's version is stale.
 type VersionConflict struct {
+	ConflictType  string    `json:"conflict_type"` // "version"
 	StoredVersion int64     `json:"stored_version"`
 	Stored        *Document `json:"stored"`
+}
+
+// TitleConflict is returned as the body of a 409 response when a document
+// save is rejected because another document already holds the same title.
+type TitleConflict struct {
+	ConflictType string    `json:"conflict_type"` // "title"
+	ExistingDoc  *Document `json:"existing_doc"`
+	Suggestions  []string  `json:"suggestions"`
 }
 
 // Ancestor is a minimal document node used for breadcrumb display.
