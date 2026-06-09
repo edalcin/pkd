@@ -55,26 +55,6 @@ func NewDocumentStore(db *sql.DB) *DocumentStore {
 	return &DocumentStore{db: db}
 }
 
-// SuggestTitles returns up to 3 available "base (N)" title variants.
-// excludeID, if non-nil, is excluded from the uniqueness check (for self-updates).
-func (s *DocumentStore) SuggestTitles(base string, excludeID *int64) []string {
-	var suggestions []string
-	for n := 2; len(suggestions) < 3 && n <= 100; n++ {
-		candidate := fmt.Sprintf("%s (%d)", base, n)
-		q := `SELECT COUNT(*) FROM documents WHERE title = ? COLLATE NOCASE AND trashed_at IS NULL`
-		args := []interface{}{candidate}
-		if excludeID != nil {
-			q += ` AND id != ?`
-			args = append(args, *excludeID)
-		}
-		var cnt int
-		if s.db.QueryRow(q, args...).Scan(&cnt) == nil && cnt == 0 {
-			suggestions = append(suggestions, candidate)
-		}
-	}
-	return suggestions
-}
-
 // syncParentIcon updates the parent's icon based on whether it has remaining
 // non-trashed children. Only modifies icons that were auto-assigned (empty,
 // iconLeaf, or iconFolder) — user-set custom icons are never touched.

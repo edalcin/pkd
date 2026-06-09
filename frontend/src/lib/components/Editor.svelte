@@ -553,13 +553,6 @@
     window.location.hash = `/doc/${id}`
   }
 
-  async function handleTitleConflictUseSuggestion(suggestion) {
-    if (!titleConflictData) return
-    titleValue = suggestion
-    titleConflictData = null
-    await performSave()
-  }
-
   function handleTitleConflictClose() {
     if (!doc) return
     titleValue = doc.title
@@ -1565,7 +1558,6 @@
     <DuplicateTitleDialog
       conflict={titleConflictData}
       onNavigate={handleTitleConflictNavigate}
-      onUseSuggestion={handleTitleConflictUseSuggestion}
       onClose={handleTitleConflictClose}
     />
   {/if}

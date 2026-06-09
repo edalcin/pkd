@@ -56,7 +56,6 @@ type VersionConflict struct {
 type TitleConflict struct {
 	ConflictType string    `json:"conflict_type"` // "title"
 	ExistingDoc  *Document `json:"existing_doc"`
-	Suggestions  []string  `json:"suggestions"`
 }
 
 // Ancestor is a minimal document node used for breadcrumb display.

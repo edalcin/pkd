@@ -137,7 +137,14 @@
       "Bash(Select-Object Name)",
       "PowerShell(Remove-Item *)",
       "Bash(echo \"exit=$?\")",
-      "Bash(awk '{print $1}')"
+      "Bash(awk '{print $1}')",
+      "Bash(cd /d d:\\\\git\\\\pkd)",
+      "Bash(Get-ChildItem -Path . -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(Get-ChildItem *)",
+      "Bash(sqlite3 *)",
+      "PowerShell(sqlite3 *)",
+      "Bash(Select-Object FullName)"
     ]
   }
 }

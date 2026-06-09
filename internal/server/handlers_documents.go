@@ -114,11 +114,9 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 		}
 		var dupErr *store.DuplicateTitleError
 		if errors.As(err, &dupErr) {
-			existingDoc := &model.Document{ID: dupErr.ExistingID, Title: dupErr.ExistingTitle}
 			writeJSON(w, http.StatusConflict, model.TitleConflict{
 				ConflictType: "title",
-				ExistingDoc:  existingDoc,
-				Suggestions:  s.docs.SuggestTitles(req.Title, &id),
+				ExistingDoc:  &model.Document{ID: dupErr.ExistingID, Title: dupErr.ExistingTitle},
 			})
 			return
 		}
