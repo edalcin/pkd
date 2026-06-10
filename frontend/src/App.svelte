@@ -25,6 +25,7 @@
   window.addEventListener('hashchange', () => {
     const newHash = window.location.hash.slice(1) || '/'
     hash = newHash
+    if (newHash !== '/') localStorage.setItem('pkd-last-route', '#' + newHash)
     if (suppressHistoryPush) {
       suppressHistoryPush = false
       return
@@ -181,9 +182,18 @@
   function closeShare() { shareDocId = null }
 
   // ─── Bootstrap ───────────────────────────────────────────
+  function restoreLastRoute() {
+    const h = window.location.hash
+    if (!h || h === '#' || h === '#/') {
+      const saved = localStorage.getItem('pkd-last-route')
+      if (saved) window.location.hash = saved
+    }
+  }
+
   onMount(async () => {
     await checkSession()
     if ($authenticated) {
+      restoreLastRoute()
       await Promise.all([loadTree(), loadTags()])
     }
   })
@@ -191,6 +201,7 @@
   // When auth state changes to true, load data
   $effect(() => {
     if ($authenticated) {
+      restoreLastRoute()
       Promise.all([loadTree(), loadTags()])
     }
   })

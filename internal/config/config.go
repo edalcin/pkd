@@ -76,7 +76,7 @@ func Load() (*Config, error) {
 		DBPath:          dbPath,
 		AttachmentsPath: attachmentsPath,
 		ListenAddr:      ":8080",
-		SessionIdleMinutes: 60,
+		SessionIdleMinutes: 43200,
 		MaxImageMB:      10,
 		MaxAttachmentMB: 100,
 	}
