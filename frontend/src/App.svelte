@@ -13,7 +13,53 @@
 
   // ─── Routing ─────────────────────────────────────────────
   let hash = $state(window.location.hash.slice(1) || '/')
-  window.addEventListener('hashchange', () => { hash = window.location.hash.slice(1) || '/' })
+
+  // ─── Navigation history ──────────────────────────────────
+  let navHistory = $state([window.location.hash.slice(1) || '/'])
+  let navPos = $state(0)
+  let suppressHistoryPush = false
+
+  const canGoBack = $derived(navPos > 0)
+  const canGoForward = $derived(navPos < navHistory.length - 1)
+
+  window.addEventListener('hashchange', () => {
+    const newHash = window.location.hash.slice(1) || '/'
+    hash = newHash
+    if (suppressHistoryPush) {
+      suppressHistoryPush = false
+      return
+    }
+    if (navHistory[navPos] !== newHash) {
+      const trimmed = navHistory.slice(0, navPos + 1)
+      navHistory = [...trimmed, newHash]
+      navPos = trimmed.length
+    }
+  })
+
+  function goBack() {
+    if (!canGoBack) return
+    suppressHistoryPush = true
+    navPos--
+    window.location.hash = navHistory[navPos]
+  }
+
+  function goForward() {
+    if (!canGoForward) return
+    suppressHistoryPush = true
+    navPos++
+    window.location.hash = navHistory[navPos]
+  }
+
+  $effect(() => {
+    function onKeydown(e) {
+      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); goBack() }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); goForward() }
+      }
+    }
+    document.addEventListener('keydown', onKeydown)
+    return () => document.removeEventListener('keydown', onKeydown)
+  })
 
   function getRoute() {
     if (hash.startsWith('/focus/')) return { view: 'focus', id: hash.split('/')[2] }
@@ -217,6 +263,9 @@
           {sidebarCollapsed ? '▶' : '◀'}
         </button>
 
+        <button class="icon-btn nav-btn" onclick={goBack} disabled={!canGoBack} title="Voltar (Alt+←)" aria-label="Voltar">←</button>
+        <button class="icon-btn nav-btn" onclick={goForward} disabled={!canGoForward} title="Avançar (Alt+→)" aria-label="Avançar">→</button>
+
         <a href="#/" class="app-logo">PKD</a>
 
         <input
@@ -319,6 +368,8 @@
 {/if}
 
 <style>
+  .nav-btn { font-size: .95rem; letter-spacing: 0; }
+
   .topbar-search {
     flex: 1;
     min-width: 0;

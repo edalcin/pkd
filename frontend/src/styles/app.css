@@ -159,6 +159,7 @@ input:focus, textarea:focus, select:focus {
 }
 .icon-btn:hover { background: var(--bg-hover); color: var(--text); }
 .icon-btn:active { background: var(--bg-active); }
+.icon-btn:disabled { opacity: .3; pointer-events: none; }
 
 /* ─── Tree items ─────────────────────────────────────────────────────────── */
 .tree-item {
