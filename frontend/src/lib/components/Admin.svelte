@@ -4,6 +4,8 @@
   import { loadTags, tags } from '../stores/tags.js'
   import { autoSaveInterval } from '../stores/settings.js'
   import { docBodyRefreshedSignal } from '../stores/documents.js'
+  import { marked } from 'marked'
+  import DOMPurify from 'dompurify'
 
   const AUTOSAVE_OPTIONS = [
     { value: 5000,  label: '5 segundos' },
@@ -23,11 +25,18 @@
   let linkChecking = $state(false)
 
   // Attachments tab
+  const ATT_PAGE_SIZE = 50
   let allAttachments = $state([])
+  let attachmentsTotal = $state(0)
+  let attachmentsOffset = $state(0)
+  let attachmentsHasMore = $derived(allAttachments.length < attachmentsTotal)
+  let attSentinel = $state(null)
   let allOrphans = $state([])
   let orphansLoading = $state(false)
   let attachmentsLoading = $state(false)
   let previewAtt = $state(null)
+  let markdownContent = $state('')
+  let markdownLoading = $state(false)
 
   // External images tab
   let externalImagesDocs = $state([])
@@ -128,9 +137,23 @@
   }
 
   async function loadAttachments() {
+    allAttachments = []
+    attachmentsTotal = 0
+    attachmentsOffset = 0
+    await loadMoreAttachments()
+  }
+
+  async function loadMoreAttachments() {
+    if (attachmentsLoading) return
     attachmentsLoading = true
     try {
-      allAttachments = (await apiGet('/api/admin/attachments')) || []
+      const data = await apiGet(`/api/admin/attachments?limit=${ATT_PAGE_SIZE}&offset=${attachmentsOffset}`)
+      if (data) {
+        const items = data.items || []
+        allAttachments = [...allAttachments, ...items]
+        attachmentsTotal = data.total || 0
+        attachmentsOffset += items.length
+      }
     } finally {
       attachmentsLoading = false
     }
@@ -730,14 +753,47 @@
     return mime && mime.startsWith('image/')
   }
 
-  function previewType(mime) {
-    if (!mime) return 'download'
-    if (mime.startsWith('image/')) return 'image'
+  function isMarkdown(mime, name) {
+    if (mime === 'text/markdown' || mime === 'text/x-markdown') return true
+    const ext = (name || '').split('.').pop().toLowerCase()
+    return ext === 'md' || ext === 'markdown'
+  }
+
+  function previewType(mime, name) {
+    if (!mime && !name) return 'download'
+    if (mime?.startsWith('image/')) return 'image'
     if (mime === 'application/pdf') return 'pdf'
-    if (mime.startsWith('audio/')) return 'audio'
-    if (mime.startsWith('video/')) return 'video'
+    if (mime?.startsWith('audio/')) return 'audio'
+    if (mime?.startsWith('video/')) return 'video'
+    if (isMarkdown(mime, name)) return 'markdown'
     return 'download'
   }
+
+  $effect(() => {
+    const att = previewAtt
+    if (!att || !isMarkdown(att.mime_type, att.original_name)) {
+      markdownContent = ''
+      return
+    }
+    markdownLoading = true
+    fetch(att.url)
+      .then(r => r.text())
+      .then(text => { markdownContent = DOMPurify.sanitize(marked.parse(text)) })
+      .catch(() => { markdownContent = '<p><em>(Erro ao carregar conteúdo)</em></p>' })
+      .finally(() => { markdownLoading = false })
+  })
+
+  $effect(() => {
+    const el = attSentinel
+    if (!el) return
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !attachmentsLoading && attachmentsHasMore) {
+        loadMoreAttachments()
+      }
+    }, { threshold: 0.1 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  })
 
   function formatBytes(bytes) {
     if (!bytes || bytes === 0) return '0 B'
@@ -746,15 +802,16 @@
     return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i]
   }
 
-  function fileIcon(mime) {
-    if (!mime) return '📎'
-    if (mime.startsWith('image/')) return '🖼️'
-    if (mime.startsWith('video/')) return '🎬'
-    if (mime.startsWith('audio/')) return '🎵'
-    if (mime.includes('pdf')) return '📄'
-    if (mime.includes('zip') || mime.includes('archive')) return '🗜️'
-    if (mime.includes('spreadsheet') || mime.includes('excel')) return '📊'
-    if (mime.includes('document') || mime.includes('word')) return '📝'
+  function fileIcon(mime, name) {
+    if (!mime && !name) return '📎'
+    if (mime?.startsWith('image/')) return '🖼️'
+    if (mime?.startsWith('video/')) return '🎬'
+    if (mime?.startsWith('audio/')) return '🎵'
+    if (mime?.includes('pdf')) return '📄'
+    if (mime?.includes('zip') || mime?.includes('archive')) return '🗜️'
+    if (mime?.includes('spreadsheet') || mime?.includes('excel')) return '📊'
+    if (mime?.includes('document') || mime?.includes('word')) return '📝'
+    if (isMarkdown(mime, name)) return '#️⃣'
     return '📎'
   }
 </script>
@@ -980,9 +1037,7 @@
         </div>
       </div>
 
-      {#if attachmentsLoading}
-        <p class="muted">Carregando…</p>
-      {:else if allAttachments.length === 0}
+      {#if allAttachments.length === 0 && !attachmentsLoading}
         <p class="muted">Nenhum arquivo anexado.</p>
       {:else}
         <div class="att-grid">
@@ -992,7 +1047,7 @@
                 {#if isImage(att.mime_type)}
                   <img src={att.url} alt={att.original_name} loading="lazy" />
                 {:else}
-                  <span class="att-icon">{fileIcon(att.mime_type)}</span>
+                  <span class="att-icon">{fileIcon(att.mime_type, att.original_name)}</span>
                 {/if}
               </button>
               <div class="att-info">
@@ -1008,6 +1063,13 @@
             </div>
           {/each}
         </div>
+        {#if attachmentsHasMore}
+          <div bind:this={attSentinel} class="att-sentinel">
+            {#if attachmentsLoading}<p class="muted" style="text-align:center;padding:.5rem">Carregando…</p>{/if}
+          </div>
+        {:else if attachmentsLoading}
+          <p class="muted" style="text-align:center;padding:.5rem">Carregando…</p>
+        {/if}
       {/if}
     </div>
   {/if}
@@ -1537,23 +1599,31 @@
         </div>
       </div>
       <div class="preview-body">
-        {#if previewType(previewAtt.mime_type) === 'image'}
+        {#if previewType(previewAtt.mime_type, previewAtt.original_name) === 'image'}
           <img src={previewAtt.url} alt={previewAtt.original_name} class="preview-img" />
-        {:else if previewType(previewAtt.mime_type) === 'pdf'}
+        {:else if previewType(previewAtt.mime_type, previewAtt.original_name) === 'pdf'}
           <embed src={previewAtt.url} type="application/pdf" class="preview-pdf" />
-        {:else if previewType(previewAtt.mime_type) === 'audio'}
+        {:else if previewType(previewAtt.mime_type, previewAtt.original_name) === 'audio'}
           <div class="preview-audio-wrap">
             <span class="preview-big-icon">🎵</span>
             <p class="preview-file-name">{previewAtt.original_name}</p>
             <!-- svelte-ignore a11y_media_has_caption -->
             <audio controls src={previewAtt.url} class="preview-audio"></audio>
           </div>
-        {:else if previewType(previewAtt.mime_type) === 'video'}
+        {:else if previewType(previewAtt.mime_type, previewAtt.original_name) === 'video'}
           <!-- svelte-ignore a11y_media_has_caption -->
           <video controls src={previewAtt.url} class="preview-video"></video>
+        {:else if previewType(previewAtt.mime_type, previewAtt.original_name) === 'markdown'}
+          <div class="preview-markdown">
+            {#if markdownLoading}
+              <p class="muted">Carregando…</p>
+            {:else}
+              {@html markdownContent}
+            {/if}
+          </div>
         {:else}
           <div class="preview-download-wrap">
-            <span class="preview-big-icon">{fileIcon(previewAtt.mime_type)}</span>
+            <span class="preview-big-icon">{fileIcon(previewAtt.mime_type, previewAtt.original_name)}</span>
             <p class="preview-file-name">{previewAtt.original_name}</p>
             <p class="preview-file-size">{previewAtt.size_bytes ? (previewAtt.size_bytes / 1024).toFixed(0) + ' KB' : ''}</p>
             <a href={previewAtt.url} download={previewAtt.original_name} class="btn btn-primary">⬇ Fazer download</a>
@@ -2124,6 +2194,34 @@
   .preview-img { max-width: 100%; max-height: 75vh; object-fit: contain; }
   .preview-pdf { width: 100%; height: 75vh; border: none; }
   .preview-video { max-width: 100%; max-height: 75vh; }
+
+  .preview-markdown {
+    padding: 1.5rem 2rem;
+    max-height: 75vh;
+    overflow-y: auto;
+    line-height: 1.7;
+  }
+  .preview-markdown :global(h1), .preview-markdown :global(h2), .preview-markdown :global(h3),
+  .preview-markdown :global(h4), .preview-markdown :global(h5), .preview-markdown :global(h6) {
+    font-weight: 600; margin: 1.2em 0 .4em;
+  }
+  .preview-markdown :global(h1) { font-size: 1.5rem; }
+  .preview-markdown :global(h2) { font-size: 1.25rem; }
+  .preview-markdown :global(h3) { font-size: 1.1rem; }
+  .preview-markdown :global(p) { margin: .6em 0; }
+  .preview-markdown :global(pre) { background: var(--bg-hover); padding: .75rem 1rem; border-radius: var(--radius); overflow-x: auto; font-size: .85rem; }
+  .preview-markdown :global(code) { font-family: monospace; font-size: .875em; background: var(--bg-hover); padding: .1em .3em; border-radius: 3px; }
+  .preview-markdown :global(pre code) { background: none; padding: 0; }
+  .preview-markdown :global(ul), .preview-markdown :global(ol) { padding-left: 1.5rem; margin: .5em 0; }
+  .preview-markdown :global(li) { margin: .25em 0; }
+  .preview-markdown :global(blockquote) { border-left: 3px solid var(--accent); padding-left: .75rem; color: var(--text-muted); margin: .75em 0; }
+  .preview-markdown :global(a) { color: var(--accent); }
+  .preview-markdown :global(table) { border-collapse: collapse; width: 100%; }
+  .preview-markdown :global(th), .preview-markdown :global(td) { border: 1px solid var(--border); padding: .4rem .6rem; }
+  .preview-markdown :global(th) { background: var(--bg-hover); font-weight: 600; }
+  .preview-markdown :global(hr) { border: none; border-top: 1px solid var(--border); margin: 1em 0; }
+
+  .att-sentinel { min-height: 1px; }
 
   .preview-audio-wrap, .preview-download-wrap {
     display: flex; flex-direction: column; align-items: center;

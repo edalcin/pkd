@@ -169,32 +169,35 @@ func (s *AttachmentStore) ListByDocument(docID int64) ([]*model.Attachment, erro
 	return atts, rows.Err()
 }
 
-// ListAllWithDocument returns all attachments joined with their document title,
-// ordered newest first. Used by the admin attachments panel.
-func (s *AttachmentStore) ListAllWithDocument() ([]*model.AttachmentWithDoc, error) {
+// ListAllWithDocumentPaged returns a page of attachments joined with their document title,
+// ordered newest first. Returns items, total count, and error. Used by the admin panel.
+func (s *AttachmentStore) ListAllWithDocumentPaged(limit, offset int) ([]*model.AttachmentWithDoc, int64, error) {
 	rows, err := s.db.Query(`
 		SELECT a.id, a.document_id, a.original_name, a.mime_type, a.size_bytes, a.storage_location, a.created_at,
-		       COALESCE(d.title, '(sem documento)') as doc_title
+		       COALESCE(d.title, '(sem documento)') as doc_title,
+		       COUNT(*) OVER () AS total_count
 		FROM attachments a
 		LEFT JOIN documents d ON d.id = a.document_id
-		ORDER BY a.created_at DESC`)
+		ORDER BY a.created_at DESC
+		LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	var atts []*model.AttachmentWithDoc
+	var total int64
 	for rows.Next() {
 		var a model.AttachmentWithDoc
 		var createdStr string
 		if err := rows.Scan(&a.ID, &a.DocumentID, &a.OriginalName, &a.MimeType, &a.SizeBytes,
-			&a.StorageLocation, &createdStr, &a.DocumentTitle); err != nil {
-			return nil, err
+			&a.StorageLocation, &createdStr, &a.DocumentTitle, &total); err != nil {
+			return nil, 0, err
 		}
 		a.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
 		a.URL = fmt.Sprintf("/api/attachments/%d", a.ID)
 		atts = append(atts, &a)
 	}
-	return atts, rows.Err()
+	return atts, total, rows.Err()
 }
 
 // DeleteByDocument removes all attachment files and rows for a given document.

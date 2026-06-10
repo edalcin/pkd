@@ -21,6 +21,8 @@
   import DuplicateTitleDialog from './DuplicateTitleDialog.svelte'
   import { get } from 'svelte/store'
   import { autoSaveInterval } from '../stores/settings.js'
+  import { marked } from 'marked'
+  import DOMPurify from 'dompurify'
 
   let { docId, focusMode = false, assocPortal = null } = $props()
 
@@ -252,6 +254,28 @@
 
   // Attachment preview modal
   let previewAtt = $state(null)
+  let markdownContent = $state('')
+  let markdownLoading = $state(false)
+
+  function isMarkdown(mime, name) {
+    if (mime === 'text/markdown' || mime === 'text/x-markdown') return true
+    const ext = (name || '').split('.').pop().toLowerCase()
+    return ext === 'md' || ext === 'markdown'
+  }
+
+  $effect(() => {
+    const att = previewAtt
+    if (!att || !isMarkdown(att.mime_type, att.original_name)) {
+      markdownContent = ''
+      return
+    }
+    markdownLoading = true
+    fetch(`/api/attachments/${att.id}`)
+      .then(r => r.text())
+      .then(text => { markdownContent = DOMPurify.sanitize(marked.parse(text)) })
+      .catch(() => { markdownContent = '<p><em>(Erro ao carregar conteúdo)</em></p>' })
+      .finally(() => { markdownLoading = false })
+  })
 
   function openPreview(att) {
     previewAtt = att
@@ -259,12 +283,13 @@
   function closePreview() {
     previewAtt = null
   }
-  function previewType(mime) {
-    if (!mime) return 'download'
-    if (mime.startsWith('image/')) return 'image'
+  function previewType(mime, name) {
+    if (!mime && !name) return 'download'
+    if (mime?.startsWith('image/')) return 'image'
     if (mime === 'application/pdf') return 'pdf'
-    if (mime.startsWith('audio/')) return 'audio'
-    if (mime.startsWith('video/')) return 'video'
+    if (mime?.startsWith('audio/')) return 'audio'
+    if (mime?.startsWith('video/')) return 'video'
+    if (isMarkdown(mime, name)) return 'markdown'
     return 'download'
   }
 
@@ -1487,17 +1512,17 @@
         </div>
 
         <div class="preview-body">
-          {#if previewType(previewAtt.mime_type) === 'image'}
+          {#if previewType(previewAtt.mime_type, previewAtt.original_name) === 'image'}
             <img src="/api/attachments/{previewAtt.id}" alt={previewAtt.original_name} class="preview-img" />
 
-          {:else if previewType(previewAtt.mime_type) === 'pdf'}
+          {:else if previewType(previewAtt.mime_type, previewAtt.original_name) === 'pdf'}
             <embed
               src="/api/attachments/{previewAtt.id}"
               type="application/pdf"
               class="preview-pdf"
             />
 
-          {:else if previewType(previewAtt.mime_type) === 'audio'}
+          {:else if previewType(previewAtt.mime_type, previewAtt.original_name) === 'audio'}
             <div class="preview-audio-wrap">
               <span class="preview-big-icon">🎵</span>
               <p class="preview-file-name">{previewAtt.original_name}</p>
@@ -1505,9 +1530,18 @@
               <audio controls src="/api/attachments/{previewAtt.id}" class="preview-audio"></audio>
             </div>
 
-          {:else if previewType(previewAtt.mime_type) === 'video'}
+          {:else if previewType(previewAtt.mime_type, previewAtt.original_name) === 'video'}
             <!-- svelte-ignore a11y_media_has_caption -->
             <video controls src="/api/attachments/{previewAtt.id}" class="preview-video"></video>
+
+          {:else if previewType(previewAtt.mime_type, previewAtt.original_name) === 'markdown'}
+            <div class="preview-markdown">
+              {#if markdownLoading}
+                <p class="muted">Carregando…</p>
+              {:else}
+                {@html markdownContent}
+              {/if}
+            </div>
 
           {:else}
             <div class="preview-download-wrap">
@@ -2505,6 +2539,32 @@
     margin-top: .5rem;
     text-decoration: none;
   }
+
+  .preview-markdown {
+    padding: 1.5rem 2rem;
+    max-height: calc(90vh - 56px);
+    overflow-y: auto;
+    line-height: 1.7;
+  }
+  .preview-markdown :global(h1), .preview-markdown :global(h2), .preview-markdown :global(h3),
+  .preview-markdown :global(h4), .preview-markdown :global(h5), .preview-markdown :global(h6) {
+    font-weight: 600; margin: 1.2em 0 .4em;
+  }
+  .preview-markdown :global(h1) { font-size: 1.5rem; }
+  .preview-markdown :global(h2) { font-size: 1.25rem; }
+  .preview-markdown :global(h3) { font-size: 1.1rem; }
+  .preview-markdown :global(p) { margin: .6em 0; }
+  .preview-markdown :global(pre) { background: var(--bg-hover); padding: .75rem 1rem; border-radius: var(--radius); overflow-x: auto; font-size: .85rem; }
+  .preview-markdown :global(code) { font-family: monospace; font-size: .875em; background: var(--bg-hover); padding: .1em .3em; border-radius: 3px; }
+  .preview-markdown :global(pre code) { background: none; padding: 0; }
+  .preview-markdown :global(ul), .preview-markdown :global(ol) { padding-left: 1.5rem; margin: .5em 0; }
+  .preview-markdown :global(li) { margin: .25em 0; }
+  .preview-markdown :global(blockquote) { border-left: 3px solid var(--accent); padding-left: .75rem; color: var(--text-muted); margin: .75em 0; }
+  .preview-markdown :global(a) { color: var(--accent); }
+  .preview-markdown :global(table) { border-collapse: collapse; width: 100%; }
+  .preview-markdown :global(th), .preview-markdown :global(td) { border: 1px solid var(--border); padding: .4rem .6rem; }
+  .preview-markdown :global(th) { background: var(--bg-hover); font-weight: 600; }
+  .preview-markdown :global(hr) { border: none; border-top: 1px solid var(--border); margin: 1em 0; }
 
   /* ── Attachment thumbnail grid ──────────────────────── */
   .att-grid {

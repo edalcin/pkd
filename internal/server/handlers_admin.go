@@ -308,7 +308,15 @@ func (s *Server) handleAdminListAllTags() http.HandlerFunc {
 
 func (s *Server) handleAdminListAttachments() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		atts, err := s.attachments.ListAllWithDocument()
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		if limit <= 0 || limit > 200 {
+			limit = 50
+		}
+		offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+		if offset < 0 {
+			offset = 0
+		}
+		atts, total, err := s.attachments.ListAllWithDocumentPaged(limit, offset)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
@@ -316,7 +324,7 @@ func (s *Server) handleAdminListAttachments() http.HandlerFunc {
 		if atts == nil {
 			atts = []*model.AttachmentWithDoc{}
 		}
-		writeJSON(w, http.StatusOK, atts)
+		writeJSON(w, http.StatusOK, map[string]any{"items": atts, "total": total})
 	}
 }
 
