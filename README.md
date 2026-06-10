@@ -28,6 +28,7 @@
 | 🎯 **Modo foco** | Botão de tela cheia abre o editor em uma janela separada, sem distrações; estado de conteúdo sincronizado ao fechar |
 | 🔗 **Notas relacionadas** | Relacione documentos pelo painel "Notas relacionadas"; as relações são **simétricas** — ambos os documentos exibem a mesma lista de relacionados, sem distinção de direção |
 | 🔗 **Links inline no editor** | Digite `[` no editor para abrir autocomplete de documentos internos; selecione para inserir um chip de link clicável diretamente no texto |
+| 🔒 **Títulos únicos** | Títulos funcionam como identificadores de documentos — duplicatas são bloqueadas com diálogo informativo e botão para navegar ao documento existente |
 | 📍 **Breadcrumb de hierarquia** | Ancestrais clicáveis exibidos abaixo do título no editor — navegue para qualquer nível da hierarquia com um clique |
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
 | 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
@@ -88,6 +89,8 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 🌙 **Tema claro / escuro** | Alternância persistida no `localStorage` |
 | 📱 **Mobile master-detail** | Em telas ≤ 640px: tela-lista (topbar 2 linhas, busca larga, árvore inteira) e tela-detalhe (botão ← para voltar). Sem drawer hambúrguer. Desktop (≥ 641px) inalterado |
 | 📲 **PWA** | Instalável como app; share target no celular; offline somente leitura |
+| ↩️ **Histórico de navegação** | Botões ← / → na barra superior (desktop) e atalhos Alt+← / Alt+→ navegam pelo histórico de documentos visitados na sessão |
+| 🔄 **Sessão persistente** | Login lembrado por até 30 dias de inatividade; último documento aberto restaurado automaticamente ao retornar à ferramenta |
 
 ### Integração com Notas
 
@@ -168,7 +171,7 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 | `PKD_DB_PATH` | **sim** | — | Caminho do arquivo SQLite dentro do container |
 | `PKD_ATTACHMENTS_PATH` | **sim** | — | Caminho do diretório de anexos dentro do container |
 | `PKD_LISTEN_ADDR` | não | `:8080` | Endereço de escuta HTTP |
-| `PKD_SESSION_IDLE_MINUTES` | não | `60` | Minutos de inatividade até expirar a sessão |
+| `PKD_SESSION_IDLE_MINUTES` | não | `43200` | Minutos de inatividade até expirar a sessão (padrão ≈ 30 dias) |
 | `PKD_MAX_IMAGE_MB` | não | `10` | Tamanho máximo de imagem inline (MB) |
 | `PKD_MAX_ATTACHMENT_MB` | não | `100` | Tamanho máximo de arquivo anexado (MB) |
 | `PKD_TRUST_PROXY_HEADERS` | não | `0` | Defina como `1` apenas atrás de proxy reverso confiável |
@@ -309,6 +312,8 @@ Acesse pelo ícone 🕸️ na barra superior. O grafo mostra:
 - **Arestas de link** → relações manuais entre documentos (azul)
 - **Arestas de tag** → relação documento ↔ tag (rosa)
 
+O campo de **filtro da barra superior** também atua no grafo — ao digitar, apenas os nós que correspondem ao filtro são exibidos, mantendo as arestas de seus vizinhos diretos para preservar o contexto.
+
 **Toggles de visibilidade** (independentes, sem reiniciar simulação):
 
 | Toggle | O que controla |
@@ -425,6 +430,45 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-06-10
+
+**Sessão persistente e restauração do último documento**
+
+- Timeout de inatividade da sessão aumentado de 60 min para 30 dias (43200 min) — usuário permanece logado entre sessões do browser sem precisar re-autenticar. Variável `PKD_SESSION_IDLE_MINUTES` ainda permite sobrescrever o valor em produção
+- Último documento visitado salvo em `localStorage` a cada navegação; restaurado automaticamente ao abrir a ferramenta quando a URL não possui hash específico
+- Home (`/`) não é salvo como "último estado" — navegação intencional à raiz nunca polui o restore
+
+---
+
+### 2026-06-09
+
+**Títulos de documentos únicos**
+
+- Títulos funcionam como identificadores nas relações entre documentos — duplicatas passam a ser bloqueadas no nível do banco (índice `UNIQUE` parcial) e da API (HTTP 409)
+- Ao tentar salvar um título já existente, diálogo informa o conflito e oferece botão para navegar ao documento existente
+- Documentos existentes com títulos duplicados detectados e corrigidos na migração
+
+---
+
+### 2026-06-08
+
+**Navegação por histórico de documentos**
+
+- Botões ← e → na barra superior (desktop) navegam pelo histórico de documentos visitados na sessão atual
+- Atalhos de teclado: `Alt+←` (voltar) e `Alt+→` (avançar) — funcionam em qualquer view
+- Histórico em memória: preservado durante a sessão, não persiste entre recarregamentos de página
+
+---
+
+### 2026-06-06
+
+**Filtro na Graph View**
+
+- Campo de filtro da barra superior passa a atuar também na visualização em grafo
+- Nós que não correspondem ao texto filtrado são ocultados; arestas de vizinhos diretos dos nós visíveis são mantidas para preservar contexto de conexões
+
+---
 
 ### 2026-06-07
 
