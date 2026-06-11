@@ -2200,6 +2200,10 @@
     max-height: 75vh;
     overflow-y: auto;
     line-height: 1.7;
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    align-self: stretch;
   }
   .preview-markdown :global(h1), .preview-markdown :global(h2), .preview-markdown :global(h3),
   .preview-markdown :global(h4), .preview-markdown :global(h5), .preview-markdown :global(h6) {
