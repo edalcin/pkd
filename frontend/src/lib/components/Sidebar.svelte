@@ -8,6 +8,7 @@
 
   let selectedTags = $state([])
   let currentHash = $state(window.location.hash)
+  let tagsCollapsed = $state(localStorage.getItem('pkd-tags-collapsed') === 'true')
 
   // Keep selectedTags in sync when tagFilter is reset externally (e.g. topbar reset button)
   $effect(() => { selectedTags = [...$tagFilter] })
@@ -56,6 +57,11 @@
     treeExpansionSignal.set('collapse')
     setTimeout(() => treeExpansionSignal.set(null), 0)
   }
+
+  function toggleTagsCollapse() {
+    tagsCollapsed = !tagsCollapsed
+    localStorage.setItem('pkd-tags-collapsed', String(tagsCollapsed))
+  }
 </script>
 
 <div class="sidebar-inner">
@@ -81,23 +87,31 @@
 
   <!-- Tag filters (hidden while text filter is active) -->
   {#if !$textFilter && $tags.length > 0}
-    <div class="tag-filter" aria-label="Filtrar por tag">
-      {#each $tags as tag}
-        {@const isActive = selectedTags.includes(tag.name)}
-        {@const c = tag.color || ''}
-        <button
-          class="tag-chip {isActive ? 'active' : ''}"
-          style={c && isActive
-            ? `background:${c}; border-color:${c}; color:#fff`
-            : c
-            ? `background:${c}22; border-color:${c}; color:${c}`
-            : ''}
-          onclick={() => toggleTag(tag.name)}
-          title="#{tag.name} — {tag.count} documentos"
-        >
-          #{tag.name}
-        </button>
-      {/each}
+    <div class="tag-section">
+      <button class="tag-section-header" onclick={toggleTagsCollapse} aria-expanded={!tagsCollapsed} aria-controls="tag-filter-list">
+        <span class="tag-section-label">Tags</span>
+        <span class="tag-section-arrow">{tagsCollapsed ? '▸' : '▾'}</span>
+      </button>
+      {#if !tagsCollapsed}
+        <div class="tag-filter" id="tag-filter-list" aria-label="Filtrar por tag">
+          {#each $tags as tag}
+            {@const isActive = selectedTags.includes(tag.name)}
+            {@const c = tag.color || ''}
+            <button
+              class="tag-chip {isActive ? 'active' : ''}"
+              style={c && isActive
+                ? `background:${c}; border-color:${c}; color:#fff`
+                : c
+                ? `background:${c}22; border-color:${c}; color:${c}`
+                : ''}
+              onclick={() => toggleTag(tag.name)}
+              title="#{tag.name} — {tag.count} documentos"
+            >
+              #{tag.name}
+            </button>
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -178,12 +192,36 @@
   .expand-btn:hover { background: var(--bg-hover); color: var(--text); }
   .expand-btn.fav-active { color: #f5c518; }
 
+  .tag-section {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tag-section-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: .3rem .75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .tag-section-header:hover { background: var(--bg-hover); }
+
+  .tag-section-label { flex: 1; text-align: left; }
+
+  .tag-section-arrow { font-size: .65rem; }
+
   .tag-filter {
     display: flex;
     flex-wrap: wrap;
     gap: .375rem;
-    padding: .5rem .75rem .5rem;
-    border-bottom: 1px solid var(--border);
+    padding: .25rem .75rem .5rem;
   }
 
   .filter-banner {
