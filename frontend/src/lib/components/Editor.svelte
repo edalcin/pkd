@@ -824,6 +824,13 @@
     return /<(h[1-6]|ul|ol|li|blockquote|pre|code|table|thead|tbody|tr|td|th|img|a|strong|em|b|i|u|mark|figure)\b/i.test(html)
   }
 
+  // Collapse extra blank lines between table rows so GFM table parsing succeeds
+  // even when the source (AI chat, etc.) inserts a blank line after each row.
+  // Works with both \n and \r\n line endings.
+  function normalizeMarkdownTables(text) {
+    return text.replace(/(\|[^\r\n]*\r?\n)(?:\r?\n)+(\s*\|)/g, '$1$2')
+  }
+
   // Combined paste handler: images → upload & insert; Markdown → convert & insert; else → default.
   function handlePaste(view, event) {
     // Image branch (unchanged behavior)
@@ -851,7 +858,7 @@
     const text = event.clipboardData?.getData('text/plain') || ''
     const html = event.clipboardData?.getData('text/html') || ''
     if (text && looksLikeMarkdown(text) && !htmlHasRichStructure(html)) {
-      const rendered = DOMPurify.sanitize(marked.parse(text))
+      const rendered = DOMPurify.sanitize(marked.parse(normalizeMarkdownTables(text)))
       // Use ProseMirror's DOMParser directly — TipTap's insertContent uses parseSlice
       // which can silently drop table nodes after node.check() failures on <thead>/<tbody>
       // fall-through handling. PMParser.fromSchema + replaceSelection is how TipTap's
