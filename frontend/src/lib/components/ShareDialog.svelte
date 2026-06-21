@@ -11,14 +11,15 @@
   let wasRecursive = $state(false)
 
   async function generateLink() {
+    const ic = includeChildren  // snapshot before any async boundary
     loading = true
     try {
       const data = await apiPost(`/api/documents/${docId}/shares`, {
-        include_children: includeChildren,
+        include_children: ic,
       })
       shareUrl = data.url || `${window.location.origin}/public/${data.token}`
       shareId = data.revoke_id
-      wasRecursive = includeChildren
+      wasRecursive = ic  // reflects exactly what was sent to the API
     } finally {
       loading = false
     }
@@ -66,7 +67,7 @@
       </div>
     {:else}
       <label class="share-children-label">
-        <input type="checkbox" bind:checked={includeChildren} />
+        <input type="checkbox" bind:checked={includeChildren} disabled={loading} />
         Incluir sub-documentos (recursivo)
       </label>
       <p class="share-children-hint">
