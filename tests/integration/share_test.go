@@ -20,12 +20,10 @@ func TestShareRecursive(t *testing.T) {
 	parentID := int64(parent["id"].(float64))
 
 	// Cria filho
-	child := decodeDoc(t, apiPost(t, client, "/api/documents", map[string]interface{}{
+	_ = decodeDoc(t, apiPost(t, client, "/api/documents", map[string]interface{}{
 		"parent_id": parentID,
 		"title":     "Share Child",
 	}))
-	childID := int64(child["id"].(float64))
-	_ = childID
 
 	// Gera share recursivo (default)
 	shareResp := apiPost(t, client, "/api/documents/"+itoa(parentID)+"/shares", map[string]interface{}{
@@ -135,9 +133,18 @@ func TestShareDefaultIsRecursive(t *testing.T) {
 	shareResp.Body.Close()
 
 	shareURL, _ := shareData["url"].(string)
+	if shareURL == "" {
+		t.Fatal("share URL should not be empty")
+	}
 
-	pubResp, _ := http.Get(shareURL)
+	pubResp, err := http.Get(shareURL)
+	if err != nil {
+		t.Fatalf("public page GET: %v", err)
+	}
 	defer pubResp.Body.Close()
+	if pubResp.StatusCode != http.StatusOK {
+		t.Fatalf("public page: want 200, got %d", pubResp.StatusCode)
+	}
 
 	bodyBytes, _ := io.ReadAll(pubResp.Body)
 	if !strings.Contains(string(bodyBytes), "Default Child") {
