@@ -23,10 +23,11 @@ type ShareCreateResponse struct {
 // ShareWithDoc is returned by the admin list-shares endpoint.
 // It enriches a ShareLink with the associated document title and the full public URL.
 type ShareWithDoc struct {
-	ID            int64     `json:"id"`
-	DocumentID    int64     `json:"document_id"`
-	DocumentTitle string    `json:"document_title"`
-	CreatedAt     time.Time `json:"created_at"`
-	Token         string    `json:"token"`          // plaintext token; empty for shares created before this field was added
-	URL           string    `json:"url,omitempty"`  // full public URL, populated by the handler
+	ID              int64     `json:"id"`
+	DocumentID      int64     `json:"document_id"`
+	DocumentTitle   string    `json:"document_title"`
+	IncludeChildren bool      `json:"include_children"`
+	CreatedAt       time.Time `json:"created_at"`
+	Token           string    `json:"token"`         // plaintext token; empty for shares created before this field was added
+	URL             string    `json:"url,omitempty"` // full public URL, populated by the handler
 }
