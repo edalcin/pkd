@@ -799,25 +799,64 @@
     }
   }
 
-  // Image paste from clipboard
-  function handleImagePaste(view, event) {
+  // True when plain-text clipboard content carries Markdown block/inline syntax.
+  function looksLikeMarkdown(text) {
+    if (!text) return false
+    return (
+      /^#{1,6}\s/m.test(text) ||                 // ATX heading
+      /^\s*([-*+])\s+\S/m.test(text) ||          // unordered list item
+      /^\s*\d+\.\s+\S/m.test(text) ||            // ordered list item
+      /^\s*>\s/m.test(text) ||                   // blockquote
+      /^\s*(```|~~~)/m.test(text) ||             // fenced code
+      /^\s*([-*_])\1{2,}\s*$/m.test(text) ||     // thematic break --- *** ___
+      /\*\*[^*\n]+\*\*/.test(text) ||            // **bold**
+      /__[^_\n]+__/.test(text) ||                // __bold__
+      /\[[^\]]+\]\([^)\s]+\)/.test(text) ||      // [text](url)
+      /(^|\n)\s*\|.+\|\s*(\n|$)/.test(text)      // | table | row |
+    )
+  }
+
+  // True when the clipboard's text/html already carries real structure/formatting,
+  // meaning TipTap's default paste should render it (don't override from plain text).
+  function htmlHasRichStructure(html) {
+    if (!html) return false
+    return /<(h[1-6]|ul|ol|li|blockquote|pre|code|table|thead|tbody|tr|td|th|img|a|strong|em|b|i|u|mark|figure)\b/i.test(html)
+  }
+
+  // Combined paste handler: images → upload & insert; Markdown → convert & insert; else → default.
+  function handlePaste(view, event) {
+    // Image branch (unchanged behavior)
     const items = [...(event.clipboardData?.items || [])]
     const imageItem = items.find(i => i.type.startsWith('image/'))
-    if (!imageItem) return false
-    const file = imageItem.getAsFile()
-    if (!file) return false
-    const fd = new FormData()
-    fd.append('file', file)
-    apiFetch(`/api/documents/${doc.id}/attachments`, { method: 'POST', body: fd })
-      .then(r => r.json())
-      .then(att => {
-        if (att?.url) {
-          view.dispatch(view.state.tr.replaceSelectionWith(
-            view.state.schema.nodes.image.create({ src: att.url })
-          ))
-        }
-      })
-    return true
+    if (imageItem) {
+      const file = imageItem.getAsFile()
+      if (file) {
+        const fd = new FormData()
+        fd.append('file', file)
+        apiFetch(`/api/documents/${doc.id}/attachments`, { method: 'POST', body: fd })
+          .then(r => r.json())
+          .then(att => {
+            if (att?.url) {
+              view.dispatch(view.state.tr.replaceSelectionWith(
+                view.state.schema.nodes.image.create({ src: att.url })
+              ))
+            }
+          })
+        return true
+      }
+    }
+
+    // Markdown branch: convert when plain text looks like Markdown and HTML has no real structure
+    const text = event.clipboardData?.getData('text/plain') || ''
+    const html = event.clipboardData?.getData('text/html') || ''
+    if (text && looksLikeMarkdown(text) && !htmlHasRichStructure(html)) {
+      const rendered = DOMPurify.sanitize(marked.parse(text))
+      editorInstance?.chain().focus().insertContent(rendered).run()
+      return true
+    }
+
+    // Fallthrough: TipTap default handles plain text and genuine rich HTML
+    return false
   }
 
   // Ctrl+S saves the document from anywhere in the editor area
@@ -857,7 +896,7 @@
       ],
       content: doc?.body_html || '',
       editorProps: {
-        handlePaste: handleImagePaste,
+        handlePaste: handlePaste,
         attributes: {
           class: 'ProseMirror',
           'data-placeholder': 'Comece a escrever…',
