@@ -23,17 +23,22 @@ func NewShareStore(db *sql.DB) *ShareStore {
 // Create generates a share link for docID. Returns the plaintext token (shown
 // once) and the ShareLink record containing the row ID needed for revocation.
 // The token is NOT stored — only its SHA-256 hash is persisted.
-func (s *ShareStore) Create(docID int64) (plaintext string, share *model.ShareLink, err error) {
+func (s *ShareStore) Create(docID int64, includeChildren bool) (plaintext string, share *model.ShareLink, err error) {
 	plaintext = security.NewToken(32) // 32 bytes → 43 chars base64url
 	hash := security.HashSHA256(plaintext)
+
+	ic := 0
+	if includeChildren {
+		ic = 1
+	}
 
 	now := time.Now().UTC()
 	var id int64
 	err = WithTx(s.db, func(tx *sql.Tx) error {
 		res, err := tx.Exec(`
-			INSERT INTO share_links (document_id, token_hash, token_plain, created_at)
-			VALUES (?, ?, ?, ?)`,
-			docID, hash, plaintext, now.Format(time.RFC3339Nano))
+			INSERT INTO share_links (document_id, token_hash, token_plain, include_children, created_at)
+			VALUES (?, ?, ?, ?, ?)`,
+			docID, hash, plaintext, ic, now.Format(time.RFC3339Nano))
 		if err != nil {
 			return err
 		}
@@ -44,10 +49,11 @@ func (s *ShareStore) Create(docID int64) (plaintext string, share *model.ShareLi
 		return "", nil, err
 	}
 	share = &model.ShareLink{
-		ID:         id,
-		DocumentID: docID,
-		TokenHash:  hash,
-		CreatedAt:  now,
+		ID:              id,
+		DocumentID:      docID,
+		IncludeChildren: includeChildren,
+		TokenHash:       hash,
+		CreatedAt:       now,
 	}
 	return plaintext, share, nil
 }
@@ -58,7 +64,7 @@ func (s *ShareStore) LookupByToken(plaintext string) (*model.ShareLink, error) {
 	hash := security.HashSHA256(plaintext)
 
 	rows, err := s.db.Query(`
-		SELECT id, document_id, token_hash, created_at
+		SELECT id, document_id, token_hash, include_children, created_at
 		FROM share_links
 		WHERE revoked_at IS NULL`)
 	if err != nil {
@@ -70,11 +76,13 @@ func (s *ShareStore) LookupByToken(plaintext string) (*model.ShareLink, error) {
 		var sl model.ShareLink
 		var tokenHash []byte
 		var createdStr string
-		if err := rows.Scan(&sl.ID, &sl.DocumentID, &tokenHash, &createdStr); err != nil {
+		var ic int
+		if err := rows.Scan(&sl.ID, &sl.DocumentID, &tokenHash, &ic, &createdStr); err != nil {
 			return nil, err
 		}
 		if subtle.ConstantTimeCompare(hash, tokenHash) == 1 {
 			sl.TokenHash = tokenHash
+			sl.IncludeChildren = ic == 1
 			sl.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
 			return &sl, nil
 		}
