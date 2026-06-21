@@ -23,6 +23,7 @@
   import { autoSaveInterval } from '../stores/settings.js'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
+  import { DOMParser as PMParser } from '@tiptap/pm/model'
 
   let { docId, focusMode = false, assocPortal = null } = $props()
 
@@ -851,7 +852,14 @@
     const html = event.clipboardData?.getData('text/html') || ''
     if (text && looksLikeMarkdown(text) && !htmlHasRichStructure(html)) {
       const rendered = DOMPurify.sanitize(marked.parse(text))
-      editorInstance?.chain().focus().insertContent(rendered).run()
+      // Use ProseMirror's DOMParser directly — TipTap's insertContent uses parseSlice
+      // which can silently drop table nodes after node.check() failures on <thead>/<tbody>
+      // fall-through handling. PMParser.fromSchema + replaceSelection is how TipTap's
+      // own clipboard paste pipeline works internally.
+      const tempEl = document.createElement('div')
+      tempEl.innerHTML = rendered
+      const slice = PMParser.fromSchema(view.state.schema).parseSlice(tempEl)
+      view.dispatch(view.state.tr.replaceSelection(slice))
       return true
     }
 
