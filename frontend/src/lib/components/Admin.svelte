@@ -1217,6 +1217,9 @@
                   href="#/doc/{share.document_id}"
                   onclick={() => activeTab = ''}
                 >{share.document_title}</a>
+                <span class="share-scope-tag" class:recursive={share.include_children}>
+                  {share.include_children ? '🔁 Recursivo' : '📄 Somente este'}
+                </span>
                 {#if share.url}
                   <span class="share-url muted" title={share.url}>{share.url}</span>
                 {/if}
@@ -2112,6 +2115,22 @@
   }
 
   .share-date { font-size: .8rem; }
+
+  .share-scope-tag {
+    display: inline-block;
+    font-size: .72rem;
+    padding: .1rem .4rem;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: fit-content;
+  }
+  .share-scope-tag.recursive {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
 
   .share-actions {
     display: flex;

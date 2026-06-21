@@ -181,7 +181,7 @@ func (s *ShareStore) ListByDocument(docID int64) ([]*model.ShareLink, error) {
 // ordered newest first. Used by the admin panel.
 func (s *ShareStore) ListAllActive() ([]*model.ShareWithDoc, error) {
 	rows, err := s.db.Query(`
-		SELECT sl.id, sl.document_id, d.title, sl.created_at, sl.token_plain
+		SELECT sl.id, sl.document_id, d.title, sl.created_at, sl.token_plain, sl.include_children
 		FROM share_links sl
 		JOIN documents d ON d.id = sl.document_id
 		WHERE sl.revoked_at IS NULL AND d.trashed_at IS NULL AND sl.is_auto = 0
@@ -194,9 +194,11 @@ func (s *ShareStore) ListAllActive() ([]*model.ShareWithDoc, error) {
 	for rows.Next() {
 		var sl model.ShareWithDoc
 		var createdStr string
-		if err := rows.Scan(&sl.ID, &sl.DocumentID, &sl.DocumentTitle, &createdStr, &sl.Token); err != nil {
+		var ic int
+		if err := rows.Scan(&sl.ID, &sl.DocumentID, &sl.DocumentTitle, &createdStr, &sl.Token, &ic); err != nil {
 			return nil, err
 		}
+		sl.IncludeChildren = ic == 1
 		sl.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
 		links = append(links, &sl)
 	}
