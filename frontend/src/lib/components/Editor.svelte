@@ -312,6 +312,8 @@
   // TipTap Editor instance (not reactive — managed manually)
   let editorInstance = null
   let autoSaveTimer = null
+  // True when a focus-mode popup is open for this doc — autosave blocked in origin window
+  let focusModeActive = $state(false)
 
   // editorReady signals that the editor has been mounted (triggers toolbar render).
   // editorTick increments on each transaction to keep toolbar active-states fresh.
@@ -331,6 +333,24 @@
   onDestroy(() => {
     clearTimeout(autoSaveTimer)
     editorInstance?.destroy()
+  })
+
+  // Coordinate autosave disable/enable with focus-mode popup via BroadcastChannel
+  $effect(() => {
+    const ch = new BroadcastChannel(`focus-doc-${docId}`)
+    if (focusMode) {
+      // Focus window: signal origin to suspend autosave
+      ch.postMessage('opened')
+    } else {
+      ch.onmessage = (e) => {
+        if (e.data === 'opened') { focusModeActive = true; clearTimeout(autoSaveTimer) }
+        if (e.data === 'closed') focusModeActive = false
+      }
+    }
+    return () => {
+      if (focusMode) ch.postMessage('closed')
+      ch.close()
+    }
   })
 
   $effect(() => {
@@ -459,11 +479,12 @@
     }
   })
 
-  // Auto-save: interval configured by user (0 = disabled); skip for locked docs
+  // Auto-save: interval configured by user (0 = disabled); skip for locked docs or focus popup open
   function scheduleAutoSave() {
     const interval = get(autoSaveInterval)
     if (interval === 0) return
     if (doc?.locked) return
+    if (focusModeActive) return
     clearTimeout(autoSaveTimer)
     autoSaveTimer = setTimeout(performSave, interval)
   }
@@ -1195,7 +1216,7 @@
 
         <!-- Focus mode -->
         <button class="tb-btn {focusMode ? 'active' : ''}"
-          onclick={() => focusMode ? window.close() : window.open(`#/focus/${docId}`, '_blank', 'width=960,height=720,resizable=yes')}
+          onclick={() => focusMode ? window.close() : (focusModeActive = true, clearTimeout(autoSaveTimer), window.open(`#/focus/${docId}`, '_blank', 'width=960,height=720,resizable=yes'))}
           title={focusMode ? 'Fechar janela (Esc)' : 'Abrir em modo foco'}>
           {focusMode ? '✕' : '⛶'}
         </button>
