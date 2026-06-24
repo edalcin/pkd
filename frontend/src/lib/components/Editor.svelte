@@ -19,7 +19,6 @@
   import IconPicker from './IconPicker.svelte'
   import VersionHistoryDialog from './VersionHistoryDialog.svelte'
   import DuplicateTitleDialog from './DuplicateTitleDialog.svelte'
-  import SubTreeNode from './SubTreeNode.svelte'
   import { get } from 'svelte/store'
   import { autoSaveInterval } from '../stores/settings.js'
   import { marked } from 'marked'
@@ -375,15 +374,6 @@
     }
   })
 
-  function findTreeNode(nodes, id) {
-    for (const n of nodes) {
-      if (n.id === id) return n
-      const found = findTreeNode(n.children || [], id)
-      if (found) return found
-    }
-    return null
-  }
-
   async function loadDocument() {
     const targetId = Number(docId)
     mobileEditMode = false
@@ -424,13 +414,9 @@
         docUrls = []
       }
       try {
-        // ponytail: reusa /api/tree?view=all (floresta completa, nós leves sem body) e
-        // extrai a subárvore do doc atual. Independente dos filtros da coluna esquerda.
-        // Se o volume crescer, trocar por endpoint dedicado /api/documents/{id}/subtree.
-        const forest = await apiGet(`/api/tree?view=all`) || []
+        const ch = await apiGet(`/api/documents/${targetId}/children`) || []
         if (Number(docId) !== targetId) return
-        const self = findTreeNode(forest, targetId)
-        children = self?.children ?? []
+        children = ch
       } catch {
         children = []
       }
@@ -1312,9 +1298,26 @@
             <div class="children-header">
               <span class="children-label">Sub-documentos</span>
             </div>
-            <div class="children-tree">
-              {#each children as child (child.id)}
-                <SubTreeNode node={child} depth={0} />
+            <div class="children-grid">
+              {#each children as child}
+                <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+                <div
+                  class="child-card"
+                  onclick={() => { window.location.hash = `/doc/${child.id}` }}
+                  role="button"
+                  tabindex="0"
+                  onkeydown={e => e.key === 'Enter' && (window.location.hash = `/doc/${child.id}`)}
+                >
+                  <div class="child-card-title">
+                    <i class="bx {child.icon || 'bx-file-blank'} child-card-icon"></i>
+                    <span class="child-card-name">{child.title || 'Sem título'}</span>
+                  </div>
+                  {#if child.body_text}
+                    <p class="child-card-preview">{child.body_text.slice(0, 160)}{child.body_text.length > 160 ? '…' : ''}</p>
+                  {:else}
+                    <p class="child-card-preview child-card-empty">Sem conteúdo</p>
+                  {/if}
+                </div>
               {/each}
             </div>
           </div>
@@ -2126,9 +2129,63 @@
     letter-spacing: .06em;
   }
 
-  .children-tree {
+  .children-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: .75rem;
+  }
+
+  .child-card {
+    background: var(--bg-secondary, var(--bg-sidebar));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+    overflow: hidden;
+  }
+
+  .child-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  }
+
+  .child-card-title {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .35rem;
+    min-height: 1.4em;
+  }
+
+  .child-card-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .child-card-name {
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .child-card-preview {
+    font-size: .78rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .child-card-empty {
+    font-style: italic;
   }
 
   /* ── Área de associações (rodapé) ─────────────────────── */
