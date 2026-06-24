@@ -1636,6 +1636,7 @@
           </button>
           {#if embedModelMsg}<span class="versions-setting-msg">{embedModelMsg}</span>{/if}
         </div>
+      </div>
       {:else}
       <p class="muted">Carregando…</p>
       {/if}
