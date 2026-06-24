@@ -42,6 +42,10 @@ type Config struct {
 	// external apps (e.g. notas). If empty, the endpoint is disabled.
 	ImportToken string
 
+	// GeminiAPIKey is the API key for the Gemini embedding API (GEMINI_API_KEY env var).
+	// If empty, the semantic graph endpoint is disabled (returns 503).
+	GeminiAPIKey string
+
 	// S3 is populated when PKD_S3_BUCKET and PKD_S3_REGION are set.
 	// Nil means S3 is not configured and the local backend is the only option.
 	S3 *S3Config
@@ -120,6 +124,10 @@ func Load() (*Config, error) {
 
 	if v := os.Getenv("PKD_IMPORT_TOKEN"); v != "" {
 		cfg.ImportToken = v
+	}
+
+	if v := os.Getenv("GEMINI_API_KEY"); v != "" {
+		cfg.GeminiAPIKey = v
 	}
 
 	// S3 configuration — optional. Both bucket and region must be set to enable.

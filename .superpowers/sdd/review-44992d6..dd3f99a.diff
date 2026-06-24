@@ -1,0 +1,156 @@
+# Review package: 44992d6..dd3f99aabcb19dc29c3fb3be904d65e78f0be93c
+
+## Commits
+dd3f99a feat(share): handleCreateShare reads include_children; public page respects flag
+
+## Files changed
+ internal/server/handlers_share.go | 67 +++++++++++++++++++++++++--------------
+ 1 file changed, 44 insertions(+), 23 deletions(-)
+
+## Diff
+diff --git a/internal/server/handlers_share.go b/internal/server/handlers_share.go
+index c186bbb..1194bba 100644
+--- a/internal/server/handlers_share.go
++++ b/internal/server/handlers_share.go
+@@ -1,13 +1,14 @@
+ package server
+ 
+ import (
++	"encoding/json"
+ 	"errors"
+ 	"fmt"
+ 	"html/template"
+ 	"net/http"
+ 	"strings"
+ 
+ 	"github.com/go-chi/chi/v5"
+ 
+ 	"github.com/edalcin/pkd/internal/model"
+ 	"github.com/edalcin/pkd/internal/security"
+@@ -50,40 +51,58 @@ func (s *Server) collectDescendantIDs(rootID int64) []int64 {
+ 		}
+ 		for _, c := range children {
+ 			ids = append(ids, c.ID)
+ 			queue = append(queue, c.ID)
+ 		}
+ 	}
+ 	return ids
+ }
+ 
+ func (s *Server) handleCreateShare() http.HandlerFunc {
++	type createShareRequest struct {
++		IncludeChildren *bool `json:"include_children"`
++	}
+ 	return func(w http.ResponseWriter, r *http.Request) {
+ 		docID, err := parseID(r, "id")
+ 		if err != nil {
+ 			http.Error(w, "invalid id", http.StatusBadRequest)
+ 			return
+ 		}
+ 		if _, err := s.docs.GetByID(docID); errors.Is(err, store.ErrNotFound) {
+ 			http.Error(w, "not found", http.StatusNotFound)
+ 			return
+ 		}
+ 
+-		plaintext, share, err := s.shares.Create(docID)
++		var req createShareRequest
++		if r.ContentLength > 0 {
++			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
++				http.Error(w, "invalid json", http.StatusBadRequest)
++				return
++			}
++		}
++		// Default: include children (backward-compatible).
++		includeChildren := true
++		if req.IncludeChildren != nil {
++			includeChildren = *req.IncludeChildren
++		}
++
++		plaintext, share, err := s.shares.Create(docID, includeChildren)
+ 		if err != nil {
+ 			http.Error(w, "internal error", http.StatusInternalServerError)
+ 			return
+ 		}
+ 
+-		// Auto-create shares for all descendants so the public page can link them.
+-		for _, id := range s.collectDescendantIDs(docID) {
+-			_ = s.shares.CreateAuto(id)
++		// Auto-create shares for all descendants only when recursive.
++		if includeChildren {
++			for _, id := range s.collectDescendantIDs(docID) {
++				_ = s.shares.CreateAuto(id)
++			}
+ 		}
+ 
+ 		base := s.baseURL(r)
+ 		shareURL := base + "public/" + plaintext
+ 
+ 		writeJSON(w, http.StatusCreated, model.ShareCreateResponse{
+ 			Token:    plaintext,
+ 			URL:      shareURL,
+ 			RevokeID: share.ID,
+ 		})
+@@ -164,42 +183,44 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
+ 
+ 		icon := doc.Icon
+ 		if icon == "" {
+ 			icon = "📄"
+ 		}
+ 		date := fmt.Sprintf("%d de %s de %d",
+ 			doc.CreatedAt.Day(), ptMonths[doc.CreatedAt.Month()], doc.CreatedAt.Year())
+ 
+ 		base := s.baseURL(r)
+ 
+-		// Fetch children and ensure each has an active public share.
+-		children, err := s.docs.ListChildren(doc.ID)
+-		if err != nil {
+-			http.Error(w, "internal error", http.StatusInternalServerError)
+-			return
+-		}
++		// Fetch children only if the share was created with include_children=true.
+ 		var childData []shareChildData
+-		for _, child := range children {
+-			childToken, cerr := s.shares.GetActiveShareForDocument(child.ID)
+-			if cerr != nil || childToken == "" {
+-				continue // only list children that already have an explicit share
++		if shareLink.IncludeChildren {
++			children, err := s.docs.ListChildren(doc.ID)
++			if err != nil {
++				http.Error(w, "internal error", http.StatusInternalServerError)
++				return
+ 			}
+-			childIcon := child.Icon
+-			if childIcon == "" {
+-				childIcon = "📄"
++			for _, child := range children {
++				childToken, cerr := s.shares.GetActiveShareForDocument(child.ID)
++				if cerr != nil || childToken == "" {
++					continue // only list children that already have an explicit share
++				}
++				childIcon := child.Icon
++				if childIcon == "" {
++					childIcon = "📄"
++				}
++				childData = append(childData, shareChildData{
++					Title:         child.Title,
++					Icon:          childIcon,
++					IconIsBoxicon: isBoxicon(childIcon),
++					URL:           base + "public/" + childToken,
++				})
+ 			}
+-			childData = append(childData, shareChildData{
+-				Title:         child.Title,
+-				Icon:          childIcon,
+-				IconIsBoxicon: isBoxicon(childIcon),
+-				URL:           base + "public/" + childToken,
+-			})
+ 		}
+ 
+ 		// Resolve parent link only if the parent already has an active share.
+ 		// Never auto-create a share for a parent document.
+ 		var parentTitle, parentURL string
+ 		if doc.ParentID != nil {
+ 			if parent, perr := s.docs.GetByID(*doc.ParentID); perr == nil {
+ 				if tok, perr := s.shares.GetActiveShareForDocument(parent.ID); perr == nil && tok != "" {
+ 					parentTitle = parent.Title
+ 					parentURL = base + "public/" + tok

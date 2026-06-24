@@ -24,3 +24,20 @@ func (s *Server) handleGraph() http.HandlerFunc {
 		writeJSON(w, http.StatusOK, data)
 	}
 }
+
+// handleSemanticGraph serves GET /api/graph/semantic.
+// Returns semantic edges (Gemini embeddings, cached in SQLite).
+func (s *Server) handleSemanticGraph() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.cfg.GeminiAPIKey == "" {
+			http.Error(w, `{"error":"GEMINI_API_KEY not configured"}`, http.StatusServiceUnavailable)
+			return
+		}
+		edges, err := s.links.GetSemanticEdges(r.Context(), s.cfg.GeminiAPIKey)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"edges": edges})
+	}
+}

@@ -17,6 +17,10 @@
   let showHierarchy = $state(true)
   let showLinks = $state(true)
   let showTagEdges = $state(true)
+  let showSemantic = $state(false)
+  let semanticEdges = $state([])
+  let semanticLoading = $state(false)
+  let semanticAvailable = $state(true)
   let tagFilter = $state('')
   let simulation = null
 
@@ -73,10 +77,12 @@
     const q = $textFilter.toLowerCase().trim()
 
     if (!q) {
-      const visibleEdges = rawEdges.filter(e => {
+      const sourceEdges = showSemantic ? [...rawEdges, ...semanticEdges] : rawEdges
+      const visibleEdges = sourceEdges.filter(e => {
         if (e.edge_type === 'link') return showLinks
         if (e.edge_type === 'tag') return showTagEdges
         if (e.edge_type === 'hierarchy') return showHierarchy
+        if (e.edge_type === 'semantic') return showSemantic
         return true
       })
       if (showAll) return { nodes: rawNodes, edges: visibleEdges }
@@ -94,7 +100,9 @@
     // Text filter: use same doc set as sidebar (FTS5 result via tree store)
     const matchIds = treeDocIds
 
-    const visibleEdges = rawEdges.filter(e => {
+    const sourceEdges = showSemantic ? [...rawEdges, ...semanticEdges] : rawEdges
+    const visibleEdges = sourceEdges.filter(e => {
+      if (e.edge_type === 'semantic' && !showSemantic) return false
       if (e.edge_type === 'link' && !showLinks) return false
       if (e.edge_type === 'tag' && !showTagEdges) return false
       if (e.edge_type === 'hierarchy' && !showHierarchy) return false
@@ -129,6 +137,21 @@
       rawEdges = data.edges || []
     } finally {
       loading = false
+    }
+  }
+
+  async function toggleSemantic() {
+    if (showSemantic && semanticEdges.length === 0) {
+      semanticLoading = true
+      try {
+        const data = await apiGet('/api/graph/semantic')
+        semanticEdges = data.edges || []
+      } catch (e) {
+        showSemantic = false
+        semanticAvailable = false
+      } finally {
+        semanticLoading = false
+      }
     }
   }
 
@@ -180,9 +203,10 @@
       .attr('class', d => {
         if (d.edge_type === 'hierarchy') return 'graph-edge graph-edge--hierarchy'
         if (d.edge_type === 'tag') return 'graph-edge graph-edge--tag'
+        if (d.edge_type === 'semantic') return 'graph-edge graph-edge--semantic'
         return 'graph-edge graph-edge--link'
       })
-      .attr('stroke-width', 1.5)
+      .attr('stroke-width', d => d.edge_type === 'semantic' ? 0.5 + (d.weight || 0) * 2 : 1.5)
       .attr('marker-end', d => d.edge_type === 'hierarchy' ? 'url(#arrowhead)' : null)
 
     // Track drag vs click
@@ -327,6 +351,12 @@
         <input type="checkbox" bind:checked={showTagEdges} />
         Relações com tags
       </label>
+      {#if semanticAvailable}
+        <label class="show-all-toggle">
+          <input type="checkbox" bind:checked={showSemantic} onchange={toggleSemantic} disabled={semanticLoading} />
+          Semântico{#if semanticLoading} …{/if}
+        </label>
+      {/if}
       <button class="btn btn-ghost" onclick={zoomToFit} title="Ajustar tela">⤢ Ajustar</button>
       <span class="node-count">{nodes.length} nós · {links.length} arestas</span>
     </div>
@@ -368,6 +398,10 @@
       <div class="legend-item">
         <svg width="22" height="10"><line x1="1" y1="5" x2="21" y2="5" stroke="#e879f9" stroke-width="1.5" stroke-opacity=".7" stroke-dasharray="2,3"/></svg>
         <span>Rel. com tag</span>
+      </div>
+      <div class="legend-item">
+        <svg width="22" height="10"><line x1="1" y1="5" x2="21" y2="5" stroke="#a78bfa" stroke-width="1.5" stroke-opacity=".8" stroke-dasharray="3,2"/></svg>
+        <span>Semântico</span>
       </div>
     </div>
   {/if}

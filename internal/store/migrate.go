@@ -151,6 +151,17 @@ func Open(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("store.Open settings seed versions: %w", err)
 	}
 
+	// Embeddings cache for semantic graph (Gemini batch-embed API).
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS document_embeddings (
+		document_id  INTEGER PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
+		content_hash TEXT    NOT NULL,
+		embedding    BLOB    NOT NULL,
+		created_at   TEXT    NOT NULL
+	)`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open document_embeddings table: %w", err)
+	}
+
 	// Data migration: backfill associated date from created_at for existing documents.
 	// Idempotent — only touches rows where assoc_year is still NULL.
 	if _, err := db.Exec(`

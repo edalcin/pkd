@@ -1,0 +1,810 @@
+{
+  "nodes": [
+    {
+      "id": "sdd_task_1_report_migration",
+      "label": "include_children column migration for share_links table",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-1-report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_1_report_sharelink_model",
+      "label": "ShareLink.IncludeChildren bool model field added",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-1-report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_2_brief_create_fn",
+      "label": "ShareStore.Create(docID int64, includeChildren bool) updated signature",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-2-brief.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_2_report_lookupbytoken",
+      "label": "LookupByToken reads include_children column in SELECT/Scan",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-2-report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_3_report_handlecreateshare",
+      "label": "handleCreateShare reads JSON body include_children with default true (backward-compat)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-3-report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_3_brief_handlepublicshare",
+      "label": "handlePublicShare gates child listing on shareLink.IncludeChildren flag",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-3-brief.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_4_report_integration_tests",
+      "label": "Integration tests: TestShareRecursive, TestShareNonRecursive, TestShareDefaultIsRecursive (all PASS)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-4-report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_4_brief_test_cases",
+      "label": "Integration test case spec for include_children flag (3 scenarios)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-4-brief.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_4_fix_report_nil_guard",
+      "label": "Fix nil/panic guard and unused variable in TestShareDefaultIsRecursive",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-4-fix-report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_5_report_sharedialogue_checkbox",
+      "label": "ShareDialog.svelte: includeChildren checkbox (default true) + scope badge post-generation",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-5-report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_5_brief_sharedialogue_spec",
+      "label": "ShareDialog.svelte full replacement spec with include_children UI state machine",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-5-brief.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "sdd_task_5_fix_report_race_condition",
+      "label": "Fix async race: snapshot includeChildren into const ic before await boundary in generateLink()",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-5-fix-report.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_branching_and_environments_trunk_strategy",
+      "label": "Trunk + promoted Docker tags strategy (only main branch long-lived)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\branching-and-environments.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": "Eduardo Dalcin",
+      "contributor": "Claude"
+    },
+    {
+      "id": "docs_branching_and_environments_docker_promotion",
+      "label": "Dev→prod promotion via Docker re-tag (edge→stable) without rebuild",
+      "file_type": "rationale",
+      "source_file": "D:\\git\\pkd\\docs\\branching-and-environments.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": "Eduardo Dalcin",
+      "contributor": "Claude"
+    },
+    {
+      "id": "docs_operations_sqlite_backup",
+      "label": "SQLite backup via VACUUM INTO (consistent snapshot, WAL-safe, app-initiated)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\operations.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_operations_s3_async_backup",
+      "label": "S3 async backup with presigned URL (TTL 15min), job polling, dedup by SHA-256",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\operations.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_operations_version_history",
+      "label": "Document version history with SHA-256 dedup and 50-version retention default",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\operations.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_security_auth_session",
+      "label": "Session auth: SHA-256 password, constant-time compare, 5-attempt rate limit per IP",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\security.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_security_csrf_double_submit",
+      "label": "CSRF double-submit cookie pattern (pkd_csrf header must match cookie)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\security.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_security_share_token_sha256",
+      "label": "Share token: 32-byte crypto/rand, SHA-256 hash stored only, constant-time lookup, 404 on revoked",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\security.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_security_ssrf_protection",
+      "label": "SSRF-safe image fetch: IP blocklist post-DNS, scheme validation, 5-redirect limit",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\security.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_security_bluemonday_html",
+      "label": "bluemonday HTML sanitizer (EditorPolicy + PublicSharePolicy: script-src none on public page)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\security.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_context_pkd_system",
+      "label": "PKD: self-hosted single-user PKM system (documents, bidirectional links, graph)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\context.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_container_go_server",
+      "label": "Go HTTP Server container (Go 1.25, chi router, CGO disabled, distroless ~22MB image)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\container.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_container_svelte_spa",
+      "label": "Svelte 5 SPA (TipTap v2, D3.js, embedded in Go binary via go:embed)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\container.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_container_sqlite_db",
+      "label": "SQLite database container (WAL mode, FTS5 full-text search, foreign keys ON)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\container.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_component_chi_router",
+      "label": "chi Router with middleware stack (AuthRequired, Throttle, CSRF, SecurityHeaders)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\component.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_component_sharestore",
+      "label": "ShareStore component (SHA-256 token gen, constant-time lookup, revocation by revoked_at)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\component.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_component_handlers_share",
+      "label": "Share handlers component (handleCreateShare, handlePublicShare, handleRevokeShare)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\component.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_component_sharedialogue",
+      "label": "ShareDialog.svelte frontend component (generate link, copy URL, revoke)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\component.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_code_sharelink_struct",
+      "label": "ShareLink Go struct (model/share.go): ID, DocumentID, TokenHash, CreatedAt, RevokedAt",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\code.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_code_document_struct",
+      "label": "Document Go struct (model/): ID, ParentID, Title, BodyHTML, Tags, AttachmentIDs, Version",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\code.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_c4_code_document_links_schema",
+      "label": "document_links SQL schema (CASCADE on DELETE, unique source+target, bidirectional indexes)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\c4\\code.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_superpowers_plans_2026_06_21_share_recursive_flag_plan",
+      "label": "Share recursive flag: 5-task implementation plan (migration, store, handlers, tests, frontend)",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\plans\\2026-06-21-share-recursive-flag.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_superpowers_specs_2026_06_21_share_recursive_flag_design_spec",
+      "label": "Share recursive flag design spec: include_children flag, UI flow, backward compat",
+      "file_type": "document",
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\specs\\2026-06-21-share-recursive-flag-design.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "docs_superpowers_specs_2026_06_21_share_recursive_flag_design_compat",
+      "label": "Backward compat decision: DEFAULT 1 for existing links, null body defaults to true",
+      "file_type": "rationale",
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\specs\\2026-06-21-share-recursive-flag-design.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "sdd_task_1_report_migration",
+      "target": "sdd_task_1_report_sharelink_model",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-1-report.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_2_brief_create_fn",
+      "target": "sdd_task_1_report_sharelink_model",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-2-brief.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_2_report_lookupbytoken",
+      "target": "sdd_task_1_report_migration",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-2-report.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_3_report_handlecreateshare",
+      "target": "sdd_task_2_brief_create_fn",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-3-report.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_3_brief_handlepublicshare",
+      "target": "sdd_task_2_report_lookupbytoken",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-3-brief.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_3_brief_handlepublicshare",
+      "target": "sdd_task_1_report_sharelink_model",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-3-brief.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_4_report_integration_tests",
+      "target": "sdd_task_3_report_handlecreateshare",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-4-report.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_4_brief_test_cases",
+      "target": "sdd_task_4_report_integration_tests",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-4-brief.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_4_fix_report_nil_guard",
+      "target": "sdd_task_4_report_integration_tests",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-4-fix-report.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_5_report_sharedialogue_checkbox",
+      "target": "sdd_task_3_report_handlecreateshare",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-5-report.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_5_brief_sharedialogue_spec",
+      "target": "sdd_task_5_report_sharedialogue_checkbox",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-5-brief.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "sdd_task_5_fix_report_race_condition",
+      "target": "sdd_task_5_report_sharedialogue_checkbox",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\.superpowers\\sdd\\task-5-fix-report.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_superpowers_specs_2026_06_21_share_recursive_flag_design_spec",
+      "target": "docs_superpowers_plans_2026_06_21_share_recursive_flag_plan",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\specs\\2026-06-21-share-recursive-flag-design.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_superpowers_specs_2026_06_21_share_recursive_flag_design_compat",
+      "target": "sdd_task_1_report_migration",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\specs\\2026-06-21-share-recursive-flag-design.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_superpowers_plans_2026_06_21_share_recursive_flag_plan",
+      "target": "sdd_task_1_report_migration",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\plans\\2026-06-21-share-recursive-flag.md",
+      "source_location": null,
+      "weight": 0.95
+    },
+    {
+      "source": "docs_superpowers_plans_2026_06_21_share_recursive_flag_plan",
+      "target": "sdd_task_2_brief_create_fn",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\plans\\2026-06-21-share-recursive-flag.md",
+      "source_location": null,
+      "weight": 0.95
+    },
+    {
+      "source": "docs_superpowers_plans_2026_06_21_share_recursive_flag_plan",
+      "target": "sdd_task_3_report_handlecreateshare",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\plans\\2026-06-21-share-recursive-flag.md",
+      "source_location": null,
+      "weight": 0.95
+    },
+    {
+      "source": "docs_superpowers_plans_2026_06_21_share_recursive_flag_plan",
+      "target": "sdd_task_4_report_integration_tests",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\plans\\2026-06-21-share-recursive-flag.md",
+      "source_location": null,
+      "weight": 0.95
+    },
+    {
+      "source": "docs_superpowers_plans_2026_06_21_share_recursive_flag_plan",
+      "target": "sdd_task_5_report_sharedialogue_checkbox",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\plans\\2026-06-21-share-recursive-flag.md",
+      "source_location": null,
+      "weight": 0.95
+    },
+    {
+      "source": "docs_c4_component_sharestore",
+      "target": "docs_c4_code_sharelink_struct",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\component.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_c4_component_handlers_share",
+      "target": "docs_c4_component_sharestore",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\component.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_c4_component_sharedialogue",
+      "target": "docs_c4_component_handlers_share",
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\component.md",
+      "source_location": null,
+      "weight": 0.95
+    },
+    {
+      "source": "docs_c4_container_go_server",
+      "target": "docs_c4_component_chi_router",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\container.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_c4_container_sqlite_db",
+      "target": "docs_c4_component_sharestore",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\container.md",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "docs_c4_context_pkd_system",
+      "target": "docs_c4_container_go_server",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\context.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_c4_context_pkd_system",
+      "target": "docs_c4_container_svelte_spa",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\context.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_security_share_token_sha256",
+      "target": "docs_c4_code_sharelink_struct",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\security.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_security_share_token_sha256",
+      "target": "sdd_task_1_report_sharelink_model",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\git\\pkd\\docs\\security.md",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "docs_security_auth_session",
+      "target": "docs_c4_component_chi_router",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\git\\pkd\\docs\\security.md",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "docs_operations_sqlite_backup",
+      "target": "docs_c4_container_sqlite_db",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\operations.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_operations_s3_async_backup",
+      "target": "docs_c4_container_go_server",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\git\\pkd\\docs\\operations.md",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "docs_branching_and_environments_trunk_strategy",
+      "target": "docs_c4_context_pkd_system",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\git\\pkd\\docs\\branching-and-environments.md",
+      "source_location": null,
+      "weight": 0.75
+    },
+    {
+      "source": "docs_branching_and_environments_docker_promotion",
+      "target": "docs_branching_and_environments_trunk_strategy",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\branching-and-environments.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_c4_component_sharedialogue",
+      "target": "sdd_task_5_report_sharedialogue_checkbox",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\component.md",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "docs_c4_code_sharelink_struct",
+      "target": "sdd_task_1_report_sharelink_model",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\code.md",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "docs_security_bluemonday_html",
+      "target": "docs_c4_component_handlers_share",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.65,
+      "source_file": "D:\\git\\pkd\\docs\\security.md",
+      "source_location": null,
+      "weight": 0.65
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "he_include_children_feature_tasks",
+      "label": "5 SDD tasks collectively implement include_children share flag feature",
+      "nodes": [
+        "sdd_task_1_report_migration",
+        "sdd_task_2_brief_create_fn",
+        "sdd_task_3_report_handlecreateshare",
+        "sdd_task_4_report_integration_tests",
+        "sdd_task_5_report_sharedialogue_checkbox"
+      ],
+      "relation": "implement",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\superpowers\\plans\\2026-06-21-share-recursive-flag.md"
+    },
+    {
+      "id": "he_c4_architecture_levels",
+      "label": "C4 levels (context, container, component, code) form PKD architecture documentation hierarchy",
+      "nodes": [
+        "docs_c4_context_pkd_system",
+        "docs_c4_container_go_server",
+        "docs_c4_component_chi_router",
+        "docs_c4_code_sharelink_struct"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "D:\\git\\pkd\\docs\\c4\\context.md"
+    },
+    {
+      "id": "he_security_defense_in_depth",
+      "label": "Security controls form PKD defense-in-depth (auth, CSRF, share tokens, SSRF, HTML sanitizer)",
+      "nodes": [
+        "docs_security_auth_session",
+        "docs_security_csrf_double_submit",
+        "docs_security_share_token_sha256",
+        "docs_security_ssrf_protection",
+        "docs_security_bluemonday_html"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\git\\pkd\\docs\\security.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

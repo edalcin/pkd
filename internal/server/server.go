@@ -238,6 +238,7 @@ func (s *Server) buildRouter() http.Handler {
 
 			// Graph view (NEW — 003-pkm-refactor)
 			r.Get("/api/graph", s.handleGraph())
+			r.Get("/api/graph/semantic", s.handleSemanticGraph())
 
 			// External content capture (NEW — 003-pkm-refactor)
 			r.Post("/api/capture", s.handleCapture())

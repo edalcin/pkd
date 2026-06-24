@@ -1,0 +1,613 @@
+# Review package: 58ffa88..df59d0a5055b20bcbf6228eab364b72fc89b52cd
+
+## Commits
+df59d0a fix(share): snapshot includeChildren before async in generateLink
+b121d76 feat(share): add include_children checkbox and scope badge to ShareDialog
+ce8172a fix(share): guard http.Get error in TestShareDefaultIsRecursive
+df0eee6 test(share): integration tests for include_children flag
+dd3f99a feat(share): handleCreateShare reads include_children; public page respects flag
+44992d6 feat(share): update Create/LookupByToken to handle include_children
+8762f69 feat(share): add include_children column and model field
+
+## Files changed
+ frontend/src/lib/components/ShareDialog.svelte |  54 ++++++++-
+ internal/model/share.go                        |  11 +-
+ internal/server/handlers_share.go              |  67 +++++++----
+ internal/store/migrate.go                      |   1 +
+ internal/store/shares.go                       |  28 +++--
+ tests/integration/share_test.go                | 153 +++++++++++++++++++++++++
+ 6 files changed, 275 insertions(+), 39 deletions(-)
+
+## Diff
+diff --git a/frontend/src/lib/components/ShareDialog.svelte b/frontend/src/lib/components/ShareDialog.svelte
+index 4e3d5d0..dfc4262 100644
+--- a/frontend/src/lib/components/ShareDialog.svelte
++++ b/frontend/src/lib/components/ShareDialog.svelte
+@@ -1,26 +1,32 @@
+ <script>
+   import { apiPost, apiDelete } from '../api.js'
+ 
+   let { docId, onClose } = $props()
+ 
+   let shareUrl = $state('')
+   let shareId = $state(null)
+   let loading = $state(false)
+   let copied = $state(false)
++  let includeChildren = $state(true)
++  let wasRecursive = $state(false)
+ 
+   async function generateLink() {
++    const ic = includeChildren  // snapshot before any async boundary
+     loading = true
+     try {
+-      const data = await apiPost(`/api/documents/${docId}/shares`)
++      const data = await apiPost(`/api/documents/${docId}/shares`, {
++        include_children: ic,
++      })
+       shareUrl = data.url || `${window.location.origin}/public/${data.token}`
+       shareId = data.revoke_id
++      wasRecursive = ic  // reflects exactly what was sent to the API
+     } finally {
+       loading = false
+     }
+   }
+ 
+   async function revokeLink() {
+     if (!shareId || !confirm('Revogar o link de compartilhamento?')) return
+     await apiDelete(`/api/documents/${docId}/shares/${shareId}`)
+     shareUrl = ''
+     shareId = null
+@@ -35,49 +41,95 @@
+ 
+ <div class="modal-backdrop" onclick={onClose} role="dialog" aria-modal="true" aria-label="Compartilhar documento">
+   <div class="modal" onclick={e => e.stopPropagation()}>
+     <h2>🔗 Compartilhar documento</h2>
+     <p class="share-info">
+       Gere um link público de leitura para este documento.<br>
+       Qualquer pessoa com o link pode visualizar o conteúdo.
+     </p>
+ 
+     {#if shareUrl}
++      <div class="share-scope-badge">
++        {#if wasRecursive}
++          🔁 Inclui sub-documentos
++        {:else}
++          📄 Somente este documento
++        {/if}
++      </div>
+       <div class="share-url-row">
+         <input class="share-url-input" type="text" readonly value={shareUrl} />
+         <button class="btn btn-primary" onclick={copyLink}>
+           {copied ? '✓ Copiado!' : 'Copiar'}
+         </button>
+       </div>
+       <div class="modal-actions">
+         <button class="btn btn-danger" onclick={revokeLink}>Revogar link</button>
+         <button class="btn btn-ghost" onclick={onClose}>Fechar</button>
+       </div>
+     {:else}
++      <label class="share-children-label">
++        <input type="checkbox" bind:checked={includeChildren} disabled={loading} />
++        Incluir sub-documentos (recursivo)
++      </label>
++      <p class="share-children-hint">
++        {#if includeChildren}
++          Os filhos também ficam acessíveis publicamente e aparecem listados neste documento.
++        {:else}
++          Somente este documento será acessível. Os filhos não aparecerão no link.
++        {/if}
++      </p>
+       <div class="modal-actions">
+         <button class="btn btn-ghost" onclick={onClose}>Cancelar</button>
+         <button class="btn btn-primary" onclick={generateLink} disabled={loading}>
+           {loading ? 'Gerando…' : 'Gerar link'}
+         </button>
+       </div>
+     {/if}
+   </div>
+ </div>
+ 
+ <style>
+   .share-info {
+     font-size: .875rem;
+     color: var(--text-muted);
+     margin-bottom: 1rem;
+     line-height: 1.5;
+   }
+ 
++  .share-children-label {
++    display: flex;
++    align-items: center;
++    gap: .5rem;
++    font-size: .875rem;
++    cursor: pointer;
++    margin-bottom: .375rem;
++  }
++
++  .share-children-hint {
++    font-size: .8rem;
++    color: var(--text-muted);
++    margin-bottom: 1rem;
++    padding-left: 1.5rem;
++    line-height: 1.4;
++  }
++
++  .share-scope-badge {
++    display: inline-block;
++    font-size: .75rem;
++    color: var(--text-muted);
++    background: var(--bg);
++    border: 1px solid var(--border);
++    border-radius: var(--radius);
++    padding: .2rem .6rem;
++    margin-bottom: .75rem;
++  }
++
+   .share-url-row {
+     display: flex;
+     gap: .5rem;
+     margin-bottom: .75rem;
+   }
+ 
+   .share-url-input {
+     flex: 1;
+     padding: .45rem .75rem;
+     font-size: .875rem;
+diff --git a/internal/model/share.go b/internal/model/share.go
+index 22c0842..ef53956 100644
+--- a/internal/model/share.go
++++ b/internal/model/share.go
+@@ -1,21 +1,22 @@
+ package model
+ 
+ import "time"
+ 
+ // ShareLink mirrors the share_links table.
+ type ShareLink struct {
+-	ID         int64      `json:"id"`
+-	DocumentID int64      `json:"document_id"`
+-	TokenHash  []byte     `json:"-"` // never sent to clients
+-	CreatedAt  time.Time  `json:"created_at"`
+-	RevokedAt  *time.Time `json:"revoked_at,omitempty"`
++	ID              int64      `json:"id"`
++	DocumentID      int64      `json:"document_id"`
++	IncludeChildren bool       `json:"include_children"`
++	TokenHash       []byte     `json:"-"` // never sent to clients
++	CreatedAt       time.Time  `json:"created_at"`
++	RevokedAt       *time.Time `json:"revoked_at,omitempty"`
+ }
+ 
+ // ShareCreateResponse is returned once when a share link is created.
+ // The plaintext token is shown exactly once and never stored.
+ type ShareCreateResponse struct {
+ 	Token    string `json:"token"`
+ 	URL      string `json:"url"`
+ 	RevokeID int64  `json:"revoke_id"`
+ }
+ 
+diff --git a/internal/server/handlers_share.go b/internal/server/handlers_share.go
+index c186bbb..1194bba 100644
+--- a/internal/server/handlers_share.go
++++ b/internal/server/handlers_share.go
+@@ -1,13 +1,14 @@
+ package server
+ 
+ import (
++	"encoding/json"
+ 	"errors"
+ 	"fmt"
+ 	"html/template"
+ 	"net/http"
+ 	"strings"
+ 
+ 	"github.com/go-chi/chi/v5"
+ 
+ 	"github.com/edalcin/pkd/internal/model"
+ 	"github.com/edalcin/pkd/internal/security"
+@@ -50,40 +51,58 @@ func (s *Server) collectDescendantIDs(rootID int64) []int64 {
+ 		}
+ 		for _, c := range children {
+ 			ids = append(ids, c.ID)
+ 			queue = append(queue, c.ID)
+ 		}
+ 	}
+ 	return ids
+ }
+ 
+ func (s *Server) handleCreateShare() http.HandlerFunc {
++	type createShareRequest struct {
++		IncludeChildren *bool `json:"include_children"`
++	}
+ 	return func(w http.ResponseWriter, r *http.Request) {
+ 		docID, err := parseID(r, "id")
+ 		if err != nil {
+ 			http.Error(w, "invalid id", http.StatusBadRequest)
+ 			return
+ 		}
+ 		if _, err := s.docs.GetByID(docID); errors.Is(err, store.ErrNotFound) {
+ 			http.Error(w, "not found", http.StatusNotFound)
+ 			return
+ 		}
+ 
+-		plaintext, share, err := s.shares.Create(docID)
++		var req createShareRequest
++		if r.ContentLength > 0 {
++			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
++				http.Error(w, "invalid json", http.StatusBadRequest)
++				return
++			}
++		}
++		// Default: include children (backward-compatible).
++		includeChildren := true
++		if req.IncludeChildren != nil {
++			includeChildren = *req.IncludeChildren
++		}
++
++		plaintext, share, err := s.shares.Create(docID, includeChildren)
+ 		if err != nil {
+ 			http.Error(w, "internal error", http.StatusInternalServerError)
+ 			return
+ 		}
+ 
+-		// Auto-create shares for all descendants so the public page can link them.
+-		for _, id := range s.collectDescendantIDs(docID) {
+-			_ = s.shares.CreateAuto(id)
++		// Auto-create shares for all descendants only when recursive.
++		if includeChildren {
++			for _, id := range s.collectDescendantIDs(docID) {
++				_ = s.shares.CreateAuto(id)
++			}
+ 		}
+ 
+ 		base := s.baseURL(r)
+ 		shareURL := base + "public/" + plaintext
+ 
+ 		writeJSON(w, http.StatusCreated, model.ShareCreateResponse{
+ 			Token:    plaintext,
+ 			URL:      shareURL,
+ 			RevokeID: share.ID,
+ 		})
+@@ -164,42 +183,44 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
+ 
+ 		icon := doc.Icon
+ 		if icon == "" {
+ 			icon = "📄"
+ 		}
+ 		date := fmt.Sprintf("%d de %s de %d",
+ 			doc.CreatedAt.Day(), ptMonths[doc.CreatedAt.Month()], doc.CreatedAt.Year())
+ 
+ 		base := s.baseURL(r)
+ 
+-		// Fetch children and ensure each has an active public share.
+-		children, err := s.docs.ListChildren(doc.ID)
+-		if err != nil {
+-			http.Error(w, "internal error", http.StatusInternalServerError)
+-			return
+-		}
++		// Fetch children only if the share was created with include_children=true.
+ 		var childData []shareChildData
+-		for _, child := range children {
+-			childToken, cerr := s.shares.GetActiveShareForDocument(child.ID)
+-			if cerr != nil || childToken == "" {
+-				continue // only list children that already have an explicit share
++		if shareLink.IncludeChildren {
++			children, err := s.docs.ListChildren(doc.ID)
++			if err != nil {
++				http.Error(w, "internal error", http.StatusInternalServerError)
++				return
+ 			}
+-			childIcon := child.Icon
+-			if childIcon == "" {
+-				childIcon = "📄"
++			for _, child := range children {
++				childToken, cerr := s.shares.GetActiveShareForDocument(child.ID)
++				if cerr != nil || childToken == "" {
++					continue // only list children that already have an explicit share
++				}
++				childIcon := child.Icon
++				if childIcon == "" {
++					childIcon = "📄"
++				}
++				childData = append(childData, shareChildData{
++					Title:         child.Title,
++					Icon:          childIcon,
++					IconIsBoxicon: isBoxicon(childIcon),
++					URL:           base + "public/" + childToken,
++				})
+ 			}
+-			childData = append(childData, shareChildData{
+-				Title:         child.Title,
+-				Icon:          childIcon,
+-				IconIsBoxicon: isBoxicon(childIcon),
+-				URL:           base + "public/" + childToken,
+-			})
+ 		}
+ 
+ 		// Resolve parent link only if the parent already has an active share.
+ 		// Never auto-create a share for a parent document.
+ 		var parentTitle, parentURL string
+ 		if doc.ParentID != nil {
+ 			if parent, perr := s.docs.GetByID(*doc.ParentID); perr == nil {
+ 				if tok, perr := s.shares.GetActiveShareForDocument(parent.ID); perr == nil && tok != "" {
+ 					parentTitle = parent.Title
+ 					parentURL = base + "public/" + tok
+diff --git a/internal/store/migrate.go b/internal/store/migrate.go
+index e1e2742..a894b26 100644
+--- a/internal/store/migrate.go
++++ b/internal/store/migrate.go
+@@ -91,20 +91,21 @@ func Open(dbPath string) (*sql.DB, error) {
+ 		{`ALTER TABLE tags ADD COLUMN color TEXT NOT NULL DEFAULT ''`, "alter tags color"},
+ 		{`ALTER TABLE share_links ADD COLUMN token_plain TEXT NOT NULL DEFAULT ''`, "alter share_links token_plain"},
+ 		{`ALTER TABLE share_links ADD COLUMN is_auto INTEGER NOT NULL DEFAULT 0`, "alter share_links is_auto"},
+ 		{`ALTER TABLE documents ADD COLUMN assoc_year  INTEGER`, "alter documents assoc_year"},
+ 		{`ALTER TABLE documents ADD COLUMN assoc_month INTEGER`, "alter documents assoc_month"},
+ 		{`ALTER TABLE documents ADD COLUMN assoc_day   INTEGER`, "alter documents assoc_day"},
+ 		{`ALTER TABLE documents ADD COLUMN locked      INTEGER NOT NULL DEFAULT 0`, "alter documents locked"},
+ 		{`ALTER TABLE documents ADD COLUMN archived_at TEXT`, "alter documents archived_at"},
+ 		{`ALTER TABLE attachments ADD COLUMN storage_location TEXT NOT NULL DEFAULT 'local'`, "alter attachments storage_location"},
+ 		{`ALTER TABLE attachments ADD COLUMN content_sha256 TEXT`, "alter attachments content_sha256"},
++		{`ALTER TABLE share_links ADD COLUMN include_children INTEGER NOT NULL DEFAULT 1`, "alter share_links include_children"},
+ 	}
+ 	for _, m := range colMigrations {
+ 		if _, err := db.Exec(m.sql); err != nil {
+ 			if !strings.Contains(err.Error(), "duplicate column name") {
+ 				db.Close()
+ 				return nil, fmt.Errorf("store.Open %s: %w", m.ctx, err)
+ 			}
+ 		}
+ 	}
+ 
+diff --git a/internal/store/shares.go b/internal/store/shares.go
+index f55bad4..a06caea 100644
+--- a/internal/store/shares.go
++++ b/internal/store/shares.go
+@@ -16,72 +16,80 @@ type ShareStore struct {
+ }
+ 
+ // NewShareStore wraps db.
+ func NewShareStore(db *sql.DB) *ShareStore {
+ 	return &ShareStore{db: db}
+ }
+ 
+ // Create generates a share link for docID. Returns the plaintext token (shown
+ // once) and the ShareLink record containing the row ID needed for revocation.
+ // The token is NOT stored — only its SHA-256 hash is persisted.
+-func (s *ShareStore) Create(docID int64) (plaintext string, share *model.ShareLink, err error) {
++func (s *ShareStore) Create(docID int64, includeChildren bool) (plaintext string, share *model.ShareLink, err error) {
+ 	plaintext = security.NewToken(32) // 32 bytes → 43 chars base64url
+ 	hash := security.HashSHA256(plaintext)
+ 
++	ic := 0
++	if includeChildren {
++		ic = 1
++	}
++
+ 	now := time.Now().UTC()
+ 	var id int64
+ 	err = WithTx(s.db, func(tx *sql.Tx) error {
+ 		res, err := tx.Exec(`
+-			INSERT INTO share_links (document_id, token_hash, token_plain, created_at)
+-			VALUES (?, ?, ?, ?)`,
+-			docID, hash, plaintext, now.Format(time.RFC3339Nano))
++			INSERT INTO share_links (document_id, token_hash, token_plain, include_children, created_at)
++			VALUES (?, ?, ?, ?, ?)`,
++			docID, hash, plaintext, ic, now.Format(time.RFC3339Nano))
+ 		if err != nil {
+ 			return err
+ 		}
+ 		id, _ = res.LastInsertId()
+ 		return nil
+ 	})
+ 	if err != nil {
+ 		return "", nil, err
+ 	}
+ 	share = &model.ShareLink{
+-		ID:         id,
+-		DocumentID: docID,
+-		TokenHash:  hash,
+-		CreatedAt:  now,
++		ID:              id,
++		DocumentID:      docID,
++		IncludeChildren: includeChildren,
++		TokenHash:       hash,
++		CreatedAt:       now,
+ 	}
+ 	return plaintext, share, nil
+ }
+ 
+ // LookupByToken finds an active (non-revoked) share link by plaintext token.
+ // Returns ErrNotFound if the token does not match any active link.
+ func (s *ShareStore) LookupByToken(plaintext string) (*model.ShareLink, error) {
+ 	hash := security.HashSHA256(plaintext)
+ 
+ 	rows, err := s.db.Query(`
+-		SELECT id, document_id, token_hash, created_at
++		SELECT id, document_id, token_hash, include_children, created_at
+ 		FROM share_links
+ 		WHERE revoked_at IS NULL`)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	defer rows.Close()
+ 
+ 	for rows.Next() {
+ 		var sl model.ShareLink
+ 		var tokenHash []byte
+ 		var createdStr string
+-		if err := rows.Scan(&sl.ID, &sl.DocumentID, &tokenHash, &createdStr); err != nil {
++		var ic int
++		if err := rows.Scan(&sl.ID, &sl.DocumentID, &tokenHash, &ic, &createdStr); err != nil {
+ 			return nil, err
+ 		}
+ 		if subtle.ConstantTimeCompare(hash, tokenHash) == 1 {
+ 			sl.TokenHash = tokenHash
++			sl.IncludeChildren = ic == 1
+ 			sl.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
+ 			return &sl, nil
+ 		}
+ 	}
+ 	if err := rows.Err(); err != nil {
+ 		return nil, err
+ 	}
+ 	return nil, ErrNotFound
+ }
+ 
+diff --git a/tests/integration/share_test.go b/tests/integration/share_test.go
+new file mode 100644
+index 0000000..1244a33
+--- /dev/null
++++ b/tests/integration/share_test.go
+@@ -0,0 +1,153 @@
++package integration_test
++
++import (
++	"encoding/json"
++	"io"
++	"net/http"
++	"strings"
++	"testing"
++)
++
++// TestShareRecursive verifica que criar um share com include_children=true
++// gera auto-shares para os descendentes, e a página pública lista os filhos.
++func TestShareRecursive(t *testing.T) {
++	client := loginClient(t)
++
++	// Cria documento pai
++	parent := decodeDoc(t, apiPost(t, client, "/api/documents", map[string]interface{}{
++		"title": "Share Parent",
++	}))
++	parentID := int64(parent["id"].(float64))
++
++	// Cria filho
++	_ = decodeDoc(t, apiPost(t, client, "/api/documents", map[string]interface{}{
++		"parent_id": parentID,
++		"title":     "Share Child",
++	}))
++
++	// Gera share recursivo (default)
++	shareResp := apiPost(t, client, "/api/documents/"+itoa(parentID)+"/shares", map[string]interface{}{
++		"include_children": true,
++	})
++	if shareResp.StatusCode != http.StatusCreated {
++		t.Fatalf("create share: want 201, got %d", shareResp.StatusCode)
++	}
++	var shareData map[string]interface{}
++	json.NewDecoder(shareResp.Body).Decode(&shareData)
++	shareResp.Body.Close()
++
++	shareURL, _ := shareData["url"].(string)
++	if shareURL == "" {
++		t.Fatal("share URL should not be empty")
++	}
++
++	// Acessa a página pública
++	pubResp, err := http.Get(shareURL)
++	if err != nil {
++		t.Fatalf("public page GET: %v", err)
++	}
++	defer pubResp.Body.Close()
++	if pubResp.StatusCode != http.StatusOK {
++		t.Fatalf("public page: want 200, got %d", pubResp.StatusCode)
++	}
++
++	// A página deve conter o título do filho (share automático foi criado)
++	bodyBytes, _ := io.ReadAll(pubResp.Body)
++	if !strings.Contains(string(bodyBytes), "Share Child") {
++		t.Error("public page should list child document when include_children=true")
++	}
++}
++
++// TestShareNonRecursive verifica que criar um share com include_children=false
++// NÃO gera auto-shares para os descendentes, e a página pública não lista filhos.
++func TestShareNonRecursive(t *testing.T) {
++	client := loginClient(t)
++
++	// Cria documento pai
++	parent := decodeDoc(t, apiPost(t, client, "/api/documents", map[string]interface{}{
++		"title": "NonRec Parent",
++	}))
++	parentID := int64(parent["id"].(float64))
++
++	// Cria filho
++	_ = decodeDoc(t, apiPost(t, client, "/api/documents", map[string]interface{}{
++		"parent_id": parentID,
++		"title":     "NonRec Child",
++	}))
++
++	// Gera share NÃO recursivo
++	shareResp := apiPost(t, client, "/api/documents/"+itoa(parentID)+"/shares", map[string]interface{}{
++		"include_children": false,
++	})
++	if shareResp.StatusCode != http.StatusCreated {
++		t.Fatalf("create non-recursive share: want 201, got %d", shareResp.StatusCode)
++	}
++	var shareData map[string]interface{}
++	json.NewDecoder(shareResp.Body).Decode(&shareData)
++	shareResp.Body.Close()
++
++	shareURL, _ := shareData["url"].(string)
++	if shareURL == "" {
++		t.Fatal("share URL should not be empty")
++	}
++
++	// Acessa a página pública
++	pubResp, err := http.Get(shareURL)
++	if err != nil {
++		t.Fatalf("public page GET: %v", err)
++	}
++	defer pubResp.Body.Close()
++	if pubResp.StatusCode != http.StatusOK {
++		t.Fatalf("public page: want 200, got %d", pubResp.StatusCode)
++	}
++
++	// A página NÃO deve conter o título do filho
++	bodyBytes, _ := io.ReadAll(pubResp.Body)
++	if strings.Contains(string(bodyBytes), "NonRec Child") {
++		t.Error("public page should NOT list child document when include_children=false")
++	}
++}
++
++// TestShareDefaultIsRecursive verifica que omitir include_children no body
++// resulta em comportamento recursivo (backward-compatible).
++func TestShareDefaultIsRecursive(t *testing.T) {
++	client := loginClient(t)
++
++	parent := decodeDoc(t, apiPost(t, client, "/api/documents", map[string]interface{}{
++		"title": "Default Parent",
++	}))
++	parentID := int64(parent["id"].(float64))
++
++	_ = decodeDoc(t, apiPost(t, client, "/api/documents", map[string]interface{}{
++		"parent_id": parentID,
++		"title":     "Default Child",
++	}))
++
++	// POST sem body (simula cliente antigo)
++	shareResp := apiPost(t, client, "/api/documents/"+itoa(parentID)+"/shares", nil)
++	if shareResp.StatusCode != http.StatusCreated {
++		t.Fatalf("create default share: want 201, got %d", shareResp.StatusCode)
++	}
++	var shareData map[string]interface{}
++	json.NewDecoder(shareResp.Body).Decode(&shareData)
++	shareResp.Body.Close()
++
++	shareURL, _ := shareData["url"].(string)
++	if shareURL == "" {
++		t.Fatal("share URL should not be empty")
++	}
++
++	pubResp, err := http.Get(shareURL)
++	if err != nil {
++		t.Fatalf("public page GET: %v", err)
++	}
++	defer pubResp.Body.Close()
++	if pubResp.StatusCode != http.StatusOK {
++		t.Fatalf("public page: want 200, got %d", pubResp.StatusCode)
++	}
++
++	bodyBytes, _ := io.ReadAll(pubResp.Body)
++	if !strings.Contains(string(bodyBytes), "Default Child") {
++		t.Error("public page should list child when no body sent (default=recursive)")
++	}
++}

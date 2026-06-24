@@ -1,0 +1,69 @@
+# Review package: 58ffa88..8762f69
+
+## Commits
+8762f69 feat(share): add include_children column and model field
+
+## Files changed
+ internal/model/share.go   | 11 ++++++-----
+ internal/store/migrate.go |  1 +
+ 2 files changed, 7 insertions(+), 5 deletions(-)
+
+## Diff
+diff --git a/internal/model/share.go b/internal/model/share.go
+index 22c0842..ef53956 100644
+--- a/internal/model/share.go
++++ b/internal/model/share.go
+@@ -1,21 +1,22 @@
+ package model
+ 
+ import "time"
+ 
+ // ShareLink mirrors the share_links table.
+ type ShareLink struct {
+-	ID         int64      `json:"id"`
+-	DocumentID int64      `json:"document_id"`
+-	TokenHash  []byte     `json:"-"` // never sent to clients
+-	CreatedAt  time.Time  `json:"created_at"`
+-	RevokedAt  *time.Time `json:"revoked_at,omitempty"`
++	ID              int64      `json:"id"`
++	DocumentID      int64      `json:"document_id"`
++	IncludeChildren bool       `json:"include_children"`
++	TokenHash       []byte     `json:"-"` // never sent to clients
++	CreatedAt       time.Time  `json:"created_at"`
++	RevokedAt       *time.Time `json:"revoked_at,omitempty"`
+ }
+ 
+ // ShareCreateResponse is returned once when a share link is created.
+ // The plaintext token is shown exactly once and never stored.
+ type ShareCreateResponse struct {
+ 	Token    string `json:"token"`
+ 	URL      string `json:"url"`
+ 	RevokeID int64  `json:"revoke_id"`
+ }
+ 
+diff --git a/internal/store/migrate.go b/internal/store/migrate.go
+index e1e2742..a894b26 100644
+--- a/internal/store/migrate.go
++++ b/internal/store/migrate.go
+@@ -91,20 +91,21 @@ func Open(dbPath string) (*sql.DB, error) {
+ 		{`ALTER TABLE tags ADD COLUMN color TEXT NOT NULL DEFAULT ''`, "alter tags color"},
+ 		{`ALTER TABLE share_links ADD COLUMN token_plain TEXT NOT NULL DEFAULT ''`, "alter share_links token_plain"},
+ 		{`ALTER TABLE share_links ADD COLUMN is_auto INTEGER NOT NULL DEFAULT 0`, "alter share_links is_auto"},
+ 		{`ALTER TABLE documents ADD COLUMN assoc_year  INTEGER`, "alter documents assoc_year"},
+ 		{`ALTER TABLE documents ADD COLUMN assoc_month INTEGER`, "alter documents assoc_month"},
+ 		{`ALTER TABLE documents ADD COLUMN assoc_day   INTEGER`, "alter documents assoc_day"},
+ 		{`ALTER TABLE documents ADD COLUMN locked      INTEGER NOT NULL DEFAULT 0`, "alter documents locked"},
+ 		{`ALTER TABLE documents ADD COLUMN archived_at TEXT`, "alter documents archived_at"},
+ 		{`ALTER TABLE attachments ADD COLUMN storage_location TEXT NOT NULL DEFAULT 'local'`, "alter attachments storage_location"},
+ 		{`ALTER TABLE attachments ADD COLUMN content_sha256 TEXT`, "alter attachments content_sha256"},
++		{`ALTER TABLE share_links ADD COLUMN include_children INTEGER NOT NULL DEFAULT 1`, "alter share_links include_children"},
+ 	}
+ 	for _, m := range colMigrations {
+ 		if _, err := db.Exec(m.sql); err != nil {
+ 			if !strings.Contains(err.Error(), "duplicate column name") {
+ 				db.Close()
+ 				return nil, fmt.Errorf("store.Open %s: %w", m.ctx, err)
+ 			}
+ 		}
+ 	}
+ 
