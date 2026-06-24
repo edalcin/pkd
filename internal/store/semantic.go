@@ -113,6 +113,13 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 			stales = append(stales, stale{idx: i, text: d.text})
 		}
 	}
+	// Prune embeddings for trashed/archived docs — excluded from graph, wasted space.
+	// ponytail: single DELETE per sweep; always runs, non-fatal.
+	_, _ = s.db.ExecContext(ctx, `
+		DELETE FROM document_embeddings
+		WHERE document_id NOT IN (
+			SELECT id FROM documents WHERE trashed_at IS NULL AND archived_at IS NULL
+		)`)
 	if len(stales) == 0 {
 		return 0, nil
 	}
