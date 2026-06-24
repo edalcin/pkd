@@ -419,6 +419,9 @@ graph TD
 | `tags` + `document_tags` | Tags normalizadas com campo `color`; join N:N com documentos |
 | `documents_fts` | Tabela virtual FTS5 (contentless) para busca full-text |
 | `share_links` | Links públicos com hash de token e campo `revoked_at` |
+| `document_embeddings` | Cache de vetores semânticos: `embedding` BLOB float32 LE (3072 dims para `gemini-embedding-001`), `content_hash` SHA-256 para invalidação. Gerenciado pelo worker proativo; limpeza automática de docs trashed/archived a cada sweep |
+| `settings` | Configurações persistidas em chave-valor (modelo de embedding, retenção de versões, backend de armazenamento) |
+| `document_versions` | Snapshots de conteúdo com dedup SHA-256 e retenção configurável |
 
 ---
 
