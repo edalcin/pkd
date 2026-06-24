@@ -45,7 +45,8 @@ GET /api/graph/semantic
 
 **`EmbedStaleDocs(ctx, apiKey string) (int, error)`**
 - Carrega docs ativos (`trashed_at IS NULL AND archived_at IS NULL`)
-- Hash: `sha256(embedModel + "\x00" + title + "\n" + body[:800])` — inclui o nome do modelo para que uma troca de modelo force re-embed de todos os vetores
+- **Prune**: DELETE de embeddings cujo `document_id` não é mais um doc ativo (trashed/archived) — ocorre antes da verificação de stales, a cada sweep
+- Hash: `sha256(embedModel + "\x00" + title + "\n" + body[:800])` — inclui nome do modelo; troca de modelo invalida todos os hashes, forçando re-embed de 100% dos docs
 - Lê hashes cached de `document_embeddings`; calcula stale set
 - Chama `embedBatch` em lotes de 100 (limite da API Gemini)
 - Upsert em `document_embeddings` via `ON CONFLICT(document_id) DO UPDATE`
@@ -87,13 +88,26 @@ Vetores de 3072 dimensões (modelo `gemini-embedding-001`) = 12 288 bytes/doc. P
 
 ## Configuração
 
+### Variáveis de ambiente
+
 | Variável | Padrão | Efeito |
 |---|---|---|
 | `GEMINI_API_KEY` | *(desativado)* | Sem ela o worker não roda e `GET /api/graph/semantic` retorna 503 |
-| `PKD_EMBED_MODEL` | `models/gemini-embedding-001` | Modelo Gemini; trocar invalida todos os embeddings em cache (re-embed automático) |
-| `PKD_EMBED_SWEEP_MINUTES` | `15` | Cadência do sweep de segurança; saves de documentos disparam um sweep imediato adicional |
+| `PKD_EMBED_MODEL` | `models/gemini-embedding-001` | Modelo Gemini padrão; sobreposto pelo valor salvo no DB via admin |
+| `PKD_EMBED_SWEEP_MINUTES` | `15` | Cadência do sweep de segurança; saves de documentos disparam sweep imediato adicional |
 
-As configurações são exibidas (somente leitura) em **Administração → Preferências → Embeddings semânticos**.
+### Configuração via Admin
+
+**Administração → Preferências → Embeddings semânticos** expõe:
+- Status da chave Gemini e contagem de documentos embedados (somente leitura)
+- **Dropdown de modelo** com os três modelos Gemini válidos para embedding; ao salvar, o novo modelo é persistido no DB (sobrepõe `PKD_EMBED_MODEL`), aplicado ao vivo e um sweep completo é disparado — todos os docs são re-embedados com o novo modelo
+
+Modelos disponíveis:
+| Modelo | Dimensões | Notas |
+|---|---|---|
+| `models/gemini-embedding-001` | 3072 | Recomendado |
+| `models/text-embedding-004` | 768 | Estável |
+| `models/embedding-001` | 768 | Legado |
 
 ## Armazenamento de vetores
 
@@ -108,7 +122,7 @@ Complexidade: O(n²·d) onde n = docs ativos, d = dimensões do vetor. Para uso 
 ## Fluxo de segurança e consistência
 
 - **Troca de modelo**: hash inclui o nome do modelo → todos os docs ficam stale → re-embed no próximo sweep. Custo único.
-- **Doc trasheado/arquivado**: não entra no JOIN; embedding permanece na tabela mas nunca é consultado. FK CASCADE apaga a linha em delete físico.
+- **Doc trasheado/arquivado**: não entra no JOIN do grafo; embedding é **apagado no próximo sweep** pelo DELETE de prune (`NOT IN (SELECT id FROM documents WHERE trashed_at IS NULL...)`). Delete físico do doc é coberto por `ON DELETE CASCADE`.
 - **Vetor de norma zero**: pulado silenciosamente (`normalize` retorna nil).
 - **Erro de rede/API no worker**: logado com `log.Printf("embedder: %v", err)`, sweep abortado; próximo ticker/notify tenta novamente.
 - **Concorrência worker + fetch do grafo**: `embedMu` serializa — fetch espera o sweep terminar e então lê do DB (sem chamada duplicada à API).

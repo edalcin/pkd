@@ -80,7 +80,7 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 🔗 **Links externos** | Tabela de gerenciamento de todos os links externos; testa validade (HTTP HEAD) e permite excluir inválidos em lote |
 | ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada com progresso em tempo real; reconciliação S3↔DB e LOCAL↔DB (corrige `storage_location` sem mover arquivos); limpeza da origem com verificação de cópia no destino antes de apagar; backup/restauração assíncrona com streaming multipart e URL pré-assinada |
 | 🧹 **Limpeza** | Executa `VACUUM` no banco de dados para recuperar espaço em disco |
-| ⚙️ **Configurações** | Retenção de versões configurável (padrão 50/documento); painel de status dos embeddings semânticos: modelo, intervalo de varredura, chave configurada e contagem de vetores em cache |
+| ⚙️ **Configurações** | Retenção de versões configurável (padrão 50/documento); painel de embeddings semânticos: status da chave Gemini, contagem de vetores, **seletor de modelo** Gemini (3 opções; persiste no DB, sobrepõe env var, dispara re-embed automático ao trocar) |
 
 ### Interface
 
