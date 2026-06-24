@@ -34,6 +34,7 @@ func (s *Server) handleCreateDocument() http.HandlerFunc {
 			return
 		}
 		_ = s.search.IndexDoc(doc.ID, doc.Title, "", nil)
+		s.embedder.notify()
 		writeJSON(w, http.StatusCreated, doc)
 	}
 }
@@ -125,6 +126,7 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 			return
 		}
 		_ = s.search.IndexDoc(doc.ID, doc.Title, plainText, nil)
+		s.embedder.notify()
 		writeJSON(w, http.StatusOK, doc)
 	}
 }

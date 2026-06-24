@@ -46,6 +46,14 @@ type Config struct {
 	// If empty, the semantic graph endpoint is disabled (returns 503).
 	GeminiAPIKey string
 
+	// EmbedModel is the Gemini model for embeddings (PKD_EMBED_MODEL).
+	// Default: models/gemini-embedding-001
+	EmbedModel string
+
+	// EmbedSweepMinutes is the background sweep cadence in minutes (PKD_EMBED_SWEEP_MINUTES).
+	// Default: 15
+	EmbedSweepMinutes int
+
 	// S3 is populated when PKD_S3_BUCKET and PKD_S3_REGION are set.
 	// Nil means S3 is not configured and the local backend is the only option.
 	S3 *S3Config
@@ -82,7 +90,9 @@ func Load() (*Config, error) {
 		ListenAddr:      ":8080",
 		SessionIdleMinutes: 43200,
 		MaxImageMB:      10,
-		MaxAttachmentMB: 100,
+		MaxAttachmentMB:   100,
+		EmbedModel:        "models/gemini-embedding-001",
+		EmbedSweepMinutes: 15,
 	}
 
 	if v := os.Getenv("PKD_LISTEN_ADDR"); v != "" {
@@ -128,6 +138,18 @@ func Load() (*Config, error) {
 
 	if v := os.Getenv("GEMINI_API_KEY"); v != "" {
 		cfg.GeminiAPIKey = v
+	}
+
+	if v := os.Getenv("PKD_EMBED_MODEL"); v != "" {
+		cfg.EmbedModel = v
+	}
+
+	if v := os.Getenv("PKD_EMBED_SWEEP_MINUTES"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			return nil, fmt.Errorf("PKD_EMBED_SWEEP_MINUTES must be a positive integer, got %q", v)
+		}
+		cfg.EmbedSweepMinutes = n
 	}
 
 	// S3 configuration — optional. Both bucket and region must be set to enable.

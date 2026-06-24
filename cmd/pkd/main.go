@@ -55,6 +55,7 @@ func main() {
 	// Graceful shutdown on SIGINT / SIGTERM
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	srv.StartEmbedder(ctx)
 
 	go func() {
 		log.Printf("listening on %s", cfg.ListenAddr)

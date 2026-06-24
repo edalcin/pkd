@@ -65,7 +65,7 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 🏷️ **Hashtags com autocomplete** | Marque documentos com tags; ao digitar, sugeridas as tags já existentes no sistema |
 | 🎨 **Cores por tag** | Cada tag possui cor configurável; chips coloridos em toda a interface (sidebar e editor) |
 | 🗂️ **Arquivamento** | Arquive documentos pelo ícone na barra; arquivar pai cascateia para todos os filhos recursivamente. Documentos arquivados são auto-trancados; desarquivar pai libera todos os filhos |
-| 🕸️ **Graph View** | Grafo D3.js force-directed: nós de documentos, tags e hierarquia pai/filho. Toggles independentes para Hierarquia, Links entre docs e Relações com tags; filtro de nós por tipo de relação |
+| 🕸️ **Graph View** | Grafo D3.js force-directed: nós de documentos, tags e hierarquia pai/filho. Toggle **Semântico** exibe arestas de similaridade de conteúdo (embeddings Gemini, roxo tracejado). Toggles independentes para todos os tipos; filtro de nós por tipo de relação |
 | 🔗 **Links públicos** | Links de compartilhamento revogáveis, somente leitura |
 
 ### Administração
@@ -80,7 +80,7 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 🔗 **Links externos** | Tabela de gerenciamento de todos os links externos; testa validade (HTTP HEAD) e permite excluir inválidos em lote |
 | ☁️ **Armazenamento** | Migração de anexos entre armazenamento local e Amazon S3; teste de conexão, migração SHA256-verificada com progresso em tempo real; reconciliação S3↔DB e LOCAL↔DB (corrige `storage_location` sem mover arquivos); limpeza da origem com verificação de cópia no destino antes de apagar; backup/restauração assíncrona com streaming multipart e URL pré-assinada |
 | 🧹 **Limpeza** | Executa `VACUUM` no banco de dados para recuperar espaço em disco |
-| ⚙️ **Configurações** | Retenção de versões de documentos configurável (padrão 50 por documento) |
+| ⚙️ **Configurações** | Retenção de versões configurável (padrão 50/documento); painel de status dos embeddings semânticos: modelo, intervalo de varredura, chave configurada e contagem de vetores em cache |
 
 ### Interface
 
@@ -182,6 +182,9 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 | `PKD_S3_PREFIX` | não | *(vazio)* | Prefixo de caminho dentro do bucket (ex: `pkd/attachments/`) |
 | `PKD_S3_ACCESS_KEY_ID` | não | *(credenciais da instância)* | Access Key ID; se vazio, usa credenciais padrão da instância/IAM role |
 | `PKD_S3_SECRET_ACCESS_KEY` | não | *(credenciais da instância)* | Secret Access Key correspondente |
+| `GEMINI_API_KEY` | não | *(desativado)* | Chave de API Google Gemini para embeddings semânticos. Sem ela o toggle **Semântico** no Graph View fica indisponível e o worker de embedding não roda |
+| `PKD_EMBED_MODEL` | não | `models/gemini-embedding-001` | Modelo Gemini para geração de embeddings. Alterar o modelo invalida todos os embeddings em cache (re-embed automático na próxima varredura) |
+| `PKD_EMBED_SWEEP_MINUTES` | não | `15` | Cadência do worker de embedding em background (minutos). O worker também dispara imediatamente ao criar/editar documentos |
 
 ---
 
@@ -311,6 +314,7 @@ Acesse pelo ícone 🕸️ na barra superior. O grafo mostra:
 - **Arestas de hierarquia** → linhas tracejadas `--accent` entre pai e filho
 - **Arestas de link** → relações manuais entre documentos (azul)
 - **Arestas de tag** → relação documento ↔ tag (rosa)
+- **Arestas semânticas** → similaridade de conteúdo via Gemini embeddings (roxo tracejado); visíveis quando `GEMINI_API_KEY` está configurada
 
 O campo de **filtro da barra superior** também atua no grafo — ao digitar, apenas os nós que correspondem ao filtro são exibidos, mantendo as arestas de seus vizinhos diretos para preservar o contexto.
 
@@ -321,9 +325,12 @@ O campo de **filtro da barra superior** também atua no grafo — ao digitar, ap
 | **Hierarquia** | Exibe/oculta arestas e nós de relação pai/filho |
 | **Links entre docs** | Exibe/oculta arestas e nós de relação manual entre documentos |
 | **Relações com tags** | Exibe/oculta arestas e nós de tag |
+| **Semântico** | Exibe/oculta arestas de similaridade semântica (requer `GEMINI_API_KEY`) |
 | **Todos os docs** | Força exibição de todos os documentos, mesmo sem conexões |
 
 Clicar em um nó de tag filtra o grafo por aquela tag. Clicar em um nó de documento navega para o documento.
+
+**Embeddings semânticos** são gerados proativamente em background: no startup do servidor, ao criar/editar documentos e a cada `PKD_EMBED_SWEEP_MINUTES` minutos. Os vetores ficam armazenados no próprio SQLite — o grafo semântico carrega instantaneamente sem nova chamada à API no momento do clique no toggle.
 
 ---
 

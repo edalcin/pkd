@@ -166,7 +166,7 @@ func (s *Server) handleAdminRestore() http.HandlerFunc {
 		s.search = store.NewSearchStore(newDB)
 		s.shares = store.NewShareStore(newDB)
 		s.backup = store.NewBackupStore(newDB, s.cfg.DBPath)
-		s.links = store.NewLinkStore(newDB)
+		s.links = store.NewLinkStore(newDB, s.cfg.EmbedModel)
 		s.urls = store.NewURLStore(newDB)
 
 		// Invalidate all sessions (user must log in again after restore)
@@ -629,7 +629,8 @@ func (s *Server) handleAdminRevokeShare() http.HandlerFunc {
 	}
 }
 
-// handleAdminGetSettings returns the editable subset of server-side settings.
+// handleAdminGetSettings returns the editable subset of server-side settings
+// plus read-only embedding configuration from the current process config.
 func (s *Server) handleAdminGetSettings() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		maxPerDoc, err := s.settings.VersionsMaxPerDoc()
@@ -637,8 +638,18 @@ func (s *Server) handleAdminGetSettings() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		var embedCount int
+		_ = s.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM document_embeddings`).Scan(&embedCount)
+		keyConfigured := "false"
+		if s.cfg.GeminiAPIKey != "" {
+			keyConfigured = "true"
+		}
 		writeJSON(w, http.StatusOK, map[string]string{
 			"versions.max_per_doc": maxPerDoc,
+			"embed.model":          s.cfg.EmbedModel,
+			"embed.sweep_minutes":  strconv.Itoa(s.cfg.EmbedSweepMinutes),
+			"embed.key_configured": keyConfigured,
+			"embed.count":          strconv.Itoa(embedCount),
 		})
 	}
 }

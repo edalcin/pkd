@@ -18,8 +18,6 @@ import (
 )
 
 const (
-	geminiEmbedURL       = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents"
-	geminiEmbedModel     = "models/gemini-embedding-001"
 	semanticBodyChars    = 800
 	semanticBatchSize    = 100
 	semanticMaxNeighbors = 8
@@ -32,10 +30,18 @@ type semCandidate struct {
 	sim  float32
 }
 
-// GetSemanticEdges returns semantic similarity edges between active documents,
-// using Gemini embeddings cached in SQLite.
-// ponytail: O(n²·d) full scan, fine for personal KB; swap to ANN if doc count makes activation slow.
-func (s *LinkStore) GetSemanticEdges(ctx context.Context, apiKey string) ([]model.GraphEdge, error) {
+// EmbedStaleDocs (re)embeds every active document whose stored embedding is
+// absent or stale (content or model changed) and upserts into document_embeddings.
+// Returns count of (re)embedded docs. No-op (0, nil) when apiKey == "".
+// Serialized by s.embedMu to avoid concurrent worker+graph-fetch API calls.
+// ponytail: O(n) per sweep; batch of 100 to API. Fine for personal KB.
+func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, error) {
+	if apiKey == "" {
+		return 0, nil
+	}
+	s.embedMu.Lock()
+	defer s.embedMu.Unlock()
+
 	// 1. Load active docs.
 	type doc struct {
 		id   int64
@@ -47,7 +53,7 @@ func (s *LinkStore) GetSemanticEdges(ctx context.Context, apiKey string) ([]mode
 		WHERE trashed_at IS NULL AND archived_at IS NULL
 		ORDER BY id`)
 	if err != nil {
-		return nil, fmt.Errorf("semantic: load docs: %w", err)
+		return 0, fmt.Errorf("embed: load docs: %w", err)
 	}
 	var docs []doc
 	for rows.Next() {
@@ -55,131 +61,154 @@ func (s *LinkStore) GetSemanticEdges(ctx context.Context, apiKey string) ([]mode
 		var title, body string
 		if err := rows.Scan(&id, &title, &body); err != nil {
 			rows.Close()
-			return nil, fmt.Errorf("semantic: scan doc: %w", err)
+			return 0, fmt.Errorf("embed: scan doc: %w", err)
 		}
 		docs = append(docs, doc{id: id, text: title + "\n" + body})
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("semantic: docs rows: %w", err)
+		return 0, fmt.Errorf("embed: docs rows: %w", err)
 	}
-	if len(docs) < 2 {
-		return nonNilEdges(nil), nil
+	if len(docs) == 0 {
+		return 0, nil
 	}
 
-	// 2. Content hashes (over the already-truncated text).
+	// 2. Hash includes model name: model change invalidates all, forces re-embed.
+	// ponytail: fold model into hash (1 line) instead of new column — avoids
+	// mixed-dimension vectors if model changes in future.
 	hashes := make([]string, len(docs))
 	for i, d := range docs {
-		sum := sha256.Sum256([]byte(d.text))
+		sum := sha256.Sum256([]byte(s.embedModel + "\x00" + d.text))
 		hashes[i] = hex.EncodeToString(sum[:])
 	}
 
-	// 3. Read cache.
-	type cached struct {
-		hash string
-		vec  []float32
-	}
-	cache := make(map[int64]cached)
-	crows, err := s.db.QueryContext(ctx, `SELECT document_id, content_hash, embedding FROM document_embeddings`)
+	// 3. Read cached hashes (no need to fetch the blob here).
+	cache := make(map[int64]string)
+	crows, err := s.db.QueryContext(ctx, `SELECT document_id, content_hash FROM document_embeddings`)
 	if err != nil {
-		return nil, fmt.Errorf("semantic: read cache: %w", err)
+		return 0, fmt.Errorf("embed: read cache: %w", err)
 	}
 	for crows.Next() {
 		var id int64
-		var hash string
-		var blob []byte
-		if err := crows.Scan(&id, &hash, &blob); err != nil {
+		var h string
+		if err := crows.Scan(&id, &h); err != nil {
 			crows.Close()
-			return nil, fmt.Errorf("semantic: scan cache: %w", err)
+			return 0, fmt.Errorf("embed: scan cache: %w", err)
 		}
-		cache[id] = cached{hash: hash, vec: decodeEmbedding(blob)}
+		cache[id] = h
 	}
 	crows.Close()
 	if err := crows.Err(); err != nil {
-		return nil, fmt.Errorf("semantic: cache rows: %w", err)
+		return 0, fmt.Errorf("embed: cache rows: %w", err)
 	}
 
-	// 4. Determine stale set.
+	// 4. Collect stale set.
 	type stale struct {
 		idx  int
 		text string
 	}
 	var stales []stale
 	for i, d := range docs {
-		c, ok := cache[d.id]
-		if !ok || c.hash != hashes[i] {
+		if h, ok := cache[d.id]; !ok || h != hashes[i] {
 			stales = append(stales, stale{idx: i, text: d.text})
 		}
 	}
+	if len(stales) == 0 {
+		return 0, nil
+	}
 
-	// 5. Call Gemini in batches for stale docs.
-	if len(stales) > 0 {
-		client := &http.Client{Timeout: 30 * time.Second}
-		for start := 0; start < len(stales); start += semanticBatchSize {
-			end := start + semanticBatchSize
-			if end > len(stales) {
-				end = len(stales)
-			}
-			batch := stales[start:end]
-			texts := make([]string, len(batch))
-			for i, s := range batch {
-				texts[i] = s.text
-			}
-			vecs, err := embedBatch(ctx, client, apiKey, texts)
-			if err != nil {
-				return nil, fmt.Errorf("semantic: embedBatch: %w", err)
-			}
-			for i, item := range batch {
-				d := docs[item.idx]
-				blob := encodeEmbedding(vecs[i])
-				_, err := s.db.ExecContext(ctx, `
-					INSERT INTO document_embeddings (document_id, content_hash, embedding, created_at)
-					VALUES (?, ?, ?, datetime('now'))
-					ON CONFLICT(document_id) DO UPDATE SET
-					  content_hash=excluded.content_hash,
-					  embedding=excluded.embedding,
-					  created_at=excluded.created_at`,
-					d.id, hashes[item.idx], blob)
-				if err != nil {
-					return nil, fmt.Errorf("semantic: upsert embedding: %w", err)
-				}
-				cache[d.id] = cached{hash: hashes[item.idx], vec: vecs[i]}
+	// 5. Embed in batches and upsert.
+	client := &http.Client{Timeout: 30 * time.Second}
+	for start := 0; start < len(stales); start += semanticBatchSize {
+		end := start + semanticBatchSize
+		if end > len(stales) {
+			end = len(stales)
+		}
+		batch := stales[start:end]
+		texts := make([]string, len(batch))
+		for i, st := range batch {
+			texts[i] = st.text
+		}
+		vecs, err := embedBatch(ctx, client, apiKey, texts, s.embedModel)
+		if err != nil {
+			return 0, fmt.Errorf("embed: embedBatch: %w", err)
+		}
+		for i, item := range batch {
+			blob := encodeEmbedding(vecs[i])
+			if _, err := s.db.ExecContext(ctx, `
+				INSERT INTO document_embeddings (document_id, content_hash, embedding, created_at)
+				VALUES (?, ?, ?, datetime('now'))
+				ON CONFLICT(document_id) DO UPDATE SET
+				  content_hash=excluded.content_hash,
+				  embedding=excluded.embedding,
+				  created_at=excluded.created_at`,
+				docs[item.idx].id, hashes[item.idx], blob); err != nil {
+				return 0, fmt.Errorf("embed: upsert: %w", err)
 			}
 		}
 	}
+	return len(stales), nil
+}
 
-	// 6. Normalize + compute pairwise cosine similarity, top-8 per node.
-	// ponytail: O(n²·d) full scan, fine for personal KB; swap to ANN if doc count makes activation slow.
-	topK := make(map[int64][]semCandidate, len(docs))
-	norms := make([][]float32, len(docs))
-	for i, d := range docs {
-		c, ok := cache[d.id]
-		if !ok {
-			continue
-		}
-		norms[i] = normalize(c.vec)
+// GetSemanticEdges returns semantic similarity edges between active documents,
+// using Gemini embeddings cached in SQLite.
+// ponytail: O(n²·d) full scan, fine for personal KB; swap to ANN if doc count makes activation slow.
+func (s *LinkStore) GetSemanticEdges(ctx context.Context, apiKey string) ([]model.GraphEdge, error) {
+	// Fallback: ensure stale docs are embedded even if worker hasn't run yet.
+	if _, err := s.EmbedStaleDocs(ctx, apiKey); err != nil {
+		return nil, err
 	}
 
-	for i := 0; i < len(docs); i++ {
-		if norms[i] == nil {
+	// Load (id, vector) for active docs that have an embedding.
+	type vec struct {
+		id   int64
+		norm []float32
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT e.document_id, e.embedding
+		FROM document_embeddings e
+		JOIN documents d ON d.id = e.document_id
+		WHERE d.trashed_at IS NULL AND d.archived_at IS NULL
+		ORDER BY e.document_id`)
+	if err != nil {
+		return nil, fmt.Errorf("semantic: load vectors: %w", err)
+	}
+	var vecs []vec
+	for rows.Next() {
+		var id int64
+		var blob []byte
+		if err := rows.Scan(&id, &blob); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("semantic: scan vector: %w", err)
+		}
+		n := normalize(decodeEmbedding(blob))
+		if n == nil {
 			continue
 		}
-		for j := i + 1; j < len(docs); j++ {
-			if norms[j] == nil {
-				continue
-			}
-			sim := dot(norms[i], norms[j])
+		vecs = append(vecs, vec{id: id, norm: n})
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("semantic: vector rows: %w", err)
+	}
+	if len(vecs) < 2 {
+		return nonNilEdges(nil), nil
+	}
+
+	// Pairwise cosine similarity, top-8 per node, dedup by canonical pair.
+	// ponytail: O(n²·d) full scan, fine for personal KB.
+	topK := make(map[int64][]semCandidate, len(vecs))
+	for i := 0; i < len(vecs); i++ {
+		for j := i + 1; j < len(vecs); j++ {
+			sim := dot(vecs[i].norm, vecs[j].norm)
 			if sim < semanticSimThreshold {
 				continue
 			}
-			idA, idB := docs[i].id, docs[j].id
-			c := semCandidate{a: idA, b: idB, sim: sim}
-			topK[idA] = insertTopK(topK[idA], c, semanticMaxNeighbors)
-			topK[idB] = insertTopK(topK[idB], c, semanticMaxNeighbors)
+			c := semCandidate{a: vecs[i].id, b: vecs[j].id, sim: sim}
+			topK[vecs[i].id] = insertTopK(topK[vecs[i].id], c, semanticMaxNeighbors)
+			topK[vecs[j].id] = insertTopK(topK[vecs[j].id], c, semanticMaxNeighbors)
 		}
 	}
-
-	// 7. Collect unique pairs from top-k sets.
 	type pair [2]int64
 	seen := make(map[pair]float32)
 	for _, cands := range topK {
@@ -188,21 +217,14 @@ func (s *LinkStore) GetSemanticEdges(ctx context.Context, apiKey string) ([]mode
 			if lo > hi {
 				lo, hi = hi, lo
 			}
-			k := pair{lo, hi}
-			if _, ok := seen[k]; !ok {
-				seen[k] = c.sim
+			if _, ok := seen[pair{lo, hi}]; !ok {
+				seen[pair{lo, hi}] = c.sim
 			}
 		}
 	}
-
 	var edges []model.GraphEdge
 	for k, sim := range seen {
-		edges = append(edges, model.GraphEdge{
-			Source:   k[0],
-			Target:   k[1],
-			EdgeType: "semantic",
-			Weight:   float64(sim),
-		})
+		edges = append(edges, model.GraphEdge{Source: k[0], Target: k[1], EdgeType: "semantic", Weight: float64(sim)})
 	}
 	return nonNilEdges(edges), nil
 }
@@ -221,7 +243,7 @@ func insertTopK(s []semCandidate, c semCandidate, maxK int) []semCandidate {
 }
 
 // embedBatch calls the Gemini batchEmbedContents API and returns one vector per text.
-func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts []string) ([][]float32, error) {
+func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts []string, model string) ([][]float32, error) {
 	type embPart struct {
 		Text string `json:"text"`
 	}
@@ -238,7 +260,7 @@ func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts [
 	reqs := make([]embReq, len(texts))
 	for i, t := range texts {
 		reqs[i] = embReq{
-			Model:   geminiEmbedModel,
+			Model:   model,
 			Content: embContent{Parts: []embPart{{Text: t}}},
 		}
 	}
@@ -247,7 +269,7 @@ func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts [
 		return nil, err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		geminiEmbedURL+"?key="+url.QueryEscape(apiKey),
+		"https://generativelanguage.googleapis.com/v1beta/"+model+":batchEmbedContents?key="+url.QueryEscape(apiKey),
 		bytes.NewReader(body))
 	if err != nil {
 		return nil, err

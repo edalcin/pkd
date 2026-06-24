@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/html"
@@ -17,12 +18,14 @@ var ErrConflict = fmt.Errorf("link already exists")
 
 // LinkStore provides CRUD for document_links and graph query operations.
 type LinkStore struct {
-	db *sql.DB
+	db         *sql.DB
+	embedMu    sync.Mutex // serializes EmbedStaleDocs passes
+	embedModel string     // Gemini model name from config
 }
 
-// NewLinkStore wraps db.
-func NewLinkStore(db *sql.DB) *LinkStore {
-	return &LinkStore{db: db}
+// NewLinkStore wraps db. embedModel is the Gemini model (e.g. "models/gemini-embedding-001").
+func NewLinkStore(db *sql.DB, embedModel string) *LinkStore {
+	return &LinkStore{db: db, embedModel: embedModel}
 }
 
 // GetLinksForDocument returns all documents related to docID, regardless of

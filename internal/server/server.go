@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -37,6 +38,7 @@ type Server struct {
 	settings    *store.SettingsStore
 	throttle    *Throttle
 	jobs        *BackupJobManager
+	embedder    *embedder
 	handler     http.Handler
 
 	localBackend storage.Backend // always non-nil
@@ -102,7 +104,7 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 		search:       store.NewSearchStore(db),
 		shares:       store.NewShareStore(db),
 		backup:       store.NewBackupStore(db, cfg.DBPath),
-		links:        store.NewLinkStore(db),
+		links:        store.NewLinkStore(db, cfg.EmbedModel),
 		urls:         store.NewURLStore(db),
 		settings:     store.NewSettingsStore(db),
 		throttle:     NewThrottle(cfg.TrustProxyHeaders),
@@ -112,6 +114,7 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 		activeBackend: local, // default; overridden below from DB
 	}
 	s.attachments = store.NewAttachmentStore(db, local, s3b)
+	s.embedder = newEmbedder(s.links, cfg.GeminiAPIKey, time.Duration(cfg.EmbedSweepMinutes)*time.Minute)
 
 	// Restore active backend from DB settings.
 	if name, err := s.settings.AttachmentsBackend(); err == nil && name == "s3" && s3b != nil {
@@ -124,6 +127,12 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 
 	s.handler = s.buildRouter()
 	return s
+}
+
+// StartEmbedder starts the background embedding worker, tied to ctx (cancels on shutdown).
+// Call once from main after server construction.
+func (s *Server) StartEmbedder(ctx context.Context) {
+	go s.embedder.run(ctx)
 }
 
 // buildS3Backend creates the S3 client and backend from config.

@@ -49,6 +49,9 @@
   let versionsSettingMsg = $state('')
   let versionsSettingSaving = $state(false)
 
+  // Embedding settings — read-only info from server config
+  let embedSettings = $state(null)
+
   // Tags tab — local editable copy
   let editableTags = $state([])
   let tagMsg = $state('')
@@ -110,6 +113,7 @@
     loadTrash()
     apiGet('/api/admin/settings').then(data => {
       if (data?.['versions.max_per_doc']) versionsMaxPerDoc = data['versions.max_per_doc']
+      if (data) embedSettings = data
     })
   })
 
@@ -1585,6 +1589,25 @@
           <span class="versions-setting-msg">{versionsSettingMsg}</span>
         {/if}
       </div>
+    </div>
+
+    <div class="admin-section">
+      <h3>Embeddings semânticos</h3>
+      <p class="muted" style="margin-bottom:.75rem">Configurações do worker proativo. Para alterar, ajuste as variáveis de ambiente e reinicie o servidor.</p>
+      {#if embedSettings}
+      <div style="display:grid;grid-template-columns:max-content 1fr;gap:.4rem 1.5rem;font-size:.9rem">
+        <span class="muted">Chave Gemini</span>
+        <span>{embedSettings['embed.key_configured'] === 'true' ? '✓ Configurada' : '✗ Não configurada'}</span>
+        <span class="muted">Modelo</span>
+        <span><code>{embedSettings['embed.model']}</code> <span class="muted" style="font-size:.8rem">(PKD_EMBED_MODEL)</span></span>
+        <span class="muted">Intervalo de varredura</span>
+        <span>{embedSettings['embed.sweep_minutes']} min <span class="muted" style="font-size:.8rem">(PKD_EMBED_SWEEP_MINUTES)</span></span>
+        <span class="muted">Documentos embedados</span>
+        <span>{embedSettings['embed.count']}</span>
+      </div>
+      {:else}
+      <p class="muted">Carregando…</p>
+      {/if}
     </div>
   {/if}
 </div>

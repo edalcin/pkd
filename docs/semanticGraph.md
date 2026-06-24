@@ -1,165 +1,123 @@
-# Prompt: Visualização Semântica no Graph View do PKD
+# Grafo Semântico — Embeddings Proativos no PKD
 
-## Contexto
+## Visão geral
 
-O PKD já possui visualização de grafo (`frontend/src/lib/components/GraphView.svelte`) com toggles independentes para Hierarquia, Links entre docs e Relações com tags. O endpoint `GET /api/graph` (handler em `internal/server/handlers_graph.go`, lógica em `internal/store/links.go` → `GetGraphData`) retorna `{nodes, edges}` onde cada edge tem `edge_type: "hierarchy" | "link" | "tag"`.
+O PKD gera automaticamente embeddings de texto para todos os documentos ativos usando a API Gemini, armazena os vetores como BLOBs float32 no SQLite e usa similaridade de cosseno para construir arestas semânticas no Graph View. O processo é **proativo**: os vetores ficam sempre frescos antes de o usuário abrir o grafo.
 
-O Docker já expõe `GEMINI_API_KEY` como variável de ambiente. O modelo correto para embeddings é `gemini-embedding-001` (endpoint batch: `POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents`).
+## Arquitetura
 
-## Objetivo
+```
+Criar/editar doc
+       │
+       ▼
+s.embedder.notify()    (não-bloqueante, coalescente)
+       │
+       ▼
+┌─────────────────────────────────────────────────────────┐
+│  embedder goroutine  (inicia com srv.StartEmbedder(ctx)) │
+│                                                          │
+│  sweep() ─► LinkStore.EmbedStaleDocs(ctx, apiKey)       │
+│     ▲                                                    │
+│     │  triggers:                                         │
+│     ├─ startup (imediato)                                │
+│     ├─ notify() channel (save do doc)                    │
+│     └─ ticker PKD_EMBED_SWEEP_MINUTES (padrão 15 min)   │
+└─────────────────────────────────────────────────────────┘
+       │
+       ▼
+document_embeddings (SQLite BLOB float32 LE)
+       │
+       ▼
+GET /api/graph/semantic
+       │
+  EmbedStaleDocs() ─► garante vetores frescos (fallback)
+       │
+  JOIN documents + document_embeddings
+       │
+  cosseno O(n²), top-8 por nó, threshold 0.60
+       │
+  []GraphEdge { edge_type: "semantic", weight: float64 }
+```
 
-Adicionar um toggle "Semântico" ao Graph View existente. Quando ativado, edges semânticas são sobrepostas ao grafo atual com um visual distinto. A geração de embeddings ocorre no backend (Go), com cache em SQLite para evitar chamadas repetidas à API.
+## Componentes
 
-## Implementação
+### `internal/store/semantic.go`
 
-### 1. `internal/config/config.go`
+**`EmbedStaleDocs(ctx, apiKey string) (int, error)`**
+- Carrega docs ativos (`trashed_at IS NULL AND archived_at IS NULL`)
+- Hash: `sha256(embedModel + "\x00" + title + "\n" + body[:800])` — inclui o nome do modelo para que uma troca de modelo force re-embed de todos os vetores
+- Lê hashes cached de `document_embeddings`; calcula stale set
+- Chama `embedBatch` em lotes de 100 (limite da API Gemini)
+- Upsert em `document_embeddings` via `ON CONFLICT(document_id) DO UPDATE`
+- Serializado por `embedMu sync.Mutex` — worker em background e fetch do grafo nunca chamam a API em duplicidade
 
-Adicionar campo `GeminiAPIKey string` lido de `os.Getenv("GEMINI_API_KEY")`. Seguir o padrão dos outros campos opcionais já presentes (ex: `ImportToken`).
+**`GetSemanticEdges(ctx, apiKey string) ([]model.GraphEdge, error)`**
+- Chama `EmbedStaleDocs` como fallback (garante vetores mesmo antes do 1º sweep)
+- Lê `(document_id, embedding)` via JOIN para docs ativos com embedding
+- Similaridade de cosseno O(n²·d), top-8 vizinhos por nó, threshold 0.60
+- Dedup por par canônico (lo, hi); emite `edge_type: "semantic"`
 
-### 2. `internal/store/migrate.go`
+### `internal/server/embedder.go`
 
-Adicionar migração para criar a tabela de cache de embeddings:
+Worker goroutine long-lived, estilo `startBackupTempSweep`. Cancela via `ctx` no shutdown (SIGINT/SIGTERM).
+
+```go
+type embedder struct {
+    links         *store.LinkStore
+    apiKey        string
+    sweepInterval time.Duration  // PKD_EMBED_SWEEP_MINUTES × time.Minute
+    trigger       chan struct{}   // buffer 1 — coalescente
+}
+```
+
+`notify()` é não-bloqueante: rajadas de saves (import em massa) → único sweep em lote.
+
+### `internal/store/migrate.go` — tabela `document_embeddings`
 
 ```sql
 CREATE TABLE IF NOT EXISTS document_embeddings (
     document_id  INTEGER PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
-    content_hash TEXT    NOT NULL,  -- SHA-256 de (title || body_text) para invalidação
-    embedding    BLOB    NOT NULL,  -- float32 little-endian, 3072 valores = 12288 bytes
+    content_hash TEXT    NOT NULL,  -- sha256(model + "\x00" + text)
+    embedding    BLOB    NOT NULL,  -- float32 little-endian, N × 4 bytes
     created_at   TEXT    NOT NULL
 );
 ```
 
-### 3. `internal/store/links.go` (ou novo arquivo `internal/store/semantic.go`)
+Vetores de 3072 dimensões (modelo `gemini-embedding-001`) = 12 288 bytes/doc. Para 300 documentos ≈ 3,6 MB no SQLite.
 
-Implementar `GetSemanticEdges(ctx, apiKey string) ([]GraphEdge, error)` com a seguinte lógica:
+## Configuração
 
-**a) Carregar docs ativos:**
-```sql
-SELECT id, title, SUBSTR(body_text, 1, 800) AS body_text
-FROM documents
-WHERE trashed_at IS NULL AND archived_at IS NULL
-```
+| Variável | Padrão | Efeito |
+|---|---|---|
+| `GEMINI_API_KEY` | *(desativado)* | Sem ela o worker não roda e `GET /api/graph/semantic` retorna 503 |
+| `PKD_EMBED_MODEL` | `models/gemini-embedding-001` | Modelo Gemini; trocar invalida todos os embeddings em cache (re-embed automático) |
+| `PKD_EMBED_SWEEP_MINUTES` | `15` | Cadência do sweep de segurança; saves de documentos disparam um sweep imediato adicional |
 
-**b) Cache de embeddings:**
-- Para cada doc, calcular `content_hash = sha256(title + "\n" + body_text[:800])`
-- Consultar `document_embeddings` para docs com hash diferente do cacheado
-- Chamar a API Gemini apenas para os docs sem cache válido (batch de 100)
-- Salvar novos embeddings no cache
+As configurações são exibidas (somente leitura) em **Administração → Preferências → Embeddings semânticos**.
 
-**c) Chamada à API Gemini (batch):**
-```go
-// POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key={apiKey}
-// Body: {"requests": [{"model": "models/gemini-embedding-001", "content": {"parts": [{"text": "..."}]}}]}
-// Response: {"embeddings": [{"values": [float32, ...]}]}
-```
-Usar `net/http` + `encoding/json` stdlib. Sem nova dependência.
+## Armazenamento de vetores
 
-**d) Cosine similarity e arestas:**
-- Normalizar todos os vetores (float32)
-- Para cada doc, encontrar os top-8 vizinhos com similaridade ≥ 0.60
-- Retornar como `[]GraphEdge` com `EdgeType: "semantic"` e `Weight: float32`
+Driver SQLite: `modernc.org/sqlite` (Go puro, sem CGO). Vetores armazenados como BLOB float32 little-endian — sem extensão `sqlite-vec` ou driver CGO.
 
-**Tipo `GraphEdge` já existente em `links.go` — verificar se já tem campo `Weight float64`. Se não, adicionar sem quebrar serialização JSON existente (usar `omitempty`).**
+Similaridade de cosseno calculada em Go puro:
+1. `normalize(v []float32) []float32` — vetor unitário; nil para norma zero
+2. `dot(a, b []float32) float32` — produto escalar de vetores já normalizados = cosseno
 
-### 4. `internal/server/handlers_graph.go`
+Complexidade: O(n²·d) onde n = docs ativos, d = dimensões do vetor. Para uso pessoal (centenas de docs) é adequado; para milhares usar ANN (não implementado — YAGNI).
 
-Adicionar handler `GET /api/graph/semantic`:
+## Fluxo de segurança e consistência
 
-```go
-func (s *Server) handleSemanticGraph() http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        if s.cfg.GeminiAPIKey == "" {
-            http.Error(w, `{"error":"GEMINI_API_KEY not configured"}`, http.StatusServiceUnavailable)
-            return
-        }
-        edges, err := s.links.GetSemanticEdges(r.Context(), s.cfg.GeminiAPIKey)
-        if err != nil {
-            http.Error(w, "internal error", http.StatusInternalServerError)
-            return
-        }
-        writeJSON(w, http.StatusOK, map[string]any{"edges": edges})
-    }
-}
-```
+- **Troca de modelo**: hash inclui o nome do modelo → todos os docs ficam stale → re-embed no próximo sweep. Custo único.
+- **Doc trasheado/arquivado**: não entra no JOIN; embedding permanece na tabela mas nunca é consultado. FK CASCADE apaga a linha em delete físico.
+- **Vetor de norma zero**: pulado silenciosamente (`normalize` retorna nil).
+- **Erro de rede/API no worker**: logado com `log.Printf("embedder: %v", err)`, sweep abortado; próximo ticker/notify tenta novamente.
+- **Concorrência worker + fetch do grafo**: `embedMu` serializa — fetch espera o sweep terminar e então lê do DB (sem chamada duplicada à API).
+- **Sem `GEMINI_API_KEY`**: `EmbedStaleDocs` retorna (0, nil), worker não cria ticker, handler retorna 503.
 
-### 5. `internal/server/server.go`
+## Limitações deliberadas (ponytail)
 
-Registrar a rota no grupo autenticado:
-```go
-r.Get("/api/graph/semantic", s.handleSemanticGraph())
-```
-
-### 6. `frontend/src/lib/components/GraphView.svelte`
-
-**a) Estado:**
-```js
-let showSemantic = $state(false)
-let semanticEdges = $state([])
-let semanticLoading = $state(false)
-```
-
-**b) Toggle no painel de controles** (junto com os toggles existentes):
-```html
-<label class="show-all-toggle">
-  <input type="checkbox" bind:checked={showSemantic} onchange={toggleSemantic} />
-  Semântico
-</label>
-```
-
-**c) Função `toggleSemantic`** — carrega sob demanda (lazy, uma vez):
-```js
-async function toggleSemantic() {
-  if (showSemantic && semanticEdges.length === 0) {
-    semanticLoading = true
-    try {
-      const data = await apiGet('/api/graph/semantic')
-      semanticEdges = data.edges || []
-    } catch (e) {
-      showSemantic = false
-      // exibir mensagem de erro (ex: GEMINI_API_KEY não configurada)
-    } finally {
-      semanticLoading = false
-    }
-  }
-  // re-renderiza via $effect existente
-}
-```
-
-**d) `getFilteredData()`** — incluir edges semânticas quando `showSemantic` está ativo:
-
-Dentro do `$effect` existente ou ao montar `setupGraph`, mesclar `rawEdges` com `semanticEdges` filtradas por `showSemantic`. As edges semânticas têm `edge_type: "semantic"`.
-
-**e) Visualização das edges semânticas em `setupGraph`:**
-
-Nas edges com `edge_type === "semantic"`:
-- `stroke: "#a78bfa"` (roxo)
-- `stroke-dasharray: "3 2"`  
-- `stroke-width` proporcional ao `weight` (ex: `0.5 + edge.weight * 2`)
-- Classe CSS: `graph-edge--semantic`
-
-**f) Legenda** — adicionar item:
-```html
-<div class="legend-item">
-  <svg width="22" height="10">
-    <line x1="1" y1="5" x2="21" y2="5" stroke="#a78bfa" stroke-width="1.5" stroke-opacity=".8" stroke-dasharray="3,2"/>
-  </svg>
-  <span>Semântico</span>
-</div>
-```
-
-## Critérios de Aceitação
-
-1. Toggle "Semântico" aparece no controle do grafo somente quando `GEMINI_API_KEY` está configurada (backend retorna 503 sem ela — frontend oculta o toggle se a rota retornar erro).
-2. Ao ativar o toggle pela primeira vez, o backend chama a API Gemini, preenche o cache e retorna as edges. Ativações subsequentes usam o cache — resposta imediata, sem chamada à API.
-3. Edges semânticas aparecem em roxo tracejado, sobrepostas ao grafo existente, sem substituir ou interferir nas edges existentes (hierarquia, link, tag).
-4. Desativar o toggle remove as edges semânticas do grafo sem recarregar.
-5. Invalidação automática: se um documento for editado (title/body_text muda), seu hash muda e o embedding é recalculado na próxima ativação do toggle.
-6. Nenhuma nova dependência externa no Go ou no frontend.
-
-## Notas
-
-- **Não** adicionar o campo `GEMINI_API_KEY` à documentação pública / `README.md` — a variável já está no Docker e não precisa de nova documentação pública.
-- **Não** criar nova página ou rota SPA — apenas adicionar ao grafo existente.
-- A tabela `document_embeddings` usa `BLOB` para os vetores (float32, little-endian, 3072 × 4 bytes = 12 KB por doc). Para ~300 docs, o cache ocupa ~3.6 MB no SQLite — aceitável.
-- O threshold de similaridade (0.60) e o máximo de edges por nó (8) podem ser constantes no código Go por ora.
-- Ao chamar a API em batch, respeitar o limite de 100 documentos por request. Iterar em batches se necessário.
+- **Sem busca semântica de texto**: vetores existem; busca é futura — não implementado agora.
+- **Sem chat/RAG**: vetores existem para uso futuro.
+- **Threshold e max-neighbors fixos**: `semanticSimThreshold = 0.60`, `semanticMaxNeighbors = 8` — constantes no código. Configurar via env var quando houver evidência de necessidade.
+- **Batch size fixo**: `semanticBatchSize = 100` — limite prático da API Gemini; não exposto.
+- **Ticker não exposto como metrica**: sem endpoint de status do worker além do painel de admin.
