@@ -28,6 +28,14 @@ func NewLinkStore(db *sql.DB, embedModel string) *LinkStore {
 	return &LinkStore{db: db, embedModel: embedModel}
 }
 
+// SetEmbedModel updates the embedding model at runtime (admin settings change).
+// Acquires embedMu so it never races with an in-progress EmbedStaleDocs call.
+func (s *LinkStore) SetEmbedModel(model string) {
+	s.embedMu.Lock()
+	s.embedModel = model
+	s.embedMu.Unlock()
+}
+
 // GetLinksForDocument returns all documents related to docID, regardless of
 // which side holds source_id vs target_id. The result is deduplicated so that
 // a pair that has links in both directions (A→B and B→A) appears only once.

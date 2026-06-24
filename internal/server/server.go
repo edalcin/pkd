@@ -114,6 +114,11 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 		activeBackend: local, // default; overridden below from DB
 	}
 	s.attachments = store.NewAttachmentStore(db, local, s3b)
+	// Load persisted embed model from DB (overrides env var default).
+	if v, _ := s.settings.EmbedModel(); v != "" {
+		s.cfg.EmbedModel = v
+		s.links.SetEmbedModel(v)
+	}
 	s.embedder = newEmbedder(s.links, cfg.GeminiAPIKey, time.Duration(cfg.EmbedSweepMinutes)*time.Minute)
 
 	// Restore active backend from DB settings.
@@ -303,6 +308,7 @@ func (s *Server) buildRouter() http.Handler {
 		// Server-side settings
 		r.Get("/api/admin/settings", s.handleAdminGetSettings())
 		r.Put("/api/admin/settings", s.handleAdminSetSettings())
+		r.Post("/api/admin/embed/trigger", s.handleAdminEmbedTrigger())
 
 		// Storage management
 		r.Get("/api/admin/storage/config", s.handleAdminStorageConfig())

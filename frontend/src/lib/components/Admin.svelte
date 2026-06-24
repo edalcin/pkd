@@ -14,6 +14,12 @@
     { value: 0,     label: 'Desligado' },
   ]
 
+  const EMBED_MODELS = [
+    { value: 'models/gemini-embedding-001', label: 'gemini-embedding-001 — recomendado (3072 dims)' },
+    { value: 'models/text-embedding-004',   label: 'text-embedding-004 (768 dims)' },
+    { value: 'models/embedding-001',        label: 'embedding-001 — legado (768 dims)' },
+  ]
+
   let trash = $state([])
   let renameOld = $state('')
   let renameNew = $state('')
@@ -49,8 +55,13 @@
   let versionsSettingMsg = $state('')
   let versionsSettingSaving = $state(false)
 
-  // Embedding settings — read-only info from server config
+  // Embedding settings
   let embedSettings = $state(null)
+  let embedModel = $state('')
+  let embedModelSaving = $state(false)
+  let embedModelMsg = $state('')
+  let embedTriggering = $state(false)
+  let embedTriggerMsg = $state('')
 
   // Tags tab — local editable copy
   let editableTags = $state([])
@@ -113,6 +124,7 @@
     loadTrash()
     apiGet('/api/admin/settings').then(data => {
       if (data?.['versions.max_per_doc']) versionsMaxPerDoc = data['versions.max_per_doc']
+      if (data?.['embed.model']) embedModel = data['embed.model']
       if (data) embedSettings = data
     })
   })
@@ -137,6 +149,35 @@
       versionsSettingMsg = 'Erro ao salvar.'
     } finally {
       versionsSettingSaving = false
+    }
+  }
+
+  async function saveEmbedModel() {
+    embedModelSaving = true
+    embedModelMsg = ''
+    try {
+      await apiPut('/api/admin/settings', { key: 'embed.model', value: embedModel })
+      embedModelMsg = 'Salvo! Re-embedding iniciado.'
+      setTimeout(() => { embedModelMsg = '' }, 3000)
+    } catch {
+      embedModelMsg = 'Erro ao salvar.'
+    } finally {
+      embedModelSaving = false
+    }
+  }
+
+  async function triggerEmbed() {
+    embedTriggering = true
+    embedTriggerMsg = ''
+    try {
+      const res = await apiFetch('/api/admin/embed/trigger', { method: 'POST' })
+      if (!res.ok) { embedTriggerMsg = 'Erro: ' + (await res.text()); return }
+      embedTriggerMsg = 'Re-embedding iniciado!'
+      setTimeout(() => { embedTriggerMsg = '' }, 3000)
+    } catch {
+      embedTriggerMsg = 'Erro ao iniciar.'
+    } finally {
+      embedTriggering = false
     }
   }
 
@@ -1593,17 +1634,30 @@
 
     <div class="admin-section">
       <h3>Embeddings semânticos</h3>
-      <p class="muted" style="margin-bottom:.75rem">Configurações do worker proativo. Para alterar, ajuste as variáveis de ambiente e reinicie o servidor.</p>
       {#if embedSettings}
-      <div style="display:grid;grid-template-columns:max-content 1fr;gap:.4rem 1.5rem;font-size:.9rem">
+      <div style="display:grid;grid-template-columns:max-content 1fr;gap:.65rem 1.5rem;align-items:center;font-size:.9rem;margin-bottom:1.25rem">
         <span class="muted">Chave Gemini</span>
         <span>{embedSettings['embed.key_configured'] === 'true' ? '✓ Configurada' : '✗ Não configurada'}</span>
-        <span class="muted">Modelo</span>
-        <span><code>{embedSettings['embed.model']}</code> <span class="muted" style="font-size:.8rem">(PKD_EMBED_MODEL)</span></span>
-        <span class="muted">Intervalo de varredura</span>
-        <span>{embedSettings['embed.sweep_minutes']} min <span class="muted" style="font-size:.8rem">(PKD_EMBED_SWEEP_MINUTES)</span></span>
         <span class="muted">Documentos embedados</span>
         <span>{embedSettings['embed.count']}</span>
+        <span class="muted">Modelo</span>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <select bind:value={embedModel} style="padding:.35rem .5rem;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:.9rem">
+            {#each EMBED_MODELS as m}
+              <option value={m.value}>{m.label}</option>
+            {/each}
+          </select>
+          <button class="btn btn-primary" onclick={saveEmbedModel} disabled={embedModelSaving || embedSettings['embed.key_configured'] !== 'true'}>
+            {embedModelSaving ? 'Salvando…' : 'Salvar modelo'}
+          </button>
+          {#if embedModelMsg}<span class="versions-setting-msg">{embedModelMsg}</span>{/if}
+        </div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:center">
+        <button class="btn btn-primary" onclick={triggerEmbed} disabled={embedTriggering || embedSettings['embed.key_configured'] !== 'true'}>
+          {embedTriggering ? 'Iniciando…' : '⟳ Atualizar embedding agora'}
+        </button>
+        {#if embedTriggerMsg}<span class="versions-setting-msg">{embedTriggerMsg}</span>{/if}
       </div>
       {:else}
       <p class="muted">Carregando…</p>

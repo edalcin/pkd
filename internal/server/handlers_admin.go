@@ -677,10 +677,52 @@ func (s *Server) handleAdminSetSettings() http.HandlerFunc {
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
+		case "embed.model":
+			if !isValidEmbedModel(req.Value) {
+				http.Error(w, "invalid embed model", http.StatusBadRequest)
+				return
+			}
+			if err := s.settings.SetEmbedModel(req.Value); err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			s.cfg.EmbedModel = req.Value
+			s.links.SetEmbedModel(req.Value)
+			s.embedder.notify() // trigger re-embed with new model
 		default:
 			http.Error(w, "unknown setting key", http.StatusBadRequest)
 			return
 		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// validEmbedModels is the whitelist of Gemini models supported for embeddings.
+// ponytail: hardcoded — model list changes rarely; no DB/API lookup needed.
+var validEmbedModels = []string{
+	"models/gemini-embedding-001",
+	"models/text-embedding-004",
+	"models/embedding-001",
+}
+
+func isValidEmbedModel(model string) bool {
+	for _, m := range validEmbedModels {
+		if m == model {
+			return true
+		}
+	}
+	return false
+}
+
+// handleAdminEmbedTrigger triggers an immediate background embedding sweep.
+// POST /api/admin/embed/trigger
+func (s *Server) handleAdminEmbedTrigger() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.cfg.GeminiAPIKey == "" {
+			http.Error(w, "GEMINI_API_KEY not configured", http.StatusServiceUnavailable)
+			return
+		}
+		s.embedder.notify()
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
