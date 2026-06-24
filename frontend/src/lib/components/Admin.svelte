@@ -60,8 +60,6 @@
   let embedModel = $state('')
   let embedModelSaving = $state(false)
   let embedModelMsg = $state('')
-  let embedTriggering = $state(false)
-  let embedTriggerMsg = $state('')
 
   // Tags tab — local editable copy
   let editableTags = $state([])
@@ -166,20 +164,6 @@
     }
   }
 
-  async function triggerEmbed() {
-    embedTriggering = true
-    embedTriggerMsg = ''
-    try {
-      const res = await apiFetch('/api/admin/embed/trigger', { method: 'POST' })
-      if (!res.ok) { embedTriggerMsg = 'Erro: ' + (await res.text()); return }
-      embedTriggerMsg = 'Re-embedding iniciado!'
-      setTimeout(() => { embedTriggerMsg = '' }, 3000)
-    } catch {
-      embedTriggerMsg = 'Erro ao iniciar.'
-    } finally {
-      embedTriggering = false
-    }
-  }
 
   async function loadAttachments() {
     allAttachments = []
@@ -1652,13 +1636,6 @@
           </button>
           {#if embedModelMsg}<span class="versions-setting-msg">{embedModelMsg}</span>{/if}
         </div>
-      </div>
-      <div style="display:flex;gap:.75rem;align-items:center">
-        <button class="btn btn-primary" onclick={triggerEmbed} disabled={embedTriggering || embedSettings['embed.key_configured'] !== 'true'}>
-          {embedTriggering ? 'Iniciando…' : '⟳ Atualizar embedding agora'}
-        </button>
-        {#if embedTriggerMsg}<span class="versions-setting-msg">{embedTriggerMsg}</span>{/if}
-      </div>
       {:else}
       <p class="muted">Carregando…</p>
       {/if}

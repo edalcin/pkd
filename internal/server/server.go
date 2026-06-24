@@ -308,8 +308,6 @@ func (s *Server) buildRouter() http.Handler {
 		// Server-side settings
 		r.Get("/api/admin/settings", s.handleAdminGetSettings())
 		r.Put("/api/admin/settings", s.handleAdminSetSettings())
-		r.Post("/api/admin/embed/trigger", s.handleAdminEmbedTrigger())
-
 		// Storage management
 		r.Get("/api/admin/storage/config", s.handleAdminStorageConfig())
 		r.Put("/api/admin/storage/config", s.handleAdminStorageSetBackend())

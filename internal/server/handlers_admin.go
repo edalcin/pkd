@@ -714,19 +714,6 @@ func isValidEmbedModel(model string) bool {
 	return false
 }
 
-// handleAdminEmbedTrigger triggers an immediate background embedding sweep.
-// POST /api/admin/embed/trigger
-func (s *Server) handleAdminEmbedTrigger() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if s.cfg.GeminiAPIKey == "" {
-			http.Error(w, "GEMINI_API_KEY not configured", http.StatusServiceUnavailable)
-			return
-		}
-		s.embedder.notify()
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
 func (s *Server) handleAdminRenameTag() http.HandlerFunc {
 	type request struct {
 		Old string `json:"old"`
