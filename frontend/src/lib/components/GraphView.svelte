@@ -1,11 +1,12 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force'
+  import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force'
   import { select } from 'd3-selection'
   import { zoom, zoomIdentity } from 'd3-zoom'
   import { drag } from 'd3-drag'
   import { apiGet } from '../api.js'
   import { textFilter, tree } from '../stores/documents.js'
+  import { detectCommunities, communityColor } from '../graph/community.js'
 
   let svgEl = $state(null)
   let rawNodes = $state([])
@@ -23,6 +24,7 @@
   let semanticAvailable = $state(true)
   let tagFilter = $state('')
   let simulation = null
+  let communityCount = $state(0)
 
   // IDs of docs currently in the tree (mirrors sidebar FTS5 filter result)
   const treeDocIds = $derived.by(() => {
@@ -130,7 +132,7 @@
     simulation?.stop()
     try {
       const params = new URLSearchParams()
-      if (showAll) params.set('all', 'true')
+      if (showAll || showSemantic) params.set('all', 'true')
       if (tagFilter) params.set('tag', tagFilter)
       const data = await apiGet('/api/graph?' + params)
       rawNodes = data.nodes || []
@@ -149,10 +151,12 @@
       } catch (e) {
         showSemantic = false
         semanticAvailable = false
-      } finally {
         semanticLoading = false
+        return
       }
+      semanticLoading = false
     }
+    await loadGraph() // refetch: todos-os-docs quando ligado, conectados quando desligado
   }
 
   function setupGraph(initNodes, initEdges) {
@@ -194,6 +198,38 @@
       source: ns.find(n => n.id === e.source) || e.source,
       target: ns.find(n => n.id === e.target) || e.target,
     }))
+
+    // Comunidades (só no modo semântico): agrupa docs pelas arestas semânticas.
+    let clusterCenters = null
+    if (showSemantic) {
+      const semEdges = ls
+        .filter(e => e.edge_type === 'semantic')
+        .map(e => ({
+          source: e.source.id ?? e.source,
+          target: e.target.id ?? e.target,
+          weight: e.weight,
+        }))
+      const idToComm = detectCommunities(ns.map(n => n.id), semEdges)
+      ns.forEach(n => { n.community = idToComm.get(n.id) ?? 0 })
+      const commSize = new Map()
+      ns.forEach(n => commSize.set(n.community, (commSize.get(n.community) || 0) + 1))
+      const K = commSize.size
+      communityCount = [...commSize.values()].filter(s => s > 1).length
+      const R = Math.min(width, height) * 0.35
+      clusterCenters = Array.from({ length: K }, (_, idx) => {
+        const a = (idx / K) * 2 * Math.PI
+        return { x: width / 2 + R * Math.cos(a), y: height / 2 + R * Math.sin(a) }
+      })
+      // semente perto do centro da comunidade -> arranjo inicial já agrupado
+      ns.forEach(n => {
+        const c = clusterCenters[n.community] || { x: width / 2, y: height / 2 }
+        n.x = c.x + (Math.random() - 0.5) * 60
+        n.y = c.y + (Math.random() - 0.5) * 60
+      })
+      ns._commSize = commSize // usado na coloração abaixo
+    } else {
+      communityCount = 0
+    }
 
     // Edges
     const edgeEls = g.append('g')
@@ -262,7 +298,11 @@
 
     nodeEls.append('circle')
       .attr('r', d => d.node_type === 'tag' ? 7 : 6)
-      .attr('fill', d => d.node_type === 'tag' ? '#e879f9' : getColor(d.tags))
+      .attr('fill', d => d.node_type === 'tag'
+        ? '#e879f9'
+        : showSemantic
+          ? ((ns._commSize?.get(d.community) || 0) > 1 ? communityColor(d.community) : '#94a3b8')
+          : getColor(d.tags))
       .attr('stroke', d => d.node_type === 'tag' ? '#c026d3' : 'var(--bg-panel)')
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', d => d.node_type === 'tag' ? '3,2' : 'none')
@@ -283,10 +323,17 @@
 
     // Force simulation
     simulation = forceSimulation(ns)
-      .force('link', forceLink(ls).distance(80).strength(.5))
-      .force('charge', forceManyBody().strength(-120))
-      .force('center', forceCenter(width / 2, height / 2))
+      .force('link', forceLink(ls).distance(showSemantic ? 60 : 80).strength(.5))
+      .force('charge', forceManyBody().strength(showSemantic ? -80 : -120))
       .force('collide', forceCollide(18))
+    if (showSemantic && clusterCenters) {
+      simulation
+        .force('x', forceX(d => (clusterCenters[d.community] || { x: width / 2 }).x).strength(0.18))
+        .force('y', forceY(d => (clusterCenters[d.community] || { y: height / 2 }).y).strength(0.18))
+    } else {
+      simulation.force('center', forceCenter(width / 2, height / 2))
+    }
+    simulation
       .on('tick', () => {
         edgeEls
           .attr('x1', d => d.source.x)
@@ -358,7 +405,7 @@
         </label>
       {/if}
       <button class="btn btn-ghost" onclick={zoomToFit} title="Ajustar tela">⤢ Ajustar</button>
-      <span class="node-count">{nodes.length} nós · {links.length} arestas</span>
+      <span class="node-count">{nodes.length} nós · {links.length} arestas{#if showSemantic} · {communityCount} comunidades{/if}</span>
     </div>
 
     <svg
