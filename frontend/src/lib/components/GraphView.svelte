@@ -4,7 +4,7 @@
   import { select } from 'd3-selection'
   import { zoom, zoomIdentity } from 'd3-zoom'
   import { drag } from 'd3-drag'
-  import { apiGet, apiPost } from '../api.js'
+  import { apiGet } from '../api.js'
   import { textFilter, tree } from '../stores/documents.js'
   import { detectCommunities, communityColor } from '../graph/community.js'
 
@@ -27,7 +27,6 @@
   let communityCount = $state(0)
   let communityMeta = $state(new Map())
   let selectedCommunities = $state(new Set())
-  let namingSuggesting = $state(new Set())
   let editingCommId = $state(null)
 
   // IDs of docs currently in the tree (mirrors sidebar FTS5 filter result)
@@ -412,6 +411,12 @@
     selectedCommunities = next
   }
 
+  function toggleAllCommunities() {
+    selectedCommunities = selectedCommunities.size === communityMeta.size
+      ? new Set()
+      : new Set(communityMeta.keys())
+  }
+
   function saveCommunityName(commId, name) {
     const meta = communityMeta.get(commId)
     if (!meta) { editingCommId = null; return }
@@ -423,17 +428,6 @@
     editingCommId = null
   }
 
-  async function suggestCommunityName(commId) {
-    const meta = communityMeta.get(commId)
-    if (!meta) return
-    namingSuggesting = new Set([...namingSuggesting, commId])
-    try {
-      const data = await apiPost('/api/community/name', { titles: meta.titles })
-      if (data?.name) saveCommunityName(commId, data.name)
-    } catch (_) { /* silently fail */ } finally {
-      const s = new Set(namingSuggesting); s.delete(commId); namingSuggesting = s
-    }
-  }
 </script>
 
 <div class="graph-container">
@@ -534,6 +528,13 @@
       </div>
       {#if showSemantic && communityMeta.size > 0}
         <div class="legend-section-label">Comunidades</div>
+        <label class="legend-item" style="gap:.3rem;cursor:pointer">
+          <input type="checkbox" style="cursor:pointer"
+            checked={selectedCommunities.size === communityMeta.size}
+            onchange={toggleAllCommunities}
+          />
+          <span style="font-size:.72rem">Todas</span>
+        </label>
         {#each [...communityMeta.entries()] as [commId, meta]}
           <div class="legend-item" style="align-items:flex-start;gap:.3rem">
             <input type="checkbox"
@@ -558,7 +559,6 @@
                 <button class="comm-name" onclick={() => { editingCommId = commId }} title="Clique para renomear">{meta.name}</button>
               {/if}
             </div>
-            <button class="suggest-btn" onclick={() => suggestCommunityName(commId)} disabled={namingSuggesting.has(commId)} title="Sugerir nome com IA">{namingSuggesting.has(commId) ? '…' : '✨'}</button>
             <span style="color:var(--text-muted);font-size:.7rem;white-space:nowrap">({meta.size})</span>
           </div>
         {/each}
@@ -652,15 +652,5 @@
     background: var(--bg-input, var(--bg-panel));
     color: var(--text);
   }
-  .suggest-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0 .1rem;
-    font-size: .8rem;
-    line-height: 1;
-    flex-shrink: 0;
-  }
-  .suggest-btn:disabled { opacity: .5; cursor: not-allowed; }
 </style>
 
