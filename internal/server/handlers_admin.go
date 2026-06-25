@@ -802,3 +802,34 @@ func (s *Server) handleAdminImportExternalImages() http.HandlerFunc {
 		writeJSON(w, http.StatusOK, ImportResult{Imported: imported, Failed: failed})
 	}
 }
+
+type AdminStats struct {
+	DocCount  int64 `json:"doc_count"`
+	FileCount int64 `json:"file_count"`
+	LinkCount int64 `json:"link_count"`
+	TagCount  int64 `json:"tag_count"`
+}
+
+// handleAdminStats returns KB counts: documents, attachments, links, tags.
+// GET /api/admin/stats
+func (s *Server) handleAdminStats() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var st AdminStats
+		qs := []struct {
+			dest  *int64
+			query string
+		}{
+			{&st.DocCount, `SELECT COUNT(*) FROM documents WHERE trashed_at IS NULL`},
+			{&st.FileCount, `SELECT COUNT(*) FROM attachments`},
+			{&st.LinkCount, `SELECT COUNT(*) FROM document_links`},
+			{&st.TagCount, `SELECT COUNT(*) FROM tags`},
+		}
+		for _, q := range qs {
+			if err := s.db.QueryRowContext(r.Context(), q.query).Scan(q.dest); err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+		}
+		writeJSON(w, http.StatusOK, st)
+	}
+}

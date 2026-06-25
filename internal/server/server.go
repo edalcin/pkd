@@ -305,6 +305,7 @@ func (s *Server) buildRouter() http.Handler {
 
 		// Disk usage
 		r.Get("/api/admin/disk-usage", s.handleAdminDiskUsage())
+		r.Get("/api/admin/stats", s.handleAdminStats())
 
 		// Server-side settings
 		r.Get("/api/admin/settings", s.handleAdminGetSettings())

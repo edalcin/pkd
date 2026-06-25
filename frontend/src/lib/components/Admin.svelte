@@ -26,7 +26,7 @@
   let renameMsg = $state('')
   let cleanupResult = $state(null)
   let loading = $state(false)
-  let activeTab = $state('backup')
+  let activeTab = $state('dashboard')
   let linkCheckResults = $state(null)
   let linkChecking = $state(false)
 
@@ -74,6 +74,8 @@
   let storageConfig = $state(null)
   let diskUsage = $state(null)
   let diskUsageLoading = $state(false)
+  let stats = $state(null)
+  let statsLoading = $state(false)
   let storageTestResult = $state(null)
   let storageLoading = $state(false)
   let storageSwitching = $state(false)
@@ -120,6 +122,8 @@
   onMount(() => {
     loadTags()
     loadTrash()
+    loadStats()
+    loadDiskUsage()
     apiGet('/api/admin/settings').then(data => {
       if (data?.['versions.max_per_doc']) versionsMaxPerDoc = data['versions.max_per_doc']
       if (data?.['embed.model']) embedModel = data['embed.model']
@@ -278,6 +282,7 @@
     if (id === 'tags') loadAdminTags()
     if (id === 'shares') loadShares()
     if (id === 'links') loadAdminURLs()
+    if (id === 'dashboard') { loadStats(); loadDiskUsage() }
     if (id === 'storage') { loadStorageConfig(); loadDiskUsage() }
   }
 
@@ -291,6 +296,15 @@
       diskUsage = await apiGet('/api/admin/disk-usage')
     } finally {
       diskUsageLoading = false
+    }
+  }
+
+  async function loadStats() {
+    statsLoading = true
+    try {
+      stats = await apiGet('/api/admin/stats')
+    } finally {
+      statsLoading = false
     }
   }
 
@@ -850,13 +864,72 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    {#each [['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links'], ['shares','🌐 Compartilhados'], ['storage','☁️ Storage'], ['settings','⚙️ Preferências']] as [id, label]}
+    {#each [['dashboard','📊 Início'], ['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links'], ['shares','🌐 Compartilhados'], ['storage','☁️ Storage'], ['settings','⚙️ Preferências']] as [id, label]}
       <button
         class="tab-btn {activeTab === id ? 'active' : ''}"
         onclick={() => setTab(id)}
       >{label}</button>
     {/each}
   </div>
+
+  <!-- Dashboard -->
+  {#if activeTab === 'dashboard'}
+    <div class="admin-section">
+      <h3>Resumo</h3>
+      {#if statsLoading}
+        <p class="muted">Carregando...</p>
+      {:else if stats}
+        <div class="disk-usage-grid">
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Documentos</span>
+            <span class="disk-usage-value">{stats.doc_count}</span>
+          </div>
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Arquivos</span>
+            <span class="disk-usage-value">{stats.file_count}</span>
+          </div>
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Links</span>
+            <span class="disk-usage-value">{stats.link_count}</span>
+          </div>
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Tags</span>
+            <span class="disk-usage-value">{stats.tag_count}</span>
+          </div>
+        </div>
+      {/if}
+    </div>
+    <div class="admin-section">
+      <h3>Uso de disco</h3>
+      {#if diskUsageLoading}
+        <p class="muted">Calculando...</p>
+      {:else if diskUsage}
+        <div class="disk-usage-grid">
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Banco de dados</span>
+            <span class="disk-usage-value">{formatBytes(diskUsage.db_bytes)}</span>
+          </div>
+          {#if diskUsage.db_wal_bytes > 0}
+            <div class="disk-usage-card">
+              <span class="disk-usage-label">WAL (SQLite)</span>
+              <span class="disk-usage-value">{formatBytes(diskUsage.db_wal_bytes)}</span>
+            </div>
+          {/if}
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Arquivos associados</span>
+            <span class="disk-usage-value">{formatBytes(diskUsage.attachments_bytes)}</span>
+          </div>
+          <div class="disk-usage-card disk-usage-total">
+            <span class="disk-usage-label">Total</span>
+            <span class="disk-usage-value">{formatBytes(diskUsage.total_bytes)}</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick={() => { loadDiskUsage(); loadStats() }}>
+          🔄 Atualizar
+        </button>
+      {/if}
+    </div>
+  {/if}
 
   <!-- Backup / Restore -->
   {#if activeTab === 'backup'}
@@ -1278,37 +1351,6 @@
 
   <!-- Storage -->
   {#if activeTab === 'storage'}
-    <div class="admin-section">
-      <h3>Uso de disco</h3>
-      {#if diskUsageLoading}
-        <p class="muted">Calculando...</p>
-      {:else if diskUsage}
-        <div class="disk-usage-grid">
-          <div class="disk-usage-card">
-            <span class="disk-usage-label">Banco de dados</span>
-            <span class="disk-usage-value">{formatBytes(diskUsage.db_bytes)}</span>
-          </div>
-          {#if diskUsage.db_wal_bytes > 0}
-            <div class="disk-usage-card">
-              <span class="disk-usage-label">WAL (SQLite)</span>
-              <span class="disk-usage-value">{formatBytes(diskUsage.db_wal_bytes)}</span>
-            </div>
-          {/if}
-          <div class="disk-usage-card">
-            <span class="disk-usage-label">Arquivos associados</span>
-            <span class="disk-usage-value">{formatBytes(diskUsage.attachments_bytes)}</span>
-          </div>
-          <div class="disk-usage-card disk-usage-total">
-            <span class="disk-usage-label">Total</span>
-            <span class="disk-usage-value">{formatBytes(diskUsage.total_bytes)}</span>
-          </div>
-        </div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick={loadDiskUsage}>
-          🔄 Atualizar
-        </button>
-      {/if}
-    </div>
-
     <div class="admin-section">
       <h3>Backend de armazenamento</h3>
 
