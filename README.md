@@ -65,13 +65,14 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 🏷️ **Hashtags com autocomplete** | Marque documentos com tags; ao digitar, sugeridas as tags já existentes no sistema |
 | 🎨 **Cores por tag** | Cada tag possui cor configurável; chips coloridos em toda a interface (sidebar e editor) |
 | 🗂️ **Arquivamento** | Arquive documentos pelo ícone na barra; arquivar pai cascateia para todos os filhos recursivamente. Documentos arquivados são auto-trancados; desarquivar pai libera todos os filhos |
-| 🕸️ **Graph View** | Grafo D3.js force-directed: nós de documentos, tags e hierarquia pai/filho. Toggle **Semântico** exibe arestas de similaridade de conteúdo (embeddings Gemini, roxo tracejado). Toggles independentes para todos os tipos; filtro de nós por tipo de relação |
+| 🕸️ **Graph View** | Grafo D3.js force-directed: nós de documentos, tags e hierarquia pai/filho. Toggle **Semântico** exibe arestas de similaridade (Gemini, roxo tracejado) e agrupa docs em **comunidades Louvain** — nós coloridos por comunidade, layout em clusters, filtro por comunidade na legenda. Toggles independentes; filtro de texto integrado |
 | 🔗 **Links públicos** | Links de compartilhamento revogáveis, somente leitura |
 
 ### Administração
 
 | | |
 |---|---|
+| 📊 **Dashboard** | Aba padrão da Administração: cards com totais de documentos, arquivos, links e tags ativos; cards de uso de disco (banco de dados, WAL, arquivos, total) |
 | 💾 **Backup / Restore do banco** | Download do SQLite + restore com confirmação |
 | 📦 **Backup / Restauração de anexos** | Backend local: ZIP síncrono. Backend S3: backup **assíncrono** que monta o ZIP no próprio bucket (sem usar disco da instância) e oferece URL pré-assinada (TTL 15 min). Restauração **cross-backend**: ZIP gerado em S3 pode ser restaurado em backend local e vice-versa. Manifesto interno usa SHA256 (dedup natural + verificação de integridade). Job tracking com progresso e contadores (gravados / mantidos / órfãos / hash inválido). |
 | 🗑️ **Lixeira** | Documentos excluídos ficam em lixeira; restauráveis individualmente ou em lote |
@@ -325,12 +326,21 @@ O campo de **filtro da barra superior** também atua no grafo — ao digitar, ap
 | **Hierarquia** | Exibe/oculta arestas e nós de relação pai/filho |
 | **Links entre docs** | Exibe/oculta arestas e nós de relação manual entre documentos |
 | **Relações com tags** | Exibe/oculta arestas e nós de tag |
-| **Semântico** | Exibe/oculta arestas de similaridade semântica (requer `GEMINI_API_KEY`) |
+| **Semântico** | Exibe arestas de similaridade semântica (requer `GEMINI_API_KEY`); ao ativar, detecta comunidades via Louvain, colorindo nós por cluster e posicionando-os em layout agrupado; legenda filtra comunidades individualmente ou em bloco |
 | **Todos os docs** | Força exibição de todos os documentos, mesmo sem conexões |
 
 Clicar em um nó de tag filtra o grafo por aquela tag. Clicar em um nó de documento navega para o documento.
 
 **Embeddings semânticos** são gerados proativamente em background: no startup do servidor, ao criar/editar documentos e a cada `PKD_EMBED_SWEEP_MINUTES` minutos. Os vetores ficam armazenados no próprio SQLite — o grafo semântico carrega instantaneamente sem nova chamada à API no momento do clique no toggle.
+
+**Comunidades semânticas** — ao ativar o toggle Semântico o PKD detecta comunidades automaticamente:
+
+- Algoritmo **Louvain local-moving** (JS puro, sem dependências) sobre o grafo de similaridade visível
+- Nós coloridos por comunidade via ângulo dourado HSL — suporta qualquer número de clusters sem paleta fixa
+- Singletons (nós sem aresta semântica com peso suficiente) exibidos em cinza
+- Layout inicial em posições circulares por cluster, forças `forceX`/`forceY` mantendo agrupamento
+- **Legenda interativa**: checkbox por comunidade + checkbox "Todas"; visibilidade via D3 `display` sem reiniciar a simulação física
+- Barra de status exibe `N nós · M arestas · K comunidades`
 
 ---
 

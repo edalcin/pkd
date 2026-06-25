@@ -8,6 +8,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Adicionado
 
+- **Dashboard na Administração** — nova aba "📊 Início" como tela padrão da área administrativa:
+  - Cards de resumo: total de documentos, arquivos associados, links e tags (via `GET /api/admin/stats`)
+  - Cards de uso de disco: banco de dados, WAL (SQLite), arquivos associados e total — movidos da aba Storage para o Dashboard
+  - Botão 🔄 atualiza stats e disco simultaneamente
+
+- **Grafo semântico: clusters por comunidade Louvain** — ao ativar o toggle Semântico:
+  - Correção de bug: `GET /api/graph?all=true` é chamado automaticamente no modo semântico, garantindo que todos os nós referenciados pelas arestas semânticas estejam presentes (antes o grafo retornava "0 nós · 0 arestas")
+  - Algoritmo **Louvain local-moving** (nível único, JS puro, `frontend/src/lib/graph/community.js`) detecta comunidades no subgrafo de arestas semânticas visíveis; sem nova dependência npm
+  - Nós coloridos por comunidade via ângulo dourado HSL; singletons em cinza (`#94a3b8`)
+  - Layout inicial posiciona cada cluster em posição circular com forças `forceX`/`forceY` (strength 0.18); força `center` desativada no modo semântico
+  - `toggleSemantic` chama `loadGraph()` ao ligar e ao desligar — garante refetch do conjunto correto de nós
+  - Barra de status exibe `N nós · M arestas · K comunidades`
+  - **Legenda de comunidades** (visível apenas no modo Semântico): checkbox por comunidade + "Todas" para marcar/desmarcar em bloco; visibilidade aplicada via D3 `display` sem reiniciar simulação física
+
 - **Progresso em tempo real para Migrar / Reconciliar / Limpar origem** — as três operações de storage eram síncronas e bloqueavam o request sem feedback. Agora são assíncronas com job tracking (mesmo padrão do backup S3):
   - Endpoints renomeados: `/migrate-start`, `/reconcile-start`, `/cleanup-source-start` retornam `202 Accepted + job_id`; polling via `GET /api/admin/storage/jobs/{id}` existente.
   - Barra de progresso `<progress>` com `X / Y arquivos (N%)` durante execução.

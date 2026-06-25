@@ -135,3 +135,54 @@ Complexidade: O(n²·d) onde n = docs ativos, d = dimensões do vetor. Para uso 
 - **Threshold e max-neighbors fixos**: `semanticSimThreshold = 0.60`, `semanticMaxNeighbors = 8` — constantes no código. Configurar via env var quando houver evidência de necessidade.
 - **Batch size fixo**: `semanticBatchSize = 100` — limite prático da API Gemini; não exposto.
 - **Ticker não exposto como metrica**: sem endpoint de status do worker além do painel de admin.
+
+## Clusters por Comunidade (Graph View)
+
+Quando o toggle **Semântico** é ativado, o frontend detecta comunidades no grafo de similaridade e aplica colorização + layout agrupado.
+
+### Algoritmo: Louvain local-moving (nível único)
+
+**Arquivo**: `frontend/src/lib/graph/community.js`
+
+```js
+detectCommunities(nodeIds, edges) → Map<id, communityId>
+communityColor(i) → hsl(...)  // ângulo dourado, sem paleta fixa
+```
+
+Louvain local-moving sobre grafo não-dirigido ponderado (pesos = similaridade). Nível único — suficiente para KB pessoal. Complexidade O(n·k·iters) onde k = grau médio, máximo 20 iterações.
+
+`communityId` é denso (0..K-1) e derivado da ordem de convergência do Louvain — não é estável entre execuções com grafos diferentes. As cores são atribuídas dinamicamente via ângulo dourado HSL: `hsl((i × 137.508) % 360, 62%, 58%)`.
+
+### Integração com `setupGraph`
+
+1. Constrói `ns` (nodes) e `ls` (links) a partir de `initNodes`/`initEdges` (todos os docs, pois `all=true` é forçado no modo semântico)
+2. Extrai subconjunto de arestas `edge_type === 'semantic'`; resolve IDs de fonte/alvo (D3 pode ter objetos ou IDs)
+3. Chama `detectCommunities(ns.map(n => n.id), semEdges)` → `idToComm`
+4. Atribui `n.community` a cada nó
+5. Calcula `clusterCenters`: K centros em posições circulares (raio `min(W,H) × 0.35`)
+6. Semeia `n.x`/`n.y` próximos ao centro da comunidade (jitter ±30px)
+7. Substitui `forceCenter` por `forceX`/`forceY` (strength 0.18) apontados para o centro da comunidade do nó
+8. Popula `communityMeta` (Map<commId, {name, size}>) — singletons (size ≤ 1) excluídos
+9. `communityMeta` dispara efeito que inicializa `selectedCommunities` com todos os IDs
+
+### Filtro de comunidades
+
+`selectedCommunities` (`$state(Set)`) controla quais comunidades são visíveis. Alterações aplicam-se via `applyVisibility()`:
+
+```js
+select(svgEl).selectAll('.graph-node')
+  .attr('display', d => !sel.has(d.community) ? 'none' : null)
+select(svgEl).selectAll('line')
+  .attr('display', d => sel.has(src.community) && sel.has(tgt.community) ? null : 'none')
+```
+
+**Sem restart de simulação**: visibilidade via D3 `display`, não via re-render. O `$effect` de visibilidade é independente do `$effect` principal de render — mudanças em `selectedCommunities` não relançam `forceSimulation`.
+
+`untrack(() => applyVisibility())` ao final de `setupGraph` garante que o filtro persiste entre re-renders (ex: toggle de outro tipo de aresta com Semântico ativo).
+
+### Ponytail: limitações deliberadas
+
+- **Nível único** — sem passes de agregação Louvain. Se clusters ficarem grossos demais (poucas comunidades gigantes), subir `strength` para 0.3 ou adicionar agregação em `community.js`.
+- **Front-only** — detecção no browser sobre o subgrafo visível. Vantagem: reage ao filtro de texto e toggles sem roundtrip. Migrar para Go em `GetSemanticEdges` se o número de docs tornar o Louvain pesado (não é o caso para KB pessoal).
+- **Nomes de comunidade** — sempre `Comunidade N` (sem IA, sem localStorage). Adicionar quando necessário.
+- **Testes**: `frontend/src/lib/graph/community.test.js` — dois casos `node:test` (dois triângulos + singletons); `node --test` sem framework.
