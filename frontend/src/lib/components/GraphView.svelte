@@ -27,7 +27,6 @@
   let communityCount = $state(0)
   let communityMeta = $state(new Map())
   let selectedCommunities = $state(new Set())
-  let editingCommId = $state(null)
 
   // IDs of docs currently in the tree (mirrors sidebar FTS5 filter result)
   const treeDocIds = $derived.by(() => {
@@ -262,17 +261,7 @@
       const newMeta = new Map()
       for (const [commId, size] of commSize) {
         if (size <= 1) continue
-        const commNodes = ns.filter(n => n.community === commId)
-        const nodeIds = commNodes.map(n => n.id).sort((a, b) => a - b)
-        const key = nodeIds.join(',')
-        const stored = localStorage.getItem(`pkd:comm:${key}`)
-        newMeta.set(commId, {
-          key,
-          name: stored || `Comunidade ${newMeta.size + 1}`,
-          nodeIds,
-          titles: commNodes.map(n => n.title),
-          size,
-        })
+        newMeta.set(commId, { name: `Comunidade ${newMeta.size + 1}`, size })
       }
       communityMeta = newMeta
     } else {
@@ -417,17 +406,6 @@
       : new Set(communityMeta.keys())
   }
 
-  function saveCommunityName(commId, name) {
-    const meta = communityMeta.get(commId)
-    if (!meta) { editingCommId = null; return }
-    const trimmed = name.trim() || meta.name
-    localStorage.setItem(`pkd:comm:${meta.key}`, trimmed)
-    const m = new Map(communityMeta)
-    m.set(commId, { ...meta, name: trimmed })
-    communityMeta = m
-    editingCommId = null
-  }
-
 </script>
 
 <div class="graph-container">
@@ -536,7 +514,7 @@
           <span style="font-size:.72rem">Todas</span>
         </label>
         {#each [...communityMeta.entries()] as [commId, meta]}
-          <div class="legend-item" style="align-items:flex-start;gap:.3rem">
+          <div class="legend-item" style="align-items:center;gap:.3rem">
             <input type="checkbox"
               style="cursor:pointer;margin-top:.15rem"
               checked={selectedCommunities.has(commId)}
@@ -545,20 +523,7 @@
             <svg width="10" height="10" style="flex-shrink:0;margin-top:.1rem">
               <circle cx="5" cy="5" r="5" fill={communityColor(commId)} />
             </svg>
-            <div style="flex:1;min-width:0">
-              {#if editingCommId === commId}
-                <input
-                  class="comm-name-input"
-                  type="text"
-                  value={meta.name}
-                  onblur={e => saveCommunityName(commId, e.currentTarget.value)}
-                  onkeydown={e => e.key === 'Enter' && saveCommunityName(commId, e.currentTarget.value)}
-                  autofocus
-                />
-              {:else}
-                <button class="comm-name" onclick={() => { editingCommId = commId }} title="Clique para renomear">{meta.name}</button>
-              {/if}
-            </div>
+            <span style="flex:1;min-width:0;font-size:.75rem">{meta.name}</span>
             <span style="color:var(--text-muted);font-size:.7rem;white-space:nowrap">({meta.size})</span>
           </div>
         {/each}
@@ -633,24 +598,5 @@
     flex-shrink: 0;
   }
 
-  .comm-name {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: text;
-    font-size: .75rem;
-    word-break: break-word;
-    color: var(--text-muted);
-    text-align: left;
-  }
-  .comm-name-input {
-    width: 90px;
-    padding: .1rem .25rem;
-    font-size: .72rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm, 4px);
-    background: var(--bg-input, var(--bg-panel));
-    color: var(--text);
-  }
 </style>
 
