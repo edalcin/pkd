@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 )
 
@@ -39,5 +40,29 @@ func (s *Server) handleSemanticGraph() http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"edges": edges})
+	}
+}
+
+// handleCommunityName serves POST /api/community/name.
+// Body: {"titles":["Doc A","Doc B",...]}  Response: {"name":"..."}
+func (s *Server) handleCommunityName() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.cfg.GeminiAPIKey == "" {
+			http.Error(w, `{"error":"GEMINI_API_KEY not configured"}`, http.StatusServiceUnavailable)
+			return
+		}
+		var req struct {
+			Titles []string `json:"titles"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Titles) == 0 {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		name, err := s.links.SuggestCommunityName(r.Context(), s.cfg.GeminiAPIKey, req.Titles)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"name": name})
 	}
 }

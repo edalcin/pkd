@@ -1,10 +1,10 @@
 <script>
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, untrack } from 'svelte'
   import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force'
   import { select } from 'd3-selection'
   import { zoom, zoomIdentity } from 'd3-zoom'
   import { drag } from 'd3-drag'
-  import { apiGet } from '../api.js'
+  import { apiGet, apiPost } from '../api.js'
   import { textFilter, tree } from '../stores/documents.js'
   import { detectCommunities, communityColor } from '../graph/community.js'
 
@@ -25,6 +25,10 @@
   let tagFilter = $state('')
   let simulation = null
   let communityCount = $state(0)
+  let communityMeta = $state(new Map())
+  let selectedCommunities = $state(new Set())
+  let namingSuggesting = $state(new Set())
+  let editingCommId = $state(null)
 
   // IDs of docs currently in the tree (mirrors sidebar FTS5 filter result)
   const treeDocIds = $derived.by(() => {
@@ -72,6 +76,34 @@
       const { nodes: fn, edges: fe } = getFilteredData()
       setupGraph(fn, fe)
     }
+  })
+
+  // Toggles D3 node/edge visibility based on selectedCommunities.
+  function applyVisibility() {
+    if (!svgEl) return
+    const sel = selectedCommunities
+    select(svgEl).selectAll('.graph-node')
+      .attr('display', d => sel.size > 0 && d.community !== undefined && !sel.has(d.community) ? 'none' : null)
+    select(svgEl).selectAll('line')
+      .attr('display', d => {
+        if (sel.size === 0) return null
+        const sc = typeof d.source === 'object' ? d.source.community : undefined
+        const tc = typeof d.target === 'object' ? d.target.community : undefined
+        if (sc === undefined || tc === undefined) return null
+        return sel.has(sc) && sel.has(tc) ? null : 'none'
+      })
+  }
+
+  // Re-apply visibility whenever selectedCommunities changes.
+  $effect(() => { applyVisibility() })
+
+  // Init selectedCommunities to all community IDs when communityMeta changes.
+  $effect(() => {
+    const ids = new Set(communityMeta.keys())
+    if (ids.size === 0) { selectedCommunities = new Set(); return }
+    const cur = untrack(() => selectedCommunities)
+    const hasOverlap = [...ids].some(id => cur.has(id))
+    if (!hasOverlap) selectedCommunities = ids
   })
 
   // Returns the subset of nodes and edges to render based on active toggles and text filter.
@@ -227,8 +259,26 @@
         n.y = c.y + (Math.random() - 0.5) * 60
       })
       ns._commSize = commSize // usado na coloração abaixo
+      // Populate communityMeta for legend (skip singletons).
+      const newMeta = new Map()
+      for (const [commId, size] of commSize) {
+        if (size <= 1) continue
+        const commNodes = ns.filter(n => n.community === commId)
+        const nodeIds = commNodes.map(n => n.id).sort((a, b) => a - b)
+        const key = nodeIds.join(',')
+        const stored = localStorage.getItem(`pkd:comm:${key}`)
+        newMeta.set(commId, {
+          key,
+          name: stored || `Comunidade ${newMeta.size + 1}`,
+          nodeIds,
+          titles: commNodes.map(n => n.title),
+          size,
+        })
+      }
+      communityMeta = newMeta
     } else {
       communityCount = 0
+      communityMeta = new Map()
     }
 
     // Edges
@@ -343,6 +393,8 @@
         nodeEls.attr('transform', d => `translate(${d.x},${d.y})`)
       })
 
+    untrack(() => applyVisibility())
+
     nodes = ns
     links = ls
   }
@@ -351,6 +403,36 @@
     if (!svgEl) return
     select(svgEl).transition().duration(500)
       .call(zoom().transform, zoomIdentity)
+  }
+
+  function toggleCommunity(commId) {
+    const next = new Set(selectedCommunities)
+    if (next.has(commId)) next.delete(commId)
+    else next.add(commId)
+    selectedCommunities = next
+  }
+
+  function saveCommunityName(commId, name) {
+    const meta = communityMeta.get(commId)
+    if (!meta) { editingCommId = null; return }
+    const trimmed = name.trim() || meta.name
+    localStorage.setItem(`pkd:comm:${meta.key}`, trimmed)
+    const m = new Map(communityMeta)
+    m.set(commId, { ...meta, name: trimmed })
+    communityMeta = m
+    editingCommId = null
+  }
+
+  async function suggestCommunityName(commId) {
+    const meta = communityMeta.get(commId)
+    if (!meta) return
+    namingSuggesting = new Set([...namingSuggesting, commId])
+    try {
+      const data = await apiPost('/api/community/name', { titles: meta.titles })
+      if (data?.name) saveCommunityName(commId, data.name)
+    } catch (_) { /* silently fail */ } finally {
+      const s = new Set(namingSuggesting); s.delete(commId); namingSuggesting = s
+    }
   }
 </script>
 
@@ -450,6 +532,37 @@
         <svg width="22" height="10"><line x1="1" y1="5" x2="21" y2="5" stroke="#a78bfa" stroke-width="1.5" stroke-opacity=".8" stroke-dasharray="3,2"/></svg>
         <span>Semântico</span>
       </div>
+      {#if showSemantic && communityMeta.size > 0}
+        <div class="legend-section-label">Comunidades</div>
+        {#each [...communityMeta.entries()] as [commId, meta]}
+          <div class="legend-item" style="align-items:flex-start;gap:.3rem">
+            <input type="checkbox"
+              style="cursor:pointer;margin-top:.15rem"
+              checked={selectedCommunities.has(commId)}
+              onchange={() => toggleCommunity(commId)}
+            />
+            <svg width="10" height="10" style="flex-shrink:0;margin-top:.1rem">
+              <circle cx="5" cy="5" r="5" fill={communityColor(commId)} />
+            </svg>
+            <div style="flex:1;min-width:0">
+              {#if editingCommId === commId}
+                <input
+                  class="comm-name-input"
+                  type="text"
+                  value={meta.name}
+                  onblur={e => saveCommunityName(commId, e.currentTarget.value)}
+                  onkeydown={e => e.key === 'Enter' && saveCommunityName(commId, e.currentTarget.value)}
+                  autofocus
+                />
+              {:else}
+                <button class="comm-name" onclick={() => { editingCommId = commId }} title="Clique para renomear">{meta.name}</button>
+              {/if}
+            </div>
+            <button class="suggest-btn" onclick={() => suggestCommunityName(commId)} disabled={namingSuggesting.has(commId)} title="Sugerir nome com IA">{namingSuggesting.has(commId) ? '…' : '✨'}</button>
+            <span style="color:var(--text-muted);font-size:.7rem;white-space:nowrap">({meta.size})</span>
+          </div>
+        {/each}
+      {/if}
     </div>
   {/if}
 </div>
@@ -519,5 +632,35 @@
   .legend-item svg {
     flex-shrink: 0;
   }
+
+  .comm-name {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: text;
+    font-size: .75rem;
+    word-break: break-word;
+    color: var(--text-muted);
+    text-align: left;
+  }
+  .comm-name-input {
+    width: 90px;
+    padding: .1rem .25rem;
+    font-size: .72rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm, 4px);
+    background: var(--bg-input, var(--bg-panel));
+    color: var(--text);
+  }
+  .suggest-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 .1rem;
+    font-size: .8rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .suggest-btn:disabled { opacity: .5; cursor: not-allowed; }
 </style>
 

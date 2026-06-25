@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/edalcin/pkd/internal/model"
@@ -407,4 +408,59 @@ func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) 
 		ids[i] = c.a
 	}
 	return ids, nil
+}
+
+// SuggestCommunityName calls Gemini generateContent to suggest a concise name
+// for a community cluster given its member document titles.
+// ponytail: one call per click; names stored in browser localStorage, no DB.
+func (s *LinkStore) SuggestCommunityName(ctx context.Context, apiKey string, titles []string) (string, error) {
+	if apiKey == "" || len(titles) == 0 {
+		return "", fmt.Errorf("suggest: missing apiKey or titles")
+	}
+	prompt := "Dado este conjunto de títulos de documentos de uma base de conhecimento pessoal, " +
+		"sugira um nome conciso de 2 a 4 palavras em português para rotular este grupo temático. " +
+		"Responda apenas com o nome, sem pontuação ou explicação adicional.\n\nTítulos:\n- " +
+		strings.Join(titles, "\n- ")
+	type part struct {
+		Text string `json:"text"`
+	}
+	type content struct {
+		Parts []part `json:"parts"`
+	}
+	type reqBody struct {
+		Contents []content `json:"contents"`
+	}
+	body, _ := json.Marshal(reqBody{Contents: []content{{Parts: []part{{Text: prompt}}}}})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key="+url.QueryEscape(apiKey),
+		bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return "", fmt.Errorf("gemini generate: status %d: %s", resp.StatusCode, snippet)
+	}
+	var out struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", fmt.Errorf("gemini generate: decode: %w", err)
+	}
+	if len(out.Candidates) == 0 || len(out.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("gemini generate: no candidates")
+	}
+	return strings.TrimSpace(out.Candidates[0].Content.Parts[0].Text), nil
 }
