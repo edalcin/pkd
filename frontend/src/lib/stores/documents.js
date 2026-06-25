@@ -25,6 +25,16 @@ export const favoriteFilter = writable(false)
 /** Text filter applied to the tree (searches title, body, external link titles). */
 export const textFilter = writable('')
 
+const SEARCH_MODE_KEY = 'pkd-search-mode'
+/** Search mode for the text filter: 'lexical' | 'semantic'. Persisted. */
+export const searchMode = writable(
+  (typeof localStorage !== 'undefined' && localStorage.getItem(SEARCH_MODE_KEY)) || 'lexical'
+)
+searchMode.subscribe(v => { try { localStorage.setItem(SEARCH_MODE_KEY, v) } catch {} })
+
+/** False once a semantic request returns 503 (GEMINI_API_KEY not set). Session-only. */
+export const semanticAvailable = writable(true)
+
 /** Whether any data is loading. */
 export const loading = writable(false)
 
@@ -68,8 +78,22 @@ export async function loadTree(tags = get(tagFilter), favorites = get(favoriteFi
   tags.forEach(t => params.append('tag', t))
   if (favorites) params.set('favorite', '1')
   if (q) params.set('q', q)
-  const qs = params.toString()
-  tree.set(await apiGet('/api/tree' + (qs ? '?' + qs : '')))
+  const mode = get(searchMode)
+  if (q && mode === 'semantic') params.set('mode', 'semantic')
+  try {
+    const qs = params.toString()
+    tree.set(await apiGet('/api/tree' + (qs ? '?' + qs : '')))
+  } catch (e) {
+    if (mode === 'semantic' && e?.status === 503) {
+      semanticAvailable.set(false)
+      searchMode.set('lexical')
+      params.delete('mode')
+      const qs = params.toString()
+      tree.set(await apiGet('/api/tree' + (qs ? '?' + qs : '')))
+    } else {
+      throw e
+    }
+  }
 }
 
 /** Toggle the favorite state of a document. */

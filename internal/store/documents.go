@@ -1220,3 +1220,31 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 	}
 	return docs, rows.Err()
 }
+
+// ListByIDs returns non-trashed documents for the given IDs, ordered by
+// position then id. Empty ids -> empty slice. Used by semantic tree filtering.
+func (s *DocumentStore) ListByIDs(ids []int64) ([]*model.Document, error) {
+	if len(ids) == 0 {
+		return []*model.Document{}, nil
+	}
+	ph := ""
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		if i > 0 {
+			ph += ","
+		}
+		ph += "?"
+		args[i] = id
+	}
+	rows, err := s.db.Query(`
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
+		       created_at, updated_at, assoc_year, assoc_month, assoc_day
+		FROM documents
+		WHERE id IN (`+ph+`) AND trashed_at IS NULL
+		ORDER BY position ASC, id ASC`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDocRows(rows)
+}

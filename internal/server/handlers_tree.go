@@ -12,8 +12,24 @@ func (s *Server) handleTree() http.HandlerFunc {
 		tagFilter := r.URL.Query()["tag"]
 		favoriteOnly := r.URL.Query().Get("favorite") == "1"
 		q := r.URL.Query().Get("q")
+		mode := r.URL.Query().Get("mode")
 
-		docs, err := s.docs.ListTree(view, tagFilter, favoriteOnly, q)
+		var docs []*model.Document
+		var err error
+		if mode == "semantic" && q != "" {
+			if s.cfg.GeminiAPIKey == "" {
+				http.Error(w, `{"error":"GEMINI_API_KEY not configured"}`, http.StatusServiceUnavailable)
+				return
+			}
+			ids, e := s.links.SemanticSearchDocIDs(r.Context(), s.cfg.GeminiAPIKey, q)
+			if e != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			docs, err = s.docs.ListByIDs(ids)
+		} else {
+			docs, err = s.docs.ListTree(view, tagFilter, favoriteOnly, q)
+		}
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { authenticated, checkSession, logout } from './lib/stores/auth.js'
-  import { loadTree, textFilter, tagFilter, favoriteFilter, revealActiveSignal, activeDoc } from './lib/stores/documents.js'
+  import { loadTree, textFilter, tagFilter, favoriteFilter, revealActiveSignal, activeDoc, searchMode, semanticAvailable } from './lib/stores/documents.js'
   import { loadTags } from './lib/stores/tags.js'
   import LoginPage from './lib/components/LoginPage.svelte'
   import Sidebar from './lib/components/Sidebar.svelte'
@@ -176,6 +176,11 @@
     await loadTree([], false, '')
   }
 
+  function onSearchModeChange(e) {
+    searchMode.set(e.target.value)
+    loadTree(undefined, undefined, $textFilter)
+  }
+
   // ─── Share dialog ─────────────────────────────────────────
   let shareDocId = $state(null)
   function openShare(id) { shareDocId = id }
@@ -250,6 +255,11 @@
           </div>
           <div class="topbar-row topbar-row-search">
             <span class="search-icon" aria-hidden="true">🔍</span>
+            <select class="search-mode-select" value={$searchMode} onchange={onSearchModeChange} aria-label="Modo de busca">
+              <option value="lexical">Léxica</option>
+              {#if $semanticAvailable}<option value="semantic">Semântica</option>{/if}
+            </select>
+            {#if !$semanticAvailable}<span class="search-mode-warn" title="GEMINI_API_KEY não configurada">⚠</span>{/if}
             <input class="topbar-search-mobile" type="search"
                    placeholder="Buscar documentos…" autocomplete="off"
                    value={$textFilter} oninput={onFilterInput}
@@ -279,6 +289,11 @@
 
         <a href="#/" class="app-logo">PKD</a>
 
+        <select class="search-mode-select" value={$searchMode} onchange={onSearchModeChange} aria-label="Modo de busca">
+          <option value="lexical">Léxica</option>
+          {#if $semanticAvailable}<option value="semantic">Semântica</option>{/if}
+        </select>
+        {#if !$semanticAvailable}<span class="search-mode-warn" title="GEMINI_API_KEY não configurada">⚠</span>{/if}
         <input
           class="topbar-search"
           type="search"
@@ -393,6 +408,18 @@
     color: var(--text);
   }
   .topbar-search:focus { outline: none; border-color: var(--accent); }
+
+  .search-mode-select {
+    flex-shrink: 0;
+    padding: .2rem .35rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: .75rem;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .search-mode-select:focus { outline: none; border-color: var(--accent); }
+  .search-mode-warn { flex-shrink: 0; color: var(--text-muted); font-size: .85rem; }
 
   .topbar-reset-btn {
     flex-shrink: 0;

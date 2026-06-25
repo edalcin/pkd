@@ -12,6 +12,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"time"
 
 	"github.com/edalcin/pkd/internal/model"
@@ -22,6 +23,11 @@ const (
 	semanticBatchSize    = 100
 	semanticMaxNeighbors = 8
 	semanticSimThreshold = 0.60
+	semanticQueryTopK    = 50
+	// ponytail: floor + topK são knobs de tuning; topK é o controle principal
+	// (cosseno sempre retorna algo). floor 0.45 fica abaixo do threshold doc-doc
+	// (0.60) p/ não zerar resultados de query curta.
+	semanticQueryFloor = 0.45
 )
 
 // semCandidate is a scored edge candidate used during similarity computation.
@@ -349,4 +355,56 @@ func dot(a, b []float32) float32 {
 		s += a[i] * b[i]
 	}
 	return s
+}
+
+// SemanticSearchDocIDs embeds q and returns active-document IDs ranked by cosine
+// similarity to q (descending), keeping those >= semanticQueryFloor, capped at
+// semanticQueryTopK. Returns empty (not error) when q embeds to a zero vector or
+// there are no document embeddings. apiKey must be non-empty (caller gates on it).
+func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) ([]int64, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	vecs, err := embedBatch(ctx, client, apiKey, []string{q}, s.embedModel)
+	if err != nil {
+		return nil, fmt.Errorf("semantic search: embed query: %w", err)
+	}
+	qn := normalize(vecs[0])
+	if qn == nil {
+		return []int64{}, nil
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT e.document_id, e.embedding
+		FROM document_embeddings e
+		JOIN documents d ON d.id = e.document_id
+		WHERE d.trashed_at IS NULL AND d.archived_at IS NULL`)
+	if err != nil {
+		return nil, fmt.Errorf("semantic search: load vectors: %w", err)
+	}
+	defer rows.Close()
+	var cands []semCandidate
+	for rows.Next() {
+		var id int64
+		var blob []byte
+		if err := rows.Scan(&id, &blob); err != nil {
+			return nil, fmt.Errorf("semantic search: scan: %w", err)
+		}
+		dn := normalize(decodeEmbedding(blob))
+		if dn == nil {
+			continue
+		}
+		if sim := dot(qn, dn); sim >= semanticQueryFloor {
+			cands = append(cands, semCandidate{a: id, sim: sim})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("semantic search: rows: %w", err)
+	}
+	sort.Slice(cands, func(i, j int) bool { return cands[i].sim > cands[j].sim })
+	if len(cands) > semanticQueryTopK {
+		cands = cands[:semanticQueryTopK]
+	}
+	ids := make([]int64, len(cands))
+	for i, c := range cands {
+		ids[i] = c.a
+	}
+	return ids, nil
 }

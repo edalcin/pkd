@@ -1,0 +1,1 @@
+{"nodes": [{"id": "semanticgraph_document_embeddings", "label": "document_embeddings table", "file_type": "code", "source_file": "internal/store/migrate.go", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}
