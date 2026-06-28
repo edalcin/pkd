@@ -1312,11 +1312,6 @@
                     <i class="bx {child.icon || 'bx-file-blank'} child-card-icon"></i>
                     <span class="child-card-name">{child.title || 'Sem título'}</span>
                   </div>
-                  {#if child.body_text}
-                    <p class="child-card-preview">{child.body_text.slice(0, 160)}{child.body_text.length > 160 ? '…' : ''}</p>
-                  {:else}
-                    <p class="child-card-preview child-card-empty">Sem conteúdo</p>
-                  {/if}
                 </div>
               {/each}
             </div>
@@ -2139,7 +2134,7 @@
     background: var(--bg-secondary, var(--bg-sidebar));
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: .75rem 1rem;
+    padding: .5rem .75rem;
     cursor: pointer;
     transition: border-color .15s, box-shadow .15s;
     overflow: hidden;
@@ -2154,8 +2149,8 @@
     display: flex;
     align-items: center;
     gap: .4rem;
-    margin-bottom: .35rem;
-    min-height: 1.4em;
+    margin-bottom: 0;
+    min-height: unset;
   }
 
   .child-card-icon {
@@ -2173,20 +2168,6 @@
     text-overflow: ellipsis;
   }
 
-  .child-card-preview {
-    font-size: .78rem;
-    color: var(--text-muted);
-    line-height: 1.45;
-    margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .child-card-empty {
-    font-style: italic;
-  }
 
   /* ── Área de associações (rodapé) ─────────────────────── */
   .assoc-area {
