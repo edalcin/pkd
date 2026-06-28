@@ -70,6 +70,7 @@
   let linkHref = $state('')
   let linkText = $state('')
   let extLinkInputEl = $state(null)
+  let linkTitleInputEl = $state(null)
 
   $effect(() => {
     if (linkOpen && extLinkInputEl) {
@@ -83,7 +84,7 @@
           ? editorInstance.state.doc.textBetween(from, to)
           : ''
       }
-      setTimeout(() => extLinkInputEl?.focus(), 30)
+      setTimeout(() => (linkTitleInputEl ?? extLinkInputEl)?.focus(), 30)
     }
   })
 
@@ -1231,6 +1232,18 @@
     {#if linkOpen}
       <div class="tb-panel">
         <span class="tb-panel-label">🔗 Link</span>
+        {#if !editorInstance?.getAttributes('link').href}
+          <input
+            bind:this={linkTitleInputEl}
+            bind:value={linkText}
+            class="tb-panel-input"
+            type="text"
+            placeholder="Título (opcional)"
+            style="width:160px"
+            onblur={onLinkBlur}
+            onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertLink() } else if (e.key === 'Escape') { linkOpen = false; linkHref = ''; linkText = '' } }}
+          />
+        {/if}
         <input
           bind:this={extLinkInputEl}
           bind:value={linkHref}
@@ -1240,17 +1253,6 @@
           onblur={onLinkBlur}
           onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertLink() } else if (e.key === 'Escape') { linkOpen = false; linkHref = ''; linkText = '' } }}
         />
-        {#if !editorInstance?.getAttributes('link').href}
-          <input
-            bind:value={linkText}
-            class="tb-panel-input"
-            type="text"
-            placeholder="Texto (opcional)"
-            style="width:160px"
-            onblur={onLinkBlur}
-            onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); insertLink() } else if (e.key === 'Escape') { linkOpen = false; linkHref = ''; linkText = '' } }}
-          />
-        {/if}
         <button class="tb-btn" onmousedown={e => { e.preventDefault(); insertLink() }}>Inserir</button>
         {#if isActive('link')}
           <button class="tb-btn" onmousedown={clearLink} style="color:var(--danger,#ef4444)" title="Remover link">✕ Remover</button>
@@ -1431,19 +1433,19 @@
             {#if editingUrlId === u.id}
               <div class="assoc-item url-edit-mode">
                 <input
-                  class="url-input"
-                  type="url"
-                  bind:value={editUrlValue}
-                  placeholder="https://…"
-                  aria-label="URL"
-                  onkeydown={e => { if (e.key === 'Enter') saveEditUrl(); if (e.key === 'Escape') cancelEditUrl() }}
-                />
-                <input
                   class="url-title-input"
                   type="text"
                   bind:value={editUrlTitle}
                   placeholder="Título (opcional)"
                   aria-label="Título do link"
+                  onkeydown={e => { if (e.key === 'Enter') saveEditUrl(); if (e.key === 'Escape') cancelEditUrl() }}
+                />
+                <input
+                  class="url-input"
+                  type="url"
+                  bind:value={editUrlValue}
+                  placeholder="https://…"
+                  aria-label="URL"
                   onkeydown={e => { if (e.key === 'Enter') saveEditUrl(); if (e.key === 'Escape') cancelEditUrl() }}
                 />
                 <div class="url-edit-actions">
@@ -1468,19 +1470,19 @@
 
           <div class="url-add-row">
             <input
-              class="url-input"
-              type="url"
-              bind:value={urlInput}
-              placeholder="https://…"
-              aria-label="URL"
-              onkeydown={e => e.key === 'Enter' && addURL()}
-            />
-            <input
               class="url-title-input"
               type="text"
               bind:value={urlTitleInput}
               placeholder="Título (opcional)"
               aria-label="Título do link"
+              onkeydown={e => e.key === 'Enter' && addURL()}
+            />
+            <input
+              class="url-input"
+              type="url"
+              bind:value={urlInput}
+              placeholder="https://…"
+              aria-label="URL"
               onkeydown={e => e.key === 'Enter' && addURL()}
             />
             <button class="assoc-add-btn" onclick={addURL} disabled={urlAdding || !urlInput.trim()}>

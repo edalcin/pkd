@@ -62,6 +62,27 @@
     return () => document.removeEventListener('keydown', onKeydown)
   })
 
+  // ─── Pake/Tauri: open external links in system browser ───────
+  $effect(() => {
+    if (window.__TAURI_INTERNALS__ === undefined && window.__TAURI__ === undefined) return
+    function handleExternalLink(e) {
+      const a = e.target.closest('a[href]')
+      if (!a) return
+      const href = a.href
+      if (!href.startsWith('http://') && !href.startsWith('https://')) return
+      try { if (new URL(href).origin === window.location.origin) return } catch { return }
+      e.preventDefault()
+      if (window.__TAURI_INTERNALS__) {
+        window.__TAURI_INTERNALS__.invoke('plugin:shell|open', { path: href })
+          .catch(() => window.open(href, '_blank', 'noreferrer'))
+      } else {
+        window.__TAURI__.shell.open(href)
+      }
+    }
+    document.addEventListener('click', handleExternalLink, true)
+    return () => document.removeEventListener('click', handleExternalLink, true)
+  })
+
   function getRoute() {
     if (hash.startsWith('/focus/')) return { view: 'focus', id: hash.split('/')[2] }
     if (hash.startsWith('/doc/')) return { view: 'doc', id: hash.split('/')[2] }
