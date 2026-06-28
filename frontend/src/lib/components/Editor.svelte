@@ -564,7 +564,7 @@
     }
   }
 
-  function exportMarkdown() {
+  async function exportMarkdown() {
     if (!editorInstance || !doc) return
     const td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' })
     td.addRule('docLink', {
@@ -573,6 +573,22 @@
     })
     const md = td.turndown(editorInstance.getHTML())
     const filename = (doc.title || 'documento').replace(/[/\\?%*:|"<>]/g, '-') + '.md'
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }],
+        })
+        const writable = await handle.createWritable()
+        await writable.write(md)
+        await writable.close()
+        return
+      } catch (e) {
+        if (e.name === 'AbortError') return
+        // fall through to blob download on other errors
+      }
+    }
+    // ponytail: fallback for browsers without File System Access API
     const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
