@@ -37,6 +37,12 @@ type semCandidate struct {
 	sim  float32
 }
 
+// SemanticHit pairs a document ID with its cosine similarity score.
+type SemanticHit struct {
+	DocID int64
+	Score float32
+}
+
 // EmbedStaleDocs (re)embeds every active document whose stored embedding is
 // absent or stale (content or model changed) and upserts into document_embeddings.
 // Returns count of (re)embedded docs. No-op (0, nil) when apiKey == "".
@@ -358,11 +364,11 @@ func dot(a, b []float32) float32 {
 	return s
 }
 
-// SemanticSearchDocIDs embeds q and returns active-document IDs ranked by cosine
+// SemanticSearchDocIDs embeds q and returns active-document hits ranked by cosine
 // similarity to q (descending), keeping those >= semanticQueryFloor, capped at
 // semanticQueryTopK. Returns empty (not error) when q embeds to a zero vector or
 // there are no document embeddings. apiKey must be non-empty (caller gates on it).
-func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) ([]int64, error) {
+func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) ([]SemanticHit, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	vecs, err := embedBatch(ctx, client, apiKey, []string{q}, s.embedModel)
 	if err != nil {
@@ -370,7 +376,7 @@ func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) 
 	}
 	qn := normalize(vecs[0])
 	if qn == nil {
-		return []int64{}, nil
+		return []SemanticHit{}, nil
 	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT e.document_id, e.embedding
@@ -403,11 +409,11 @@ func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) 
 	if len(cands) > semanticQueryTopK {
 		cands = cands[:semanticQueryTopK]
 	}
-	ids := make([]int64, len(cands))
+	hits := make([]SemanticHit, len(cands))
 	for i, c := range cands {
-		ids[i] = c.a
+		hits[i] = SemanticHit{DocID: c.a, Score: c.sim}
 	}
-	return ids, nil
+	return hits, nil
 }
 
 // SuggestCommunityName calls Gemini generateContent to suggest a concise name

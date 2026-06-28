@@ -21,22 +21,56 @@ func (s *Server) handleTree() http.HandlerFunc {
 				http.Error(w, `{"error":"GEMINI_API_KEY not configured"}`, http.StatusServiceUnavailable)
 				return
 			}
-			ids, e := s.links.SemanticSearchDocIDs(r.Context(), s.cfg.GeminiAPIKey, q)
+			hits, e := s.links.SemanticSearchDocIDs(r.Context(), s.cfg.GeminiAPIKey, q)
 			if e != nil {
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
-			docs, err = s.docs.ListByIDs(ids)
-		} else {
-			docs, err = s.docs.ListTree(view, tagFilter, favoriteOnly, q)
+			ids := make([]int64, len(hits))
+			for i, h := range hits {
+				ids[i] = h.DocID
+			}
+			docsByID := make(map[int64]*model.Document, len(hits))
+			if fetched, fe := s.docs.ListByIDs(ids); fe != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			} else {
+				for _, d := range fetched {
+					docsByID[d.ID] = d
+				}
+			}
+			// Build flat list preserving score order.
+			flat := make([]*model.DocumentTreeNode, 0, len(hits))
+			for _, h := range hits {
+				d, ok := docsByID[h.DocID]
+				if !ok {
+					continue
+				}
+				flat = append(flat, &model.DocumentTreeNode{
+					ID:         d.ID,
+					ParentID:   d.ParentID,
+					Title:      d.Title,
+					Icon:       d.Icon,
+					Position:   d.Position,
+					Version:    d.Version,
+					IsFavorite: d.IsFavorite,
+					Locked:     d.Locked,
+					Archived:   d.Archived,
+					ArchivedAt: d.ArchivedAt,
+					Tags:       d.Tags,
+					Children:   []*model.DocumentTreeNode{},
+					Score:      float64(h.Score),
+				})
+			}
+			writeJSON(w, http.StatusOK, flat)
+			return
 		}
+		docs, err = s.docs.ListTree(view, tagFilter, favoriteOnly, q)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-
-		tree := buildTree(docs)
-		writeJSON(w, http.StatusOK, tree)
+		writeJSON(w, http.StatusOK, buildTree(docs))
 	}
 }
 

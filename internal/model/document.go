@@ -29,18 +29,20 @@ type Document struct {
 
 // DocumentTreeNode is the nested shape returned by GET /api/tree.
 type DocumentTreeNode struct {
-	ID       int64               `json:"id"`
-	ParentID *int64              `json:"parent_id"`
-	Title    string              `json:"title"`
-	Icon     string              `json:"icon,omitempty"`
-	Position int                 `json:"position"`
-	Version  int64               `json:"version"`
+	ID         int64               `json:"id"`
+	ParentID   *int64              `json:"parent_id"`
+	Title      string              `json:"title"`
+	Icon       string              `json:"icon,omitempty"`
+	Position   int                 `json:"position"`
+	Version    int64               `json:"version"`
 	IsFavorite bool                `json:"is_favorite"`
 	Locked     bool                `json:"locked"`
 	Archived   bool                `json:"archived"`
 	ArchivedAt *time.Time          `json:"archived_at"`
 	Tags       []string            `json:"tags,omitempty"`
 	Children   []*DocumentTreeNode `json:"children"`
+	// Score is non-zero only in semantic search responses (omitted otherwise).
+	Score float64 `json:"score,omitempty"`
 }
 
 // VersionConflict is returned as the body of a 409 response when a document

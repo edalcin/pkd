@@ -181,6 +181,10 @@
     {#if node.archived}
       <i class="bx bx-archive archive-indicator" title="Documento arquivado"></i>
     {/if}
+    {#if node.score}
+      {@const scoreColor = node.score >= 0.80 ? '#22c55e' : node.score >= 0.65 ? '#f59e0b' : '#f97316'}
+      <span class="score-badge" style="color:{scoreColor}; border-color:{scoreColor}" title="Similaridade semântica: {node.score.toFixed(2)}">{node.score.toFixed(2)}</span>
+    {/if}
 
     <button
       class="star-btn {node.is_favorite ? 'is-favorite' : ''}"
@@ -307,4 +311,16 @@
 
   .row-btn-archive:hover { color: var(--text-muted); }
   .row-btn-unarchive:hover { color: var(--accent); }
+
+  .score-badge {
+    flex-shrink: 0;
+    font-size: .65rem;
+    font-variant-numeric: tabular-nums;
+    border: 1px solid;
+    border-radius: 3px;
+    padding: 0 3px;
+    line-height: 1.4;
+    margin-left: 3px;
+    opacity: .85;
+  }
 </style>
