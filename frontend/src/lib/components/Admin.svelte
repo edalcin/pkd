@@ -229,14 +229,31 @@
     }
   }
 
+  // ponytail: shared save-as dialog; showSaveFilePicker = native picker, fallback = blob anchor
+  async function saveBlob(blob, filename) {
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await window.showSaveFilePicker({ suggestedName: filename })
+        const writable = await handle.createWritable()
+        await writable.write(blob)
+        await writable.close()
+        return
+      } catch (e) {
+        if (e.name === 'AbortError') return
+      }
+    }
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function downloadOrphan(key) {
     const res = await apiFetch(`/api/admin/attachments/orphans/download?key=${encodeURIComponent(key)}`)
     if (!res.ok) { alert('Erro ao baixar arquivo'); return }
-    const blob = await res.blob()
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = key.split('/').pop()
-    a.click()
+    await saveBlob(await res.blob(), key.split('/').pop())
   }
 
   async function deleteOrphan(orphan) {
@@ -386,11 +403,7 @@
   async function backupAttachments() {
     const res = await apiFetch('/api/admin/storage/backup-attachments')
     if (!res.ok) { alert('Erro ao gerar backup'); return }
-    const blob = await res.blob()
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `pkd-attachments-${new Date().toISOString().slice(0,10)}.zip`
-    a.click()
+    await saveBlob(await res.blob(), `pkd-attachments-${new Date().toISOString().slice(0,10)}.zip`)
   }
 
   // ---- Async S3 backup (005-s3-attachments-backup) ----
@@ -582,16 +595,22 @@
     try {
       const res = await apiFetch('/api/admin/backup', { method: 'POST' })
       if (!res.ok) { alert('Erro ao fazer backup'); return }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `pkd-backup-${new Date().toISOString().slice(0,10)}.sqlite`
-      a.click()
-      URL.revokeObjectURL(url)
+      await saveBlob(await res.blob(), `pkd-backup-${new Date().toISOString().slice(0,10)}.sqlite`)
     } finally {
       loading = false
     }
+  }
+
+  async function downloadPreviewAtt() {
+    const res = await apiFetch(previewAtt.url)
+    if (!res.ok) { alert('Erro ao baixar arquivo'); return }
+    await saveBlob(await res.blob(), previewAtt.original_name)
+  }
+
+  async function downloadS3Backup() {
+    const res = await fetch(s3BackupJob.download_url)
+    if (!res.ok) { alert('Erro ao baixar ZIP'); return }
+    await saveBlob(await res.blob(), `pkd-s3-backup-${new Date().toISOString().slice(0,10)}.zip`)
   }
 
   // Restore
@@ -1537,9 +1556,9 @@
               {#if s3BackupJob.state === 'succeeded' && s3BackupJob.download_url}
                 {#if s3BackupCountdown > 0}
                   <p>
-                    <a href={s3BackupJob.download_url} target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+                    <button onclick={downloadS3Backup} class="btn btn-primary btn-sm">
                       ⬇ Baixar ZIP
-                    </a>
+                    </button>
                     <span class="muted" style="margin-left:.75rem">Link expira em {formatCountdown(s3BackupCountdown)}</span>
                   </p>
                 {:else}
@@ -1694,7 +1713,7 @@
       <div class="preview-header">
         <span class="preview-title">{previewAtt.original_name}</span>
         <div class="preview-actions">
-          <a href={previewAtt.url} download={previewAtt.original_name} class="preview-dl-btn" title="Baixar">⬇ Baixar</a>
+          <button onclick={downloadPreviewAtt} class="preview-dl-btn" title="Baixar">⬇ Baixar</button>
           <button class="preview-close" onclick={() => previewAtt = null} aria-label="Fechar">✕</button>
         </div>
       </div>
@@ -1726,7 +1745,7 @@
             <span class="preview-big-icon">{fileIcon(previewAtt.mime_type, previewAtt.original_name)}</span>
             <p class="preview-file-name">{previewAtt.original_name}</p>
             <p class="preview-file-size">{previewAtt.size_bytes ? (previewAtt.size_bytes / 1024).toFixed(0) + ' KB' : ''}</p>
-            <a href={previewAtt.url} download={previewAtt.original_name} class="btn btn-primary">⬇ Fazer download</a>
+            <button onclick={downloadPreviewAtt} class="btn btn-primary">⬇ Fazer download</button>
           </div>
         {/if}
       </div>
