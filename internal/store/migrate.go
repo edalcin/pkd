@@ -99,6 +99,7 @@ func Open(dbPath string) (*sql.DB, error) {
 		{`ALTER TABLE attachments ADD COLUMN storage_location TEXT NOT NULL DEFAULT 'local'`, "alter attachments storage_location"},
 		{`ALTER TABLE attachments ADD COLUMN content_sha256 TEXT`, "alter attachments content_sha256"},
 		{`ALTER TABLE share_links ADD COLUMN include_children INTEGER NOT NULL DEFAULT 1`, "alter share_links include_children"},
+		{`ALTER TABLE share_links ADD COLUMN include_parent   INTEGER NOT NULL DEFAULT 0`, "alter share_links include_parent"},
 	}
 	for _, m := range colMigrations {
 		if _, err := db.Exec(m.sql); err != nil {

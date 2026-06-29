@@ -1,16 +1,16 @@
-# Graph Report - pkd  (2026-06-29)
+# Graph Report - pkd  (2026-06-28)
 
 ## Corpus Check
-- 192 files · ~269,468 words
+- 192 files · ~269,395 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1365 nodes · 2065 edges · 127 communities (95 shown, 32 thin omitted)
+- 1364 nodes · 2064 edges · 128 communities (96 shown, 32 thin omitted)
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 193 edges (avg confidence: 0.82)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `aa759906`
+- Built from commit: `a41cc22a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -43,6 +43,7 @@
 - [[_COMMUNITY_Attachment Store Core|Attachment Store Core]]
 - [[_COMMUNITY_Tag Store DB|Tag Store DB]]
 - [[_COMMUNITY_Sanitize Handlers|Sanitize Handlers]]
+- [[_COMMUNITY_Attachment Job Handlers|Attachment Job Handlers]]
 - [[_COMMUNITY_DB RWMutex Core|DB RWMutex Core]]
 - [[_COMMUNITY_Admin Features Bundle|Admin Features Bundle]]
 - [[_COMMUNITY_Frontend Build Config|Frontend Build Config]]
@@ -130,16 +131,16 @@
 - [[_COMMUNITY_Community 138|Community 138]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `writeJSON()` - 39 edges
-2. `parseID()` - 34 edges
-3. `DocumentStore` - 30 edges
-4. `Server` - 27 edges
-5. `HandlerFunc` - 26 edges
-6. `StreamingRestore()` - 19 edges
-7. `AttachmentStore` - 19 edges
-8. `Server` - 19 edges
-9. `HandlerFunc` - 19 edges
-10. `Document` - 19 edges
+1. `./lib/components/Admin.svelte` - 44 edges
+2. `writeJSON()` - 39 edges
+3. `parseID()` - 34 edges
+4. `DocumentStore` - 30 edges
+5. `Server` - 27 edges
+6. `HandlerFunc` - 26 edges
+7. `StreamingRestore()` - 19 edges
+8. `AttachmentStore` - 19 edges
+9. `Server` - 19 edges
+10. `HandlerFunc` - 19 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `ThrottleHeader()` --calls--> `itoa()`  [INFERRED]
@@ -161,7 +162,7 @@
 - **Semantic Graph Implementation Flow** — semanticgraph_overview, semanticgraph_embedstaledocs, semanticgraph_louvain, frontend_community_js [EXTRACTED 0.95]
 - **PKD Core Tech Stack** — claude_go_backend, claude_svelte_frontend, claude_sqlite_db [EXTRACTED 1.00]
 
-## Communities (127 total, 32 thin omitted)
+## Communities (128 total, 32 thin omitted)
 
 ### Community 0 - "TipTap Editor Extensions"
 Cohesion: 0.06
@@ -196,8 +197,8 @@ Cohesion: 0.08
 Nodes (28): HTML, HandlerFunc, Reader, Request, Server, Handler, HandlerFunc, Server (+20 more)
 
 ### Community 8 - "Frontend Components"
-Cohesion: 0.06
-Nodes (12): deleteTag(), fileIcon(), handlePruneTags(), handleRenameTag(), isMarkdown(), loadAdminTags(), pollRestoreJob(), previewType() (+4 more)
+Cohesion: 0.07
+Nodes (13): ./lib/components/Admin.svelte, deleteTag(), fileIcon(), handlePruneTags(), handleRenameTag(), isMarkdown(), loadAdminTags(), pollRestoreJob() (+5 more)
 
 ### Community 9 - "Async Storage Operations"
 Cohesion: 0.09
@@ -221,7 +222,7 @@ Nodes (19): HandlerFunc, Server, Mutex, Request, ResponseWriter, Time, ipState, 
 
 ### Community 14 - "D3 Graph Visualization"
 Cohesion: 0.07
-Nodes (14): ./lib/components/Calendar.svelte, ./lib/components/GraphView.svelte, ./lib/components/LoginPage.svelte, ./lib/components/ShareDialog.svelte, ./lib/components/Sidebar.svelte, ./lib/stores/auth.js, assocPanelWidth, assocResizeAnchor (+6 more)
+Nodes (15): ./lib/components/Admin.svelte, ./lib/components/Calendar.svelte, ./lib/components/GraphView.svelte, ./lib/components/LoginPage.svelte, ./lib/components/ShareDialog.svelte, ./lib/components/Sidebar.svelte, ./lib/stores/auth.js, assocPanelWidth (+7 more)
 
 ### Community 15 - "Restore Summary State"
 Cohesion: 0.13
@@ -240,8 +241,8 @@ Cohesion: 0.14
 Nodes (12): GraphData, GraphNode, DB, GraphEdge, LinkStore, LinksResponse, Mutex, RelatedLink (+4 more)
 
 ### Community 19 - "Job Backend Handlers"
-Cohesion: 0.07
-Nodes (24): ./lib/components/GraphView.svelte, ../graph/community.js, dependencies, boxicons, d3-drag, d3-force, d3-selection, d3-zoom (+16 more)
+Cohesion: 0.10
+Nodes (18): dependencies, boxicons, dompurify, marked, mermaid, @tiptap/core, @tiptap/extension-code-block, @tiptap/extension-highlight (+10 more)
 
 ### Community 20 - "Graph Data Models"
 Cohesion: 0.16
@@ -274,6 +275,10 @@ Nodes (7): DB, Duration, RWMutex, Time, Session, Store, New()
 ### Community 27 - "Sanitize Handlers"
 Cohesion: 0.25
 Nodes (8): DB, Rows, Tx, ignoreNoSuchRowid(), NewSearchStore(), scanHits(), SearchHit, SearchStore
+
+### Community 28 - "Attachment Job Handlers"
+Cohesion: 0.15
+Nodes (8): ./lib/components/GraphView.svelte, ../api.js, ../graph/community.js, ../stores/documents.js, d3-drag, d3-force, d3-selection, d3-zoom
 
 ### Community 29 - "DB RWMutex Core"
 Cohesion: 0.21
@@ -484,21 +489,21 @@ Cohesion: 0.67
 Nodes (3): CI build-and-push Docker image to GHCR with Trivy scan, CI test job: build Svelte, Go test + vet + govulncheck, Promote edge to stable and semver tag on GHCR
 
 ### Community 102 - "Svelte Config"
-Cohesion: 0.09
-Nodes (19): ../api.js, ./DuplicateTitleDialog.svelte, ./IconPicker.svelte, ./VersionHistoryDialog.svelte, ../editor/doclink-extension.js, ../editor/mermaid-code-block.js, ../editor/resizable-image-extension.js, ../stores/documents.js (+11 more)
+Cohesion: 0.10
+Nodes (17): ./DuplicateTitleDialog.svelte, ./IconPicker.svelte, ./VersionHistoryDialog.svelte, ../editor/doclink-extension.js, ../editor/mermaid-code-block.js, ../editor/resizable-image-extension.js, ../stores/settings.js, ../stores/tags.js (+9 more)
 
 ## Knowledge Gaps
-- **321 isolated node(s):** `../editor/resizable-image-extension.js`, `../editor/doclink-extension.js`, `../editor/mermaid-code-block.js`, `./IconPicker.svelte`, `./VersionHistoryDialog.svelte` (+316 more)
+- **322 isolated node(s):** `../editor/resizable-image-extension.js`, `../editor/doclink-extension.js`, `../editor/mermaid-code-block.js`, `./IconPicker.svelte`, `./VersionHistoryDialog.svelte` (+317 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **32 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `NewDocumentStore()` connect `Document Versioning DB` to `Async Storage Operations`, `Backup Job Management`?**
-  _High betweenness centrality (0.044) - this node is a cross-community bridge._
+- **Why does `NewDocumentStore()` connect `Document Versioning DB` to `Backup Job Management`?**
+  _High betweenness centrality (0.040) - this node is a cross-community bridge._
 - **Why does `New()` connect `Backup Job Management` to `Document Versioning DB`?**
-  _High betweenness centrality (0.042) - this node is a cross-community bridge._
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
 - **Why does `writeJSON()` connect `TipTap Editor Extensions` to `Attachment Store Core`, `Admin Svelte UI`, `CSRF Contract Tests`?**
   _High betweenness centrality (0.022) - this node is a cross-community bridge._
 - **Are the 24 inferred relationships involving `writeJSON()` (e.g. with `.handleAdminStorageBackupStart()` and `.handleAdminStorageCleanupSourceStart()`) actually correct?**
@@ -506,6 +511,6 @@ _Questions this graph is uniquely positioned to answer:_
 - **Are the 15 inferred relationships involving `parseID()` (e.g. with `.handleCreateAttachment()` and `.handleCreateAttachmentFromURL()`) actually correct?**
   _`parseID()` has 15 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `../editor/resizable-image-extension.js`, `../editor/doclink-extension.js`, `../editor/mermaid-code-block.js` to the rest of the system?**
-  _325 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _326 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `TipTap Editor Extensions` be split into smaller, more focused modules?**
   _Cohesion score 0.0627027027027027 - nodes in this community are weakly interconnected._

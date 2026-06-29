@@ -1,5 +1,6 @@
 # Build output — anchored to repo root so cmd/pkd/ is not ignored
 /pkd
+*.msi
 /pkd.exe
 *.out
 

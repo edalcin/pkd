@@ -60,6 +60,7 @@ func (s *Server) collectDescendantIDs(rootID int64) []int64 {
 func (s *Server) handleCreateShare() http.HandlerFunc {
 	type createShareRequest struct {
 		IncludeChildren *bool `json:"include_children"`
+		IncludeParent   *bool `json:"include_parent"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		docID, err := parseID(r, "id")
@@ -79,13 +80,17 @@ func (s *Server) handleCreateShare() http.HandlerFunc {
 				return
 			}
 		}
-		// Default: include children (backward-compatible).
+		// Default: include children (backward-compatible); do NOT include parent by default.
 		includeChildren := true
 		if req.IncludeChildren != nil {
 			includeChildren = *req.IncludeChildren
 		}
+		includeParent := false
+		if req.IncludeParent != nil {
+			includeParent = *req.IncludeParent
+		}
 
-		plaintext, share, err := s.shares.Create(docID, includeChildren)
+		plaintext, share, err := s.shares.Create(docID, includeChildren, includeParent)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
@@ -216,10 +221,10 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 			}
 		}
 
-		// Resolve parent link only if the parent already has an active share.
-		// Never auto-create a share for a parent document.
+		// Resolve parent link only if this share was created with include_parent=true
+		// AND the parent already has an active share.
 		var parentTitle, parentURL string
-		if doc.ParentID != nil {
+		if shareLink.IncludeParent && doc.ParentID != nil {
 			if parent, perr := s.docs.GetByID(*doc.ParentID); perr == nil {
 				if tok, perr := s.shares.GetActiveShareForDocument(parent.ID); perr == nil && tok != "" {
 					parentTitle = parent.Title

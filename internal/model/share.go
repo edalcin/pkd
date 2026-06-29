@@ -7,6 +7,7 @@ type ShareLink struct {
 	ID              int64      `json:"id"`
 	DocumentID      int64      `json:"document_id"`
 	IncludeChildren bool       `json:"include_children"`
+	IncludeParent   bool       `json:"include_parent"`
 	TokenHash       []byte     `json:"-"` // never sent to clients
 	CreatedAt       time.Time  `json:"created_at"`
 	RevokedAt       *time.Time `json:"revoked_at,omitempty"`

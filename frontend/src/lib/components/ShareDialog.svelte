@@ -8,18 +8,23 @@
   let loading = $state(false)
   let copied = $state(false)
   let includeChildren = $state(true)
+  let includeParent = $state(false)
   let wasRecursive = $state(false)
+  let wasParent = $state(false)
 
   async function generateLink() {
-    const ic = includeChildren  // snapshot before any async boundary
+    const ic = includeChildren
+    const ip = includeParent
     loading = true
     try {
       const data = await apiPost(`/api/documents/${docId}/shares`, {
         include_children: ic,
+        include_parent:   ip,
       })
       shareUrl = data.url || `${window.location.origin}/public/${data.token}`
       shareId = data.revoke_id
-      wasRecursive = ic  // reflects exactly what was sent to the API
+      wasRecursive = ic
+      wasParent = ip
     } finally {
       loading = false
     }
@@ -49,11 +54,8 @@
 
     {#if shareUrl}
       <div class="share-scope-badge">
-        {#if wasRecursive}
-          🔁 Inclui sub-documentos
-        {:else}
-          📄 Somente este documento
-        {/if}
+        {wasRecursive ? '🔁 Inclui sub-documentos' : '📄 Somente este documento'}
+        {#if wasParent} · 🔼 Inclui documento-pai{/if}
       </div>
       <div class="share-url-row">
         <input class="share-url-input" type="text" readonly value={shareUrl} />
@@ -75,6 +77,17 @@
           Os filhos também ficam acessíveis publicamente e aparecem listados neste documento.
         {:else}
           Somente este documento será acessível. Os filhos não aparecerão no link.
+        {/if}
+      </p>
+      <label class="share-children-label">
+        <input type="checkbox" bind:checked={includeParent} disabled={loading} />
+        Incluir link para documento-pai
+      </label>
+      <p class="share-children-hint">
+        {#if includeParent}
+          O link público exibirá um atalho para o documento-pai (se ele também tiver um link ativo).
+        {:else}
+          O documento-pai não será acessível a partir deste link.
         {/if}
       </p>
       <div class="modal-actions">

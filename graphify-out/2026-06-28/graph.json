@@ -48,434 +48,194 @@
   },
   "nodes": [
     {
-      "label": "Admin.svelte",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "label": "001-semantic-search-score-display.md",
+      "file_type": "document",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "components_admin",
-      "community": 8,
-      "norm_label": "admin.svelte"
+      "id": "adr_001_semantic_search_score_display",
+      "community": 46,
+      "norm_label": "001-semantic-search-score-display.md"
     },
     {
-      "label": "formatCountdown()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L484",
+      "label": "ADR-001: Exibi\u00e7\u00e3o de Score na Busca Sem\u00e2ntica",
+      "file_type": "document",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L1",
       "_origin": "ast",
-      "id": "components_admin_formatcountdown",
-      "community": 8,
-      "norm_label": "formatcountdown()"
+      "id": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica",
+      "community": 46,
+      "norm_label": "adr-001: exibicao de score na busca semantica"
     },
     {
-      "label": "startRestore()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L492",
+      "label": "Contexto",
+      "file_type": "document",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L6",
       "_origin": "ast",
-      "id": "components_admin_startrestore",
-      "community": 8,
-      "norm_label": "startrestore()"
+      "id": "adr_001_semantic_search_score_display_contexto",
+      "community": 46,
+      "norm_label": "contexto"
     },
     {
-      "label": "pollRestoreJob()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L520",
+      "label": "Decis\u00f5es",
+      "file_type": "document",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L16",
       "_origin": "ast",
-      "id": "components_admin_pollrestorejob",
-      "community": 8,
-      "norm_label": "pollrestorejob()"
+      "id": "adr_001_semantic_search_score_display_decis\u00f5es",
+      "community": 46,
+      "norm_label": "decisoes"
     },
     {
-      "label": "restoreAttachments()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L538",
+      "label": "D1 \u2014 Flat list ordenada por score",
+      "file_type": "document",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L18",
       "_origin": "ast",
-      "id": "components_admin_restoreattachments",
-      "community": 8,
-      "norm_label": "restoreattachments()"
+      "id": "adr_001_semantic_search_score_display_d1_flat_list_ordenada_por_score",
+      "community": 46,
+      "norm_label": "d1 \u2014 flat list ordenada por score"
     },
     {
-      "label": "cleanupStorageSource()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L552",
+      "label": "D2 \u2014 Score: decimal com 2 casas + cor por faixa",
+      "file_type": "document",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L26",
       "_origin": "ast",
-      "id": "components_admin_cleanupstoragesource",
-      "community": 8,
-      "norm_label": "cleanupstoragesource()"
+      "id": "adr_001_semantic_search_score_display_d2_score_decimal_com_2_casas_cor_por_faixa",
+      "community": 46,
+      "norm_label": "d2 \u2014 score: decimal com 2 casas + cor por faixa"
     },
     {
-      "label": "loadShares()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L557",
+      "label": "D3 \u2014 Reusar `TreeNode.svelte`",
+      "file_type": "document",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L38",
       "_origin": "ast",
-      "id": "components_admin_loadshares",
-      "community": 8,
-      "norm_label": "loadshares()"
+      "id": "adr_001_semantic_search_score_display_d3_reusar_treenode_svelte",
+      "community": 46,
+      "norm_label": "d3 \u2014 reusar `treenode.svelte`"
     },
     {
-      "label": "revokeShare()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L566",
+      "label": "D4 \u2014 Campo `Score` em `DocumentTreeNode`",
+      "file_type": "document",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L42",
       "_origin": "ast",
-      "id": "components_admin_revokeshare",
-      "community": 8,
-      "norm_label": "revokeshare()"
+      "id": "adr_001_semantic_search_score_display_d4_campo_score_em_documenttreenode",
+      "community": 46,
+      "norm_label": "d4 \u2014 campo `score` em `documenttreenode`"
     },
     {
-      "label": "copyShareURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L573",
+      "label": "Consequ\u00eancias",
+      "file_type": "document",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L50",
       "_origin": "ast",
-      "id": "components_admin_copyshareurl",
-      "community": 8,
-      "norm_label": "copyshareurl()"
+      "id": "adr_001_semantic_search_score_display_consequ\u00eancias",
+      "community": 46,
+      "norm_label": "consequencias"
     },
     {
-      "label": "loadAdminTags()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L583",
+      "label": "glossary.md",
+      "file_type": "document",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L1",
       "_origin": "ast",
-      "id": "components_admin_loadadmintags",
-      "community": 8,
-      "norm_label": "loadadmintags()"
+      "id": "adr_glossary",
+      "community": 51,
+      "norm_label": "glossary.md"
     },
     {
-      "label": "syncEditableTags()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L588",
+      "label": "Gloss\u00e1rio \u2014 PKD",
+      "file_type": "document",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L1",
       "_origin": "ast",
-      "id": "components_admin_synceditabletags",
-      "community": 8,
-      "norm_label": "synceditabletags()"
+      "id": "adr_glossary_gloss\u00e1rio_pkd",
+      "community": 51,
+      "norm_label": "glossario \u2014 pkd"
     },
     {
-      "label": "handleBackup()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L593",
+      "label": "Score de Similaridade (Similarity Score)",
+      "file_type": "document",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L3",
       "_origin": "ast",
-      "id": "components_admin_handlebackup",
-      "community": 8,
-      "norm_label": "handlebackup()"
+      "id": "adr_glossary_score_de_similaridade_similarity_score",
+      "community": 51,
+      "norm_label": "score de similaridade (similarity score)"
     },
     {
-      "label": "downloadPreviewAtt()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L604",
+      "label": "Embedding",
+      "file_type": "document",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L13",
       "_origin": "ast",
-      "id": "components_admin_downloadpreviewatt",
-      "community": 8,
-      "norm_label": "downloadpreviewatt()"
+      "id": "adr_glossary_embedding",
+      "community": 51,
+      "norm_label": "embedding"
     },
     {
-      "label": "downloadS3Backup()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L610",
+      "label": "Busca Sem\u00e2ntica (Semantic Search)",
+      "file_type": "document",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L17",
       "_origin": "ast",
-      "id": "components_admin_downloads3backup",
-      "community": 8,
-      "norm_label": "downloads3backup()"
+      "id": "adr_glossary_busca_sem\u00e2ntica_semantic_search",
+      "community": 51,
+      "norm_label": "busca semantica (semantic search)"
     },
     {
-      "label": "handleRestore()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L618",
+      "label": "Busca L\u00e9xica (Lexical Search)",
+      "file_type": "document",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L21",
       "_origin": "ast",
-      "id": "components_admin_handlerestore",
-      "community": 8,
-      "norm_label": "handlerestore()"
+      "id": "adr_glossary_busca_l\u00e9xica_lexical_search",
+      "community": 51,
+      "norm_label": "busca lexica (lexical search)"
     },
     {
-      "label": "restoreFromTrash()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L638",
+      "label": "Flat List (Lista Plana)",
+      "file_type": "document",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L25",
       "_origin": "ast",
-      "id": "components_admin_restorefromtrash",
-      "community": 8,
-      "norm_label": "restorefromtrash()"
+      "id": "adr_glossary_flat_list_lista_plana",
+      "community": 51,
+      "norm_label": "flat list (lista plana)"
     },
     {
-      "label": "permanentDelete()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L643",
+      "label": "Cosine Similarity",
+      "file_type": "document",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L29",
       "_origin": "ast",
-      "id": "components_admin_permanentdelete",
-      "community": 8,
-      "norm_label": "permanentdelete()"
+      "id": "adr_glossary_cosine_similarity",
+      "community": 51,
+      "norm_label": "cosine similarity"
     },
     {
-      "label": "emptyTrash()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L649",
+      "label": "SemanticHit",
+      "file_type": "document",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L33",
       "_origin": "ast",
-      "id": "components_admin_emptytrash",
-      "community": 8,
-      "norm_label": "emptytrash()"
+      "id": "adr_glossary_semantichit",
+      "community": 51,
+      "norm_label": "semantichit"
     },
     {
-      "label": "handleRenameTag()",
+      "label": "TreeNode.svelte",
       "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L656",
+      "source_file": "frontend/src/lib/components/TreeNode.svelte",
+      "source_location": "L1",
       "_origin": "ast",
-      "id": "components_admin_handlerenametag",
-      "community": 8,
-      "norm_label": "handlerenametag()"
-    },
-    {
-      "label": "startEdit()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L674",
-      "_origin": "ast",
-      "id": "components_admin_startedit",
-      "community": 8,
-      "norm_label": "startedit()"
-    },
-    {
-      "label": "cancelEdit()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L681",
-      "_origin": "ast",
-      "id": "components_admin_canceledit",
-      "community": 8,
-      "norm_label": "canceledit()"
-    },
-    {
-      "label": "saveTag()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L686",
-      "_origin": "ast",
-      "id": "components_admin_savetag",
-      "community": 8,
-      "norm_label": "savetag()"
-    },
-    {
-      "label": "deleteTag()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L702",
-      "_origin": "ast",
-      "id": "components_admin_deletetag",
-      "community": 8,
-      "norm_label": "deletetag()"
-    },
-    {
-      "label": "handlePruneTags()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L715",
-      "_origin": "ast",
-      "id": "components_admin_handleprunetags",
-      "community": 8,
-      "norm_label": "handleprunetags()"
-    },
-    {
-      "label": "saveTagColor()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L731",
-      "_origin": "ast",
-      "id": "components_admin_savetagcolor",
-      "community": 8,
-      "norm_label": "savetagcolor()"
-    },
-    {
-      "label": "deleteAttachment()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L741",
-      "_origin": "ast",
-      "id": "components_admin_deleteattachment",
-      "community": 8,
-      "norm_label": "deleteattachment()"
-    },
-    {
-      "label": "handleCleanup()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L748",
-      "_origin": "ast",
-      "id": "components_admin_handlecleanup",
-      "community": 8,
-      "norm_label": "handlecleanup()"
-    },
-    {
-      "label": "handleCheckLinks()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L758",
-      "_origin": "ast",
-      "id": "components_admin_handlechecklinks",
-      "community": 8,
-      "norm_label": "handlechecklinks()"
-    },
-    {
-      "label": "deleteInvalidLinks()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L768",
-      "_origin": "ast",
-      "id": "components_admin_deleteinvalidlinks",
-      "community": 8,
-      "norm_label": "deleteinvalidlinks()"
-    },
-    {
-      "label": "loadAdminURLs()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L779",
-      "_origin": "ast",
-      "id": "components_admin_loadadminurls",
-      "community": 8,
-      "norm_label": "loadadminurls()"
-    },
-    {
-      "label": "startEditURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L787",
-      "_origin": "ast",
-      "id": "components_admin_startediturl",
-      "community": 8,
-      "norm_label": "startediturl()"
-    },
-    {
-      "label": "cancelEditURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L792",
-      "_origin": "ast",
-      "id": "components_admin_cancelediturl",
-      "community": 8,
-      "norm_label": "cancelediturl()"
-    },
-    {
-      "label": "saveEditURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L796",
-      "_origin": "ast",
-      "id": "components_admin_saveediturl",
-      "community": 8,
-      "norm_label": "saveediturl()"
-    },
-    {
-      "label": "deleteAdminURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L808",
-      "_origin": "ast",
-      "id": "components_admin_deleteadminurl",
-      "community": 8,
-      "norm_label": "deleteadminurl()"
-    },
-    {
-      "label": "isImage()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L814",
-      "_origin": "ast",
-      "id": "components_admin_isimage",
-      "community": 8,
-      "norm_label": "isimage()"
-    },
-    {
-      "label": "isMarkdown()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L818",
-      "_origin": "ast",
-      "id": "components_admin_ismarkdown",
-      "community": 8,
-      "norm_label": "ismarkdown()"
-    },
-    {
-      "label": "previewType()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L824",
-      "_origin": "ast",
-      "id": "components_admin_previewtype",
-      "community": 8,
-      "norm_label": "previewtype()"
-    },
-    {
-      "label": "formatBytes()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L860",
-      "_origin": "ast",
-      "id": "components_admin_formatbytes",
-      "community": 8,
-      "norm_label": "formatbytes()"
-    },
-    {
-      "label": "fileIcon()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L867",
-      "_origin": "ast",
-      "id": "components_admin_fileicon",
-      "community": 8,
-      "norm_label": "fileicon()"
-    },
-    {
-      "label": "svelte",
-      "file_type": "code",
-      "source_file": "svelte",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "id": "svelte",
-      "community": 14,
-      "norm_label": "svelte"
-    },
-    {
-      "label": "../api.js",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/api.ts",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "id": "d_git_pkd_frontend_src_lib_api_ts",
-      "community": 102,
-      "norm_label": "../api.js"
-    },
-    {
-      "label": "../stores/tags.js",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/stores/tags.ts",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "id": "d_git_pkd_frontend_src_lib_stores_tags_ts",
-      "community": 102,
-      "norm_label": "../stores/tags.js"
-    },
-    {
-      "label": "../stores/settings.js",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/stores/settings.ts",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "id": "d_git_pkd_frontend_src_lib_stores_settings_ts",
-      "community": 102,
-      "norm_label": "../stores/settings.js"
+      "id": "components_treenode",
+      "community": 28,
+      "norm_label": "treenode.svelte"
     },
     {
       "label": "../stores/documents.js",
@@ -484,428 +244,18 @@
       "confidence": "EXTRACTED",
       "_origin": "ast",
       "id": "d_git_pkd_frontend_src_lib_stores_documents_ts",
-      "community": 102,
+      "community": 28,
       "norm_label": "../stores/documents.js"
     },
     {
-      "label": "marked",
+      "label": "../api.js",
       "file_type": "code",
-      "source_file": "marked",
+      "source_file": "frontend/src/lib/api.ts",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "id": "marked",
-      "community": 19,
-      "norm_label": "marked"
-    },
-    {
-      "label": "dompurify",
-      "file_type": "code",
-      "source_file": "dompurify",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "id": "dompurify",
-      "community": 19,
-      "norm_label": "dompurify"
-    },
-    {
-      "label": "Editor.svelte",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "editor.svelte",
-      "id": "components_editor"
-    },
-    {
-      "label": "if()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "source_location": "L552",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "if()",
-      "id": "components_editor_if"
-    },
-    {
-      "label": "catch()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "source_location": "L586",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "catch()",
-      "id": "components_editor_catch"
-    },
-    {
-      "label": "@tiptap/core",
-      "file_type": "code",
-      "source_file": "@tiptap/core",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 44,
-      "norm_label": "@tiptap/core",
-      "id": "core"
-    },
-    {
-      "label": "@tiptap/starter-kit",
-      "file_type": "code",
-      "source_file": "@tiptap/starter-kit",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "@tiptap/starter-kit",
-      "id": "starter_kit"
-    },
-    {
-      "label": "../editor/resizable-image-extension.js",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/editor/resizable-image-extension.ts",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "../editor/resizable-image-extension.js",
-      "id": "d_git_pkd_frontend_src_lib_editor_resizable_image_extension_ts"
-    },
-    {
-      "label": "@tiptap/extension-table",
-      "file_type": "code",
-      "source_file": "@tiptap/extension-table",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "@tiptap/extension-table",
-      "id": "extension_table"
-    },
-    {
-      "label": "@tiptap/extension-table-row",
-      "file_type": "code",
-      "source_file": "@tiptap/extension-table-row",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "@tiptap/extension-table-row",
-      "id": "extension_table_row"
-    },
-    {
-      "label": "@tiptap/extension-table-cell",
-      "file_type": "code",
-      "source_file": "@tiptap/extension-table-cell",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "@tiptap/extension-table-cell",
-      "id": "extension_table_cell"
-    },
-    {
-      "label": "@tiptap/extension-table-header",
-      "file_type": "code",
-      "source_file": "@tiptap/extension-table-header",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "@tiptap/extension-table-header",
-      "id": "extension_table_header"
-    },
-    {
-      "label": "@tiptap/extension-highlight",
-      "file_type": "code",
-      "source_file": "@tiptap/extension-highlight",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "@tiptap/extension-highlight",
-      "id": "extension_highlight"
-    },
-    {
-      "label": "@tiptap/extension-text-align",
-      "file_type": "code",
-      "source_file": "@tiptap/extension-text-align",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "@tiptap/extension-text-align",
-      "id": "extension_text_align"
-    },
-    {
-      "label": "@tiptap/extension-link",
-      "file_type": "code",
-      "source_file": "@tiptap/extension-link",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "@tiptap/extension-link",
-      "id": "extension_link"
-    },
-    {
-      "label": "../editor/doclink-extension.js",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/editor/doclink-extension.ts",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "../editor/doclink-extension.js",
-      "id": "d_git_pkd_frontend_src_lib_editor_doclink_extension_ts"
-    },
-    {
-      "label": "../editor/mermaid-code-block.js",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/editor/mermaid-code-block.ts",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "../editor/mermaid-code-block.js",
-      "id": "d_git_pkd_frontend_src_lib_editor_mermaid_code_block_ts"
-    },
-    {
-      "label": "turndown",
-      "file_type": "code",
-      "source_file": "turndown",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 19,
-      "norm_label": "turndown",
-      "id": "turndown"
-    },
-    {
-      "label": "./IconPicker.svelte",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/IconPicker.svelte",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "./iconpicker.svelte",
-      "id": "d_git_pkd_frontend_src_lib_components_iconpicker_svelte"
-    },
-    {
-      "label": "./VersionHistoryDialog.svelte",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/VersionHistoryDialog.svelte",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "./versionhistorydialog.svelte",
-      "id": "d_git_pkd_frontend_src_lib_components_versionhistorydialog_svelte"
-    },
-    {
-      "label": "./DuplicateTitleDialog.svelte",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/DuplicateTitleDialog.svelte",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "./duplicatetitledialog.svelte",
-      "id": "d_git_pkd_frontend_src_lib_components_duplicatetitledialog_svelte"
-    },
-    {
-      "label": "svelte/store",
-      "file_type": "code",
-      "source_file": "svelte/store",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 5,
-      "norm_label": "svelte/store",
-      "id": "store"
-    },
-    {
-      "label": "@tiptap/pm/model",
-      "file_type": "code",
-      "source_file": "@tiptap/pm/model",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "@tiptap/pm/model",
-      "id": "model"
-    },
-    {
-      "label": "001-semantic-search-score-display.md",
-      "file_type": "document",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 46,
-      "norm_label": "001-semantic-search-score-display.md",
-      "id": "adr_001_semantic_search_score_display"
-    },
-    {
-      "label": "ADR-001: Exibi\u00e7\u00e3o de Score na Busca Sem\u00e2ntica",
-      "file_type": "document",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 46,
-      "norm_label": "adr-001: exibicao de score na busca semantica",
-      "id": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica"
-    },
-    {
-      "label": "Contexto",
-      "file_type": "document",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L6",
-      "_origin": "ast",
-      "community": 46,
-      "norm_label": "contexto",
-      "id": "adr_001_semantic_search_score_display_contexto"
-    },
-    {
-      "label": "Decis\u00f5es",
-      "file_type": "document",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L16",
-      "_origin": "ast",
-      "community": 46,
-      "norm_label": "decisoes",
-      "id": "adr_001_semantic_search_score_display_decis\u00f5es"
-    },
-    {
-      "label": "D1 \u2014 Flat list ordenada por score",
-      "file_type": "document",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L18",
-      "_origin": "ast",
-      "community": 46,
-      "norm_label": "d1 \u2014 flat list ordenada por score",
-      "id": "adr_001_semantic_search_score_display_d1_flat_list_ordenada_por_score"
-    },
-    {
-      "label": "D2 \u2014 Score: decimal com 2 casas + cor por faixa",
-      "file_type": "document",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L26",
-      "_origin": "ast",
-      "community": 46,
-      "norm_label": "d2 \u2014 score: decimal com 2 casas + cor por faixa",
-      "id": "adr_001_semantic_search_score_display_d2_score_decimal_com_2_casas_cor_por_faixa"
-    },
-    {
-      "label": "D3 \u2014 Reusar `TreeNode.svelte`",
-      "file_type": "document",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L38",
-      "_origin": "ast",
-      "community": 46,
-      "norm_label": "d3 \u2014 reusar `treenode.svelte`",
-      "id": "adr_001_semantic_search_score_display_d3_reusar_treenode_svelte"
-    },
-    {
-      "label": "D4 \u2014 Campo `Score` em `DocumentTreeNode`",
-      "file_type": "document",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L42",
-      "_origin": "ast",
-      "community": 46,
-      "norm_label": "d4 \u2014 campo `score` em `documenttreenode`",
-      "id": "adr_001_semantic_search_score_display_d4_campo_score_em_documenttreenode"
-    },
-    {
-      "label": "Consequ\u00eancias",
-      "file_type": "document",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L50",
-      "_origin": "ast",
-      "community": 46,
-      "norm_label": "consequencias",
-      "id": "adr_001_semantic_search_score_display_consequ\u00eancias"
-    },
-    {
-      "label": "glossary.md",
-      "file_type": "document",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 51,
-      "norm_label": "glossary.md",
-      "id": "adr_glossary"
-    },
-    {
-      "label": "Gloss\u00e1rio \u2014 PKD",
-      "file_type": "document",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 51,
-      "norm_label": "glossario \u2014 pkd",
-      "id": "adr_glossary_gloss\u00e1rio_pkd"
-    },
-    {
-      "label": "Score de Similaridade (Similarity Score)",
-      "file_type": "document",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L3",
-      "_origin": "ast",
-      "community": 51,
-      "norm_label": "score de similaridade (similarity score)",
-      "id": "adr_glossary_score_de_similaridade_similarity_score"
-    },
-    {
-      "label": "Embedding",
-      "file_type": "document",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L13",
-      "_origin": "ast",
-      "community": 51,
-      "norm_label": "embedding",
-      "id": "adr_glossary_embedding"
-    },
-    {
-      "label": "Busca Sem\u00e2ntica (Semantic Search)",
-      "file_type": "document",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L17",
-      "_origin": "ast",
-      "community": 51,
-      "norm_label": "busca semantica (semantic search)",
-      "id": "adr_glossary_busca_sem\u00e2ntica_semantic_search"
-    },
-    {
-      "label": "Busca L\u00e9xica (Lexical Search)",
-      "file_type": "document",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L21",
-      "_origin": "ast",
-      "community": 51,
-      "norm_label": "busca lexica (lexical search)",
-      "id": "adr_glossary_busca_l\u00e9xica_lexical_search"
-    },
-    {
-      "label": "Flat List (Lista Plana)",
-      "file_type": "document",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L25",
-      "_origin": "ast",
-      "community": 51,
-      "norm_label": "flat list (lista plana)",
-      "id": "adr_glossary_flat_list_lista_plana"
-    },
-    {
-      "label": "Cosine Similarity",
-      "file_type": "document",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L29",
-      "_origin": "ast",
-      "community": 51,
-      "norm_label": "cosine similarity",
-      "id": "adr_glossary_cosine_similarity"
-    },
-    {
-      "label": "SemanticHit",
-      "file_type": "document",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L33",
-      "_origin": "ast",
-      "community": 51,
-      "norm_label": "semantichit",
-      "id": "adr_glossary_semantichit"
-    },
-    {
-      "label": "TreeNode.svelte",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/TreeNode.svelte",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 102,
-      "norm_label": "treenode.svelte",
-      "id": "components_treenode"
+      "id": "d_git_pkd_frontend_src_lib_api_ts",
+      "community": 28,
+      "norm_label": "../api.js"
     },
     {
       "label": "Document",
@@ -913,9 +263,9 @@
       "source_file": "internal/model/document.go",
       "source_location": "L6",
       "_origin": "ast",
+      "id": "model_document",
       "community": 54,
-      "norm_label": "document",
-      "id": "model_document"
+      "norm_label": "document"
     },
     {
       "label": "Time",
@@ -923,9 +273,9 @@
       "source_file": "internal/model/document.go",
       "source_location": "L15",
       "_origin": "ast",
+      "id": "time",
       "community": 54,
-      "norm_label": "time",
-      "id": "time"
+      "norm_label": "time"
     },
     {
       "label": "DocumentTreeNode",
@@ -933,9 +283,9 @@
       "source_file": "internal/model/document.go",
       "source_location": "L31",
       "_origin": "ast",
+      "id": "model_documenttreenode",
       "community": 54,
-      "norm_label": "documenttreenode",
-      "id": "model_documenttreenode"
+      "norm_label": "documenttreenode"
     },
     {
       "label": "VersionConflict",
@@ -943,9 +293,9 @@
       "source_file": "internal/model/document.go",
       "source_location": "L50",
       "_origin": "ast",
+      "id": "model_versionconflict",
       "community": 54,
-      "norm_label": "versionconflict",
-      "id": "model_versionconflict"
+      "norm_label": "versionconflict"
     },
     {
       "label": "TitleConflict",
@@ -953,9 +303,9 @@
       "source_file": "internal/model/document.go",
       "source_location": "L58",
       "_origin": "ast",
+      "id": "model_titleconflict",
       "community": 54,
-      "norm_label": "titleconflict",
-      "id": "model_titleconflict"
+      "norm_label": "titleconflict"
     },
     {
       "label": "Ancestor",
@@ -963,9 +313,9 @@
       "source_file": "internal/model/document.go",
       "source_location": "L64",
       "_origin": "ast",
+      "id": "model_ancestor",
       "community": 54,
-      "norm_label": "ancestor",
-      "id": "model_ancestor"
+      "norm_label": "ancestor"
     },
     {
       "label": "DocumentVersion",
@@ -973,9 +323,9 @@
       "source_file": "internal/model/document.go",
       "source_location": "L72",
       "_origin": "ast",
+      "id": "model_documentversion",
       "community": 54,
-      "norm_label": "documentversion",
-      "id": "model_documentversion"
+      "norm_label": "documentversion"
     },
     {
       "label": "handlers_tree.go",
@@ -983,9 +333,9 @@
       "source_file": "internal/server/handlers_tree.go",
       "source_location": "L1",
       "_origin": "ast",
+      "id": "server_handlers_tree",
       "community": 50,
-      "norm_label": "handlers_tree.go",
-      "id": "server_handlers_tree"
+      "norm_label": "handlers_tree.go"
     },
     {
       "label": "Server",
@@ -993,9 +343,9 @@
       "source_file": "internal/server/handlers_tree.go",
       "source_location": "L9",
       "_origin": "ast",
+      "id": "server_server",
       "community": 50,
-      "norm_label": "server",
-      "id": "server_server"
+      "norm_label": "server"
     },
     {
       "label": ".handleTree()",
@@ -1003,9 +353,9 @@
       "source_file": "internal/server/handlers_tree.go",
       "source_location": "L9",
       "_origin": "ast",
+      "id": "server_server_handletree",
       "community": 50,
-      "norm_label": ".handletree()",
-      "id": "server_server_handletree"
+      "norm_label": ".handletree()"
     },
     {
       "label": "HandlerFunc",
@@ -1013,9 +363,9 @@
       "source_file": "internal/server/handlers_tree.go",
       "source_location": "L9",
       "_origin": "ast",
+      "id": "handlerfunc",
       "community": 50,
-      "norm_label": "handlerfunc",
-      "id": "handlerfunc"
+      "norm_label": "handlerfunc"
     },
     {
       "label": "buildTree()",
@@ -1023,9 +373,9 @@
       "source_file": "internal/server/handlers_tree.go",
       "source_location": "L79",
       "_origin": "ast",
+      "id": "server_handlers_tree_buildtree",
       "community": 50,
-      "norm_label": "buildtree()",
-      "id": "server_handlers_tree_buildtree"
+      "norm_label": "buildtree()"
     },
     {
       "label": "Document",
@@ -1033,9 +383,9 @@
       "source_file": "internal/server/handlers_tree.go",
       "source_location": "L79",
       "_origin": "ast",
+      "id": "document",
       "community": 50,
-      "norm_label": "document",
-      "id": "document"
+      "norm_label": "document"
     },
     {
       "label": "DocumentTreeNode",
@@ -1043,9 +393,9 @@
       "source_file": "internal/server/handlers_tree.go",
       "source_location": "L79",
       "_origin": "ast",
+      "id": "documenttreenode",
       "community": 50,
-      "norm_label": "documenttreenode",
-      "id": "documenttreenode"
+      "norm_label": "documenttreenode"
     },
     {
       "label": "semantic.go",
@@ -1053,9 +403,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L1",
       "_origin": "ast",
+      "id": "store_semantic",
       "community": 24,
-      "norm_label": "semantic.go",
-      "id": "store_semantic"
+      "norm_label": "semantic.go"
     },
     {
       "label": "semCandidate",
@@ -1063,9 +413,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L35",
       "_origin": "ast",
+      "id": "store_semcandidate",
       "community": 24,
-      "norm_label": "semcandidate",
-      "id": "store_semcandidate"
+      "norm_label": "semcandidate"
     },
     {
       "label": "SemanticHit",
@@ -1073,9 +423,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L41",
       "_origin": "ast",
+      "id": "store_semantichit",
       "community": 24,
-      "norm_label": "semantichit",
-      "id": "store_semantichit"
+      "norm_label": "semantichit"
     },
     {
       "label": "LinkStore",
@@ -1083,9 +433,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L51",
       "_origin": "ast",
+      "id": "store_linkstore",
       "community": 24,
-      "norm_label": "linkstore",
-      "id": "store_linkstore"
+      "norm_label": "linkstore"
     },
     {
       "label": ".EmbedStaleDocs()",
@@ -1093,9 +443,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L51",
       "_origin": "ast",
+      "id": "store_linkstore_embedstaledocs",
       "community": 24,
-      "norm_label": ".embedstaledocs()",
-      "id": "store_linkstore_embedstaledocs"
+      "norm_label": ".embedstaledocs()"
     },
     {
       "label": "Context",
@@ -1103,9 +453,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L51",
       "_origin": "ast",
+      "id": "context",
       "community": 24,
-      "norm_label": "context",
-      "id": "context"
+      "norm_label": "context"
     },
     {
       "label": ".GetSemanticEdges()",
@@ -1113,9 +463,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L176",
       "_origin": "ast",
+      "id": "store_linkstore_getsemanticedges",
       "community": 24,
-      "norm_label": ".getsemanticedges()",
-      "id": "store_linkstore_getsemanticedges"
+      "norm_label": ".getsemanticedges()"
     },
     {
       "label": "GraphEdge",
@@ -1123,9 +473,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L176",
       "_origin": "ast",
+      "id": "graphedge",
       "community": 24,
-      "norm_label": "graphedge",
-      "id": "graphedge"
+      "norm_label": "graphedge"
     },
     {
       "label": "insertTopK()",
@@ -1133,9 +483,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L253",
       "_origin": "ast",
+      "id": "store_semantic_inserttopk",
       "community": 24,
-      "norm_label": "inserttopk()",
-      "id": "store_semantic_inserttopk"
+      "norm_label": "inserttopk()"
     },
     {
       "label": "embedBatch()",
@@ -1143,9 +493,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L266",
       "_origin": "ast",
+      "id": "store_semantic_embedbatch",
       "community": 24,
-      "norm_label": "embedbatch()",
-      "id": "store_semantic_embedbatch"
+      "norm_label": "embedbatch()"
     },
     {
       "label": "Client",
@@ -1153,9 +503,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L266",
       "_origin": "ast",
+      "id": "client",
       "community": 24,
-      "norm_label": "client",
-      "id": "client"
+      "norm_label": "client"
     },
     {
       "label": "encodeEmbedding()",
@@ -1163,9 +513,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L326",
       "_origin": "ast",
+      "id": "store_semantic_encodeembedding",
       "community": 24,
-      "norm_label": "encodeembedding()",
-      "id": "store_semantic_encodeembedding"
+      "norm_label": "encodeembedding()"
     },
     {
       "label": "decodeEmbedding()",
@@ -1173,9 +523,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L335",
       "_origin": "ast",
+      "id": "store_semantic_decodeembedding",
       "community": 24,
-      "norm_label": "decodeembedding()",
-      "id": "store_semantic_decodeembedding"
+      "norm_label": "decodeembedding()"
     },
     {
       "label": "normalize()",
@@ -1183,9 +533,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L342",
       "_origin": "ast",
+      "id": "store_semantic_normalize",
       "community": 24,
-      "norm_label": "normalize()",
-      "id": "store_semantic_normalize"
+      "norm_label": "normalize()"
     },
     {
       "label": "dot()",
@@ -1193,9 +543,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L359",
       "_origin": "ast",
+      "id": "store_semantic_dot",
       "community": 24,
-      "norm_label": "dot()",
-      "id": "store_semantic_dot"
+      "norm_label": "dot()"
     },
     {
       "label": ".SemanticSearchDocIDs()",
@@ -1203,9 +553,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L371",
       "_origin": "ast",
+      "id": "store_linkstore_semanticsearchdocids",
       "community": 24,
-      "norm_label": ".semanticsearchdocids()",
-      "id": "store_linkstore_semanticsearchdocids"
+      "norm_label": ".semanticsearchdocids()"
     },
     {
       "label": ".SuggestCommunityName()",
@@ -1213,9 +563,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L422",
       "_origin": "ast",
+      "id": "store_linkstore_suggestcommunityname",
       "community": 24,
-      "norm_label": ".suggestcommunityname()",
-      "id": "store_linkstore_suggestcommunityname"
+      "norm_label": ".suggestcommunityname()"
     },
     {
       "label": "App.svelte",
@@ -1418,6 +768,16 @@
       "id": "src_app_route"
     },
     {
+      "label": "svelte",
+      "file_type": "code",
+      "source_file": "svelte",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 14,
+      "norm_label": "svelte",
+      "id": "svelte"
+    },
+    {
       "label": "./lib/stores/auth.js",
       "file_type": "code",
       "source_file": "frontend/src/lib/stores/auth.ts",
@@ -1426,6 +786,16 @@
       "community": 14,
       "norm_label": "./lib/stores/auth.js",
       "id": "d_git_pkd_frontend_src_lib_stores_auth_ts"
+    },
+    {
+      "label": "../stores/tags.js",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/stores/tags.ts",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "../stores/tags.js",
+      "id": "d_git_pkd_frontend_src_lib_stores_tags_ts"
     },
     {
       "label": "./lib/components/LoginPage.svelte",
@@ -1448,6 +818,17 @@
       "id": "d_git_pkd_frontend_src_lib_components_sidebar_svelte"
     },
     {
+      "label": "Editor.svelte",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "source_location": "L1",
+      "community": 102,
+      "norm_label": "editor.svelte",
+      "id": "components_editor"
+    },
+    {
       "label": "./lib/components/GraphView.svelte",
       "file_type": "code",
       "source_file": "frontend/src/lib/components/GraphView.svelte",
@@ -1468,6 +849,16 @@
       "id": "d_git_pkd_frontend_src_lib_components_calendar_svelte"
     },
     {
+      "label": "./lib/components/Admin.svelte",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 14,
+      "norm_label": "./lib/components/admin.svelte",
+      "id": "d_git_pkd_frontend_src_lib_components_admin_svelte"
+    },
+    {
       "label": "./lib/components/ShareDialog.svelte",
       "file_type": "code",
       "source_file": "frontend/src/lib/components/ShareDialog.svelte",
@@ -1476,6 +867,226 @@
       "community": 14,
       "norm_label": "./lib/components/sharedialog.svelte",
       "id": "d_git_pkd_frontend_src_lib_components_sharedialog_svelte"
+    },
+    {
+      "label": "if()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "source_location": "L552",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "if()",
+      "id": "components_editor_if"
+    },
+    {
+      "label": "@tiptap/core",
+      "file_type": "code",
+      "source_file": "@tiptap/core",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 44,
+      "norm_label": "@tiptap/core",
+      "id": "core"
+    },
+    {
+      "label": "@tiptap/starter-kit",
+      "file_type": "code",
+      "source_file": "@tiptap/starter-kit",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "@tiptap/starter-kit",
+      "id": "starter_kit"
+    },
+    {
+      "label": "../editor/resizable-image-extension.js",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/editor/resizable-image-extension.ts",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "../editor/resizable-image-extension.js",
+      "id": "d_git_pkd_frontend_src_lib_editor_resizable_image_extension_ts"
+    },
+    {
+      "label": "@tiptap/extension-table",
+      "file_type": "code",
+      "source_file": "@tiptap/extension-table",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "@tiptap/extension-table",
+      "id": "extension_table"
+    },
+    {
+      "label": "@tiptap/extension-table-row",
+      "file_type": "code",
+      "source_file": "@tiptap/extension-table-row",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "@tiptap/extension-table-row",
+      "id": "extension_table_row"
+    },
+    {
+      "label": "@tiptap/extension-table-cell",
+      "file_type": "code",
+      "source_file": "@tiptap/extension-table-cell",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "@tiptap/extension-table-cell",
+      "id": "extension_table_cell"
+    },
+    {
+      "label": "@tiptap/extension-table-header",
+      "file_type": "code",
+      "source_file": "@tiptap/extension-table-header",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "@tiptap/extension-table-header",
+      "id": "extension_table_header"
+    },
+    {
+      "label": "@tiptap/extension-highlight",
+      "file_type": "code",
+      "source_file": "@tiptap/extension-highlight",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "@tiptap/extension-highlight",
+      "id": "extension_highlight"
+    },
+    {
+      "label": "@tiptap/extension-text-align",
+      "file_type": "code",
+      "source_file": "@tiptap/extension-text-align",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "@tiptap/extension-text-align",
+      "id": "extension_text_align"
+    },
+    {
+      "label": "@tiptap/extension-link",
+      "file_type": "code",
+      "source_file": "@tiptap/extension-link",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "@tiptap/extension-link",
+      "id": "extension_link"
+    },
+    {
+      "label": "../editor/doclink-extension.js",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/editor/doclink-extension.ts",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "../editor/doclink-extension.js",
+      "id": "d_git_pkd_frontend_src_lib_editor_doclink_extension_ts"
+    },
+    {
+      "label": "../editor/mermaid-code-block.js",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/editor/mermaid-code-block.ts",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "../editor/mermaid-code-block.js",
+      "id": "d_git_pkd_frontend_src_lib_editor_mermaid_code_block_ts"
+    },
+    {
+      "label": "turndown",
+      "file_type": "code",
+      "source_file": "turndown",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 19,
+      "norm_label": "turndown",
+      "id": "turndown"
+    },
+    {
+      "label": "./IconPicker.svelte",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/IconPicker.svelte",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "./iconpicker.svelte",
+      "id": "d_git_pkd_frontend_src_lib_components_iconpicker_svelte"
+    },
+    {
+      "label": "./VersionHistoryDialog.svelte",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/VersionHistoryDialog.svelte",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "./versionhistorydialog.svelte",
+      "id": "d_git_pkd_frontend_src_lib_components_versionhistorydialog_svelte"
+    },
+    {
+      "label": "./DuplicateTitleDialog.svelte",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/DuplicateTitleDialog.svelte",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "./duplicatetitledialog.svelte",
+      "id": "d_git_pkd_frontend_src_lib_components_duplicatetitledialog_svelte"
+    },
+    {
+      "label": "svelte/store",
+      "file_type": "code",
+      "source_file": "svelte/store",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "svelte/store",
+      "id": "store"
+    },
+    {
+      "label": "../stores/settings.js",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/stores/settings.ts",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "../stores/settings.js",
+      "id": "d_git_pkd_frontend_src_lib_stores_settings_ts"
+    },
+    {
+      "label": "marked",
+      "file_type": "code",
+      "source_file": "marked",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 19,
+      "norm_label": "marked",
+      "id": "marked"
+    },
+    {
+      "label": "dompurify",
+      "file_type": "code",
+      "source_file": "dompurify",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 19,
+      "norm_label": "dompurify",
+      "id": "dompurify"
+    },
+    {
+      "label": "@tiptap/pm/model",
+      "file_type": "code",
+      "source_file": "@tiptap/pm/model",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 102,
+      "norm_label": "@tiptap/pm/model",
+      "id": "model"
     },
     {
       "label": "update-context.ps1",
@@ -2272,7 +1883,7 @@
       "source_file": "frontend/package.json",
       "source_location": "L31",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "d3-drag",
       "community_name": "Attachment Job Handlers",
       "id": "frontend_package_dependencies_d3_drag"
@@ -2283,7 +1894,7 @@
       "source_file": "frontend/package.json",
       "source_location": "L32",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "d3-force",
       "community_name": "Attachment Job Handlers",
       "id": "frontend_package_dependencies_d3_force"
@@ -2294,7 +1905,7 @@
       "source_file": "frontend/package.json",
       "source_location": "L33",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "d3-selection",
       "community_name": "Attachment Job Handlers",
       "id": "frontend_package_dependencies_d3_selection"
@@ -2305,7 +1916,7 @@
       "source_file": "frontend/package.json",
       "source_location": "L34",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "d3-zoom",
       "community_name": "Attachment Job Handlers",
       "id": "frontend_package_dependencies_d3_zoom"
@@ -2583,7 +2194,7 @@
       "confidence": "EXTRACTED",
       "_origin": "ast",
       "source_location": "L1",
-      "community": 102,
+      "community": 28,
       "norm_label": "versionhistorydialog.svelte",
       "community_name": "Attachment Job Handlers",
       "id": "components_versionhistorydialog"
@@ -13302,10 +12913,417 @@
       "source_file": "frontend/src/lib/components/GraphView.svelte",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "./lib/components/graphview.svelte",
       "community_name": "Attachment Job Handlers",
       "id": "components_graphview"
+    },
+    {
+      "label": "./lib/components/Admin.svelte",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "./lib/components/admin.svelte",
+      "community_name": "Frontend Components",
+      "id": "components_admin"
+    },
+    {
+      "label": "formatCountdown()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L471",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "formatcountdown()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_formatcountdown"
+    },
+    {
+      "label": "startRestore()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L479",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "startrestore()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_startrestore"
+    },
+    {
+      "label": "pollRestoreJob()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L507",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "pollrestorejob()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_pollrestorejob"
+    },
+    {
+      "label": "restoreAttachments()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L525",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "restoreattachments()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_restoreattachments"
+    },
+    {
+      "label": "cleanupStorageSource()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L539",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "cleanupstoragesource()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_cleanupstoragesource"
+    },
+    {
+      "label": "loadShares()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L544",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "loadshares()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_loadshares"
+    },
+    {
+      "label": "revokeShare()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L553",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "revokeshare()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_revokeshare"
+    },
+    {
+      "label": "copyShareURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L560",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "copyshareurl()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_copyshareurl"
+    },
+    {
+      "label": "loadAdminTags()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L570",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "loadadmintags()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_loadadmintags"
+    },
+    {
+      "label": "syncEditableTags()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L575",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "synceditabletags()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_synceditabletags"
+    },
+    {
+      "label": "handleBackup()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L580",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlebackup()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_handlebackup"
+    },
+    {
+      "label": "handleRestore()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L599",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlerestore()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_handlerestore"
+    },
+    {
+      "label": "restoreFromTrash()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L619",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "restorefromtrash()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_restorefromtrash"
+    },
+    {
+      "label": "permanentDelete()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L624",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "permanentdelete()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_permanentdelete"
+    },
+    {
+      "label": "emptyTrash()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L630",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "emptytrash()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_emptytrash"
+    },
+    {
+      "label": "handleRenameTag()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L637",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlerenametag()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_handlerenametag"
+    },
+    {
+      "label": "startEdit()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L655",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "startedit()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_startedit"
+    },
+    {
+      "label": "cancelEdit()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L662",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "canceledit()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_canceledit"
+    },
+    {
+      "label": "saveTag()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L667",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "savetag()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_savetag"
+    },
+    {
+      "label": "deleteTag()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L683",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "deletetag()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_deletetag"
+    },
+    {
+      "label": "handlePruneTags()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L696",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handleprunetags()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_handleprunetags"
+    },
+    {
+      "label": "saveTagColor()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L712",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "savetagcolor()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_savetagcolor"
+    },
+    {
+      "label": "deleteAttachment()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L722",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "deleteattachment()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_deleteattachment"
+    },
+    {
+      "label": "handleCleanup()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L729",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlecleanup()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_handlecleanup"
+    },
+    {
+      "label": "handleCheckLinks()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L739",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlechecklinks()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_handlechecklinks"
+    },
+    {
+      "label": "deleteInvalidLinks()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L749",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "deleteinvalidlinks()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_deleteinvalidlinks"
+    },
+    {
+      "label": "loadAdminURLs()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L760",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "loadadminurls()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_loadadminurls"
+    },
+    {
+      "label": "startEditURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L768",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "startediturl()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_startediturl"
+    },
+    {
+      "label": "cancelEditURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L773",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "cancelediturl()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_cancelediturl"
+    },
+    {
+      "label": "saveEditURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L777",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "saveediturl()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_saveediturl"
+    },
+    {
+      "label": "deleteAdminURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L789",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "deleteadminurl()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_deleteadminurl"
+    },
+    {
+      "label": "isImage()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L795",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "isimage()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_isimage"
+    },
+    {
+      "label": "isMarkdown()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L799",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "ismarkdown()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_ismarkdown"
+    },
+    {
+      "label": "previewType()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L805",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "previewtype()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_previewtype"
+    },
+    {
+      "label": "formatBytes()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L841",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "formatbytes()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_formatbytes"
+    },
+    {
+      "label": "fileIcon()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L848",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "fileicon()",
+      "community_name": "Frontend Components",
+      "id": "components_admin_fileicon"
     },
     {
       "label": "d3-force",
@@ -13313,7 +13331,7 @@
       "source_file": "d3-force",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "d3-force",
       "community_name": "Attachment Job Handlers",
       "id": "d3_force"
@@ -13324,7 +13342,7 @@
       "source_file": "d3-selection",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "d3-selection",
       "community_name": "Attachment Job Handlers",
       "id": "d3_selection"
@@ -13335,7 +13353,7 @@
       "source_file": "d3-zoom",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "d3-zoom",
       "community_name": "Attachment Job Handlers",
       "id": "d3_zoom"
@@ -13346,7 +13364,7 @@
       "source_file": "d3-drag",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "d3-drag",
       "community_name": "Attachment Job Handlers",
       "id": "d3_drag"
@@ -13357,7 +13375,7 @@
       "source_file": "frontend/src/lib/graph/community.ts",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "community": 19,
+      "community": 28,
       "norm_label": "../graph/community.js",
       "community_name": "Attachment Job Handlers",
       "id": "d_git_pkd_frontend_src_lib_graph_community_ts"
@@ -14732,7 +14750,7 @@
       "source_file": "internal/store/documents.go",
       "source_location": "L54",
       "_origin": "ast",
-      "community": 1,
+      "community": 5,
       "norm_label": "newdocumentstore()",
       "community_name": "Backup Job Management",
       "id": "store_documents_newdocumentstore"
@@ -15600,607 +15618,162 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L662",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L1",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_canceledit"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L773",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_cancelediturl"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L539",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_cleanupstoragesource"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L560",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_copyshareurl"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L789",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_deleteadminurl"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L722",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_deleteattachment"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L749",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_deleteinvalidlinks"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L683",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_deletetag"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L604",
-      "weight": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_downloadpreviewatt",
+      "source": "adr_001_semantic_search_score_display",
+      "target": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L610",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L50",
       "weight": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_downloads3backup",
+      "source": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica",
+      "target": "adr_001_semantic_search_score_display_consequ\u00eancias",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L630",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_emptytrash"
+      "source": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica",
+      "target": "adr_001_semantic_search_score_display_contexto",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L848",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L16",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_fileicon"
+      "source": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica",
+      "target": "adr_001_semantic_search_score_display_decis\u00f5es",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L841",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L18",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_formatbytes"
+      "source": "adr_001_semantic_search_score_display_decis\u00f5es",
+      "target": "adr_001_semantic_search_score_display_d1_flat_list_ordenada_por_score",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L471",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L26",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_formatcountdown"
+      "source": "adr_001_semantic_search_score_display_decis\u00f5es",
+      "target": "adr_001_semantic_search_score_display_d2_score_decimal_com_2_casas_cor_por_faixa",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L580",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L38",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_handlebackup"
+      "source": "adr_001_semantic_search_score_display_decis\u00f5es",
+      "target": "adr_001_semantic_search_score_display_d3_reusar_treenode_svelte",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L739",
+      "source_file": "docs/adr/001-semantic-search-score-display.md",
+      "source_location": "L42",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_handlechecklinks"
+      "source": "adr_001_semantic_search_score_display_decis\u00f5es",
+      "target": "adr_001_semantic_search_score_display_d4_campo_score_em_documenttreenode",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L729",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L1",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_handlecleanup"
+      "source": "adr_glossary",
+      "target": "adr_glossary_gloss\u00e1rio_pkd",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L696",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L21",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_handleprunetags"
+      "source": "adr_glossary_gloss\u00e1rio_pkd",
+      "target": "adr_glossary_busca_l\u00e9xica_lexical_search",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L637",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L17",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_handlerenametag"
+      "source": "adr_glossary_gloss\u00e1rio_pkd",
+      "target": "adr_glossary_busca_sem\u00e2ntica_semantic_search",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L599",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L29",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_handlerestore"
+      "source": "adr_glossary_gloss\u00e1rio_pkd",
+      "target": "adr_glossary_cosine_similarity",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L795",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L13",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_isimage"
+      "source": "adr_glossary_gloss\u00e1rio_pkd",
+      "target": "adr_glossary_embedding",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L799",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L25",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_ismarkdown"
+      "source": "adr_glossary_gloss\u00e1rio_pkd",
+      "target": "adr_glossary_flat_list_lista_plana",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L570",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L3",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_loadadmintags"
+      "source": "adr_glossary_gloss\u00e1rio_pkd",
+      "target": "adr_glossary_score_de_similaridade_similarity_score",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L760",
+      "source_file": "docs/adr/glossary.md",
+      "source_location": "L33",
       "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_loadadminurls"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L544",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_loadshares"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L624",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_permanentdelete"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L507",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_pollrestorejob"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L805",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_previewtype"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L525",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_restoreattachments"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L619",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_restorefromtrash"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L553",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_revokeshare"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L777",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_saveediturl"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L667",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_savetag"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L712",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_savetagcolor"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L655",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_startedit"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L768",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_startediturl"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L479",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_startrestore"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L575",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "components_admin_synceditabletags"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "d_git_pkd_frontend_src_lib_api_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "d_git_pkd_frontend_src_lib_stores_documents_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "d_git_pkd_frontend_src_lib_stores_settings_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "d_git_pkd_frontend_src_lib_stores_tags_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "dompurify"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "marked"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "confidence_score": 1.0,
-      "source": "components_admin",
-      "target": "svelte"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.svelte",
-      "confidence_score": 1.0,
-      "source": "src_app",
-      "target": "components_admin"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L501",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin_startrestore",
-      "target": "components_admin_pollrestorejob"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L576",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin_synceditabletags",
-      "target": "components_admin_loadadmintags"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L689",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin_deletetag",
-      "target": "components_admin_synceditabletags"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L706",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin_handleprunetags",
-      "target": "components_admin_synceditabletags"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L649",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin_handlerenametag",
-      "target": "components_admin_synceditabletags"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L676",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin_savetag",
-      "target": "components_admin_synceditabletags"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L718",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin_savetagcolor",
-      "target": "components_admin_synceditabletags"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L857",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin_fileicon",
-      "target": "components_admin_ismarkdown"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L811",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_admin_previewtype",
-      "target": "components_admin_ismarkdown"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "svelte"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/GraphView.svelte",
-      "confidence_score": 1.0,
-      "source": "components_graphview",
-      "target": "svelte"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L14",
-      "weight": 1.0,
-      "context": "import",
-      "confidence_score": 1.0,
-      "source": "frontend_package_devdependencies_svelte",
-      "target": "svelte"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.svelte",
-      "confidence_score": 1.0,
-      "source": "src_app",
-      "target": "svelte"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/main.js",
-      "source_location": "L4",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "src_main",
-      "target": "svelte"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_api_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/GraphView.svelte",
-      "confidence_score": 1.0,
-      "source": "components_graphview",
-      "target": "d_git_pkd_frontend_src_lib_api_ts"
+      "source": "adr_glossary_gloss\u00e1rio_pkd",
+      "target": "adr_glossary_semantichit",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -16213,26 +15786,18 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "source_file": "frontend/src/lib/components/TreeNode.svelte",
       "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_stores_tags_ts"
+      "source": "components_treenode",
+      "target": "d_git_pkd_frontend_src_lib_stores_documents_ts"
     },
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.svelte",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
       "confidence_score": 1.0,
-      "source": "src_app",
-      "target": "d_git_pkd_frontend_src_lib_stores_tags_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_stores_settings_ts"
+      "source": "components_admin",
+      "target": "d_git_pkd_frontend_src_lib_stores_documents_ts"
     },
     {
       "relation": "imports_from",
@@ -16248,14 +15813,6 @@
       "source_file": "frontend/src/lib/components/GraphView.svelte",
       "confidence_score": 1.0,
       "source": "components_graphview",
-      "target": "d_git_pkd_frontend_src_lib_stores_documents_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/TreeNode.svelte",
-      "confidence_score": 1.0,
-      "source": "components_treenode",
       "target": "d_git_pkd_frontend_src_lib_stores_documents_ts"
     },
     {
@@ -16277,21 +15834,10 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
       "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "marked"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L36",
-      "weight": 1.0,
-      "context": "import",
-      "confidence_score": 1.0,
-      "source": "frontend_package_dependencies_marked",
-      "target": "marked"
+      "source": "components_admin",
+      "target": "d_git_pkd_frontend_src_lib_api_ts"
     },
     {
       "relation": "imports_from",
@@ -16299,405 +15845,15 @@
       "source_file": "frontend/src/lib/components/Editor.svelte",
       "confidence_score": 1.0,
       "source": "components_editor",
-      "target": "dompurify"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L35",
-      "weight": 1.0,
-      "context": "import",
-      "confidence_score": 1.0,
-      "source": "frontend_package_dependencies_dompurify",
-      "target": "dompurify"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "source_location": "L586",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "components_editor_catch"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "source_location": "L723",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "components_editor_if"
+      "target": "d_git_pkd_frontend_src_lib_api_ts"
     },
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "source_file": "frontend/src/lib/components/GraphView.svelte",
       "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "core"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_components_duplicatetitledialog_svelte"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_components_iconpicker_svelte"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_components_versionhistorydialog_svelte"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_editor_doclink_extension_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_editor_mermaid_code_block_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_editor_resizable_image_extension_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "extension_highlight"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "extension_link"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "extension_table"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "extension_table_cell"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "extension_table_header"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "extension_table_row"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "extension_text_align"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "model"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "starter_kit"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "store"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "turndown"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.svelte",
-      "confidence_score": 1.0,
-      "source": "src_app",
-      "target": "components_editor"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/editor/doclink-extension.js",
-      "source_location": "L1",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "editor_doclink_extension",
-      "target": "core"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/package.json",
-      "source_location": "L38",
-      "weight": 1.0,
-      "context": "import",
-      "confidence_score": 1.0,
-      "source": "frontend_package_dependencies_turndown",
-      "target": "turndown"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/server.go",
-      "source_location": "L29",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "internal_server_server_go_server_server",
-      "target": "store"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/server.go",
-      "source_location": "L90",
-      "weight": 1.0,
-      "context": "parameter_type",
-      "confidence_score": 1.0,
-      "source": "server_server_new",
-      "target": "store"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/stores/documents.js",
-      "source_location": "L1",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "stores_documents",
-      "target": "store"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_001_semantic_search_score_display",
-      "target": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L50",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica",
-      "target": "adr_001_semantic_search_score_display_consequ\u00eancias"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L6",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica",
-      "target": "adr_001_semantic_search_score_display_contexto"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L16",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_001_semantic_search_score_display_adr_001_exibi\u00e7\u00e3o_de_score_na_busca_sem\u00e2ntica",
-      "target": "adr_001_semantic_search_score_display_decis\u00f5es"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L18",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_001_semantic_search_score_display_decis\u00f5es",
-      "target": "adr_001_semantic_search_score_display_d1_flat_list_ordenada_por_score"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L26",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_001_semantic_search_score_display_decis\u00f5es",
-      "target": "adr_001_semantic_search_score_display_d2_score_decimal_com_2_casas_cor_por_faixa"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L38",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_001_semantic_search_score_display_decis\u00f5es",
-      "target": "adr_001_semantic_search_score_display_d3_reusar_treenode_svelte"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/001-semantic-search-score-display.md",
-      "source_location": "L42",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_001_semantic_search_score_display_decis\u00f5es",
-      "target": "adr_001_semantic_search_score_display_d4_campo_score_em_documenttreenode"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_glossary",
-      "target": "adr_glossary_gloss\u00e1rio_pkd"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L21",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_glossary_gloss\u00e1rio_pkd",
-      "target": "adr_glossary_busca_l\u00e9xica_lexical_search"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L17",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_glossary_gloss\u00e1rio_pkd",
-      "target": "adr_glossary_busca_sem\u00e2ntica_semantic_search"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L29",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_glossary_gloss\u00e1rio_pkd",
-      "target": "adr_glossary_cosine_similarity"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L13",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_glossary_gloss\u00e1rio_pkd",
-      "target": "adr_glossary_embedding"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L25",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_glossary_gloss\u00e1rio_pkd",
-      "target": "adr_glossary_flat_list_lista_plana"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L3",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_glossary_gloss\u00e1rio_pkd",
-      "target": "adr_glossary_score_de_similaridade_similarity_score"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/adr/glossary.md",
-      "source_location": "L33",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "adr_glossary_gloss\u00e1rio_pkd",
-      "target": "adr_glossary_semantichit"
+      "source": "components_graphview",
+      "target": "d_git_pkd_frontend_src_lib_api_ts"
     },
     {
       "relation": "contains",
@@ -16715,9 +15871,9 @@
       "source_file": "internal/model/document.go",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "model_document",
-      "target": "model_document"
+      "target": "model_document",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -16738,17 +15894,6 @@
       "confidence_score": 1.0,
       "source": "model_document",
       "target": "model_documentversion"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/document.go",
-      "source_location": "L24",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "model_document",
-      "target": "time"
     },
     {
       "relation": "references",
@@ -16776,12 +15921,23 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "internal/model/document.go",
+      "source_location": "L24",
+      "weight": 1.0,
+      "context": "field",
+      "source": "model_document",
+      "target": "time",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/document.go",
       "source_location": "L41",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "model_documenttreenode",
-      "target": "time"
+      "target": "time",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -16790,9 +15946,9 @@
       "source_location": "L80",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "model_documentversion",
-      "target": "time"
+      "target": "time",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -16832,9 +15988,9 @@
       "source_file": "internal/server/handlers_tree.go",
       "source_location": "L9",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "server_server",
-      "target": "server_server_handletree"
+      "target": "server_server_handletree",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -16843,9 +15999,9 @@
       "source_location": "L9",
       "weight": 1.0,
       "context": "return_type",
-      "confidence_score": 1.0,
       "source": "server_server_handletree",
-      "target": "handlerfunc"
+      "target": "handlerfunc",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -16865,9 +16021,9 @@
       "source_location": "L79",
       "weight": 1.0,
       "context": "parameter_type",
-      "confidence_score": 1.0,
       "source": "server_handlers_tree_buildtree",
-      "target": "document"
+      "target": "document",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -16946,9 +16102,9 @@
       "source_file": "internal/store/semantic.go",
       "source_location": "L41",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "store_semantic",
-      "target": "store_semantichit"
+      "target": "store_semantichit",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -16978,9 +16134,9 @@
       "source_location": "L371",
       "weight": 1.0,
       "context": "return_type",
-      "confidence_score": 1.0,
       "source": "store_linkstore_semanticsearchdocids",
-      "target": "store_semantichit"
+      "target": "store_semantichit",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -17029,9 +16185,9 @@
       "source_location": "L51",
       "weight": 1.0,
       "context": "parameter_type",
-      "confidence_score": 1.0,
       "source": "store_linkstore_embedstaledocs",
-      "target": "context"
+      "target": "context",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -17073,9 +16229,9 @@
       "source_location": "L176",
       "weight": 1.0,
       "context": "parameter_type",
-      "confidence_score": 1.0,
       "source": "store_linkstore_getsemanticedges",
-      "target": "context"
+      "target": "context",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -17084,9 +16240,9 @@
       "source_location": "L371",
       "weight": 1.0,
       "context": "parameter_type",
-      "confidence_score": 1.0,
       "source": "store_linkstore_semanticsearchdocids",
-      "target": "context"
+      "target": "context",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -17095,9 +16251,9 @@
       "source_location": "L422",
       "weight": 1.0,
       "context": "parameter_type",
-      "confidence_score": 1.0,
       "source": "store_linkstore_suggestcommunityname",
-      "target": "context"
+      "target": "context",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -17106,9 +16262,9 @@
       "source_location": "L266",
       "weight": 1.0,
       "context": "parameter_type",
-      "confidence_score": 1.0,
       "source": "store_semantic_embedbatch",
-      "target": "context"
+      "target": "context",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -17226,7 +16382,31 @@
       "source_file": "frontend/src/App.svelte",
       "confidence_score": 1.0,
       "source": "src_app",
+      "target": "components_admin"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.svelte",
+      "confidence_score": 1.0,
+      "source": "src_app",
+      "target": "components_editor"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.svelte",
+      "confidence_score": 1.0,
+      "source": "src_app",
       "target": "components_graphview"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.svelte",
+      "confidence_score": 1.0,
+      "source": "src_app",
+      "target": "d_git_pkd_frontend_src_lib_components_admin_svelte"
     },
     {
       "relation": "imports_from",
@@ -17275,6 +16455,14 @@
       "confidence_score": 1.0,
       "source": "src_app",
       "target": "d_git_pkd_frontend_src_lib_stores_auth_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.svelte",
+      "confidence_score": 1.0,
+      "source": "src_app",
+      "target": "d_git_pkd_frontend_src_lib_stores_tags_ts"
     },
     {
       "relation": "contains",
@@ -17468,6 +16656,14 @@
     },
     {
       "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/App.svelte",
+      "confidence_score": 1.0,
+      "source": "src_app",
+      "target": "svelte"
+    },
+    {
+      "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/main.js",
@@ -17476,6 +16672,347 @@
       "confidence_score": 1.0,
       "source": "src_main",
       "target": "src_app"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "svelte"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "svelte"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/GraphView.svelte",
+      "confidence_score": 1.0,
+      "source": "components_graphview",
+      "target": "svelte"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L14",
+      "weight": 1.0,
+      "context": "import",
+      "confidence_score": 1.0,
+      "source": "frontend_package_devdependencies_svelte",
+      "target": "svelte"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/main.js",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_main",
+      "target": "svelte"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "d_git_pkd_frontend_src_lib_stores_tags_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "d_git_pkd_frontend_src_lib_stores_tags_ts"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "source_location": "L723",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "components_editor_if"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "core"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "d_git_pkd_frontend_src_lib_components_duplicatetitledialog_svelte"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "d_git_pkd_frontend_src_lib_components_iconpicker_svelte"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "d_git_pkd_frontend_src_lib_components_versionhistorydialog_svelte"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "d_git_pkd_frontend_src_lib_editor_doclink_extension_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "d_git_pkd_frontend_src_lib_editor_mermaid_code_block_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "d_git_pkd_frontend_src_lib_editor_resizable_image_extension_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "d_git_pkd_frontend_src_lib_stores_settings_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "dompurify"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "extension_highlight"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "extension_link"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "extension_table"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "extension_table_cell"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "extension_table_header"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "extension_table_row"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "extension_text_align"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "marked"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "model"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "starter_kit"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "store"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "turndown"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/editor/doclink-extension.js",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "editor_doclink_extension",
+      "target": "core"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L38",
+      "weight": 1.0,
+      "context": "import",
+      "confidence_score": 1.0,
+      "source": "frontend_package_dependencies_turndown",
+      "target": "turndown"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/server.go",
+      "source_location": "L29",
+      "weight": 1.0,
+      "context": "field",
+      "confidence_score": 1.0,
+      "source": "internal_server_server_go_server_server",
+      "target": "store"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/server.go",
+      "source_location": "L90",
+      "weight": 1.0,
+      "context": "parameter_type",
+      "confidence_score": 1.0,
+      "source": "server_server_new",
+      "target": "store"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/stores/documents.js",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "stores_documents",
+      "target": "store"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "d_git_pkd_frontend_src_lib_stores_settings_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "marked"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L36",
+      "weight": 1.0,
+      "context": "import",
+      "confidence_score": 1.0,
+      "source": "frontend_package_dependencies_marked",
+      "target": "marked"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "dompurify"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/package.json",
+      "source_location": "L35",
+      "weight": 1.0,
+      "context": "import",
+      "confidence_score": 1.0,
+      "source": "frontend_package_dependencies_dompurify",
+      "target": "dompurify"
     },
     {
       "relation": "contains",
@@ -34000,6 +33537,465 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L662",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_canceledit"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L773",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_cancelediturl"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L539",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_cleanupstoragesource"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L560",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_copyshareurl"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L789",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_deleteadminurl"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L722",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_deleteattachment"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L749",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_deleteinvalidlinks"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L683",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_deletetag"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L630",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_emptytrash"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L848",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_fileicon"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L841",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_formatbytes"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L471",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_formatcountdown"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L580",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_handlebackup"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L739",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_handlechecklinks"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L729",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_handlecleanup"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L696",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_handleprunetags"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L637",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_handlerenametag"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L599",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_handlerestore"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L795",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_isimage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L799",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_ismarkdown"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L570",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_loadadmintags"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L760",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_loadadminurls"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L544",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_loadshares"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L624",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_permanentdelete"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L507",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_pollrestorejob"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L805",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_previewtype"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L525",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_restoreattachments"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L619",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_restorefromtrash"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L553",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_revokeshare"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L777",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_saveediturl"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L667",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_savetag"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L712",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_savetagcolor"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L655",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_startedit"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L768",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_startediturl"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L479",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_startrestore"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L575",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "components_admin_synceditabletags"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L501",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin_startrestore",
+      "target": "components_admin_pollrestorejob"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L576",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin_synceditabletags",
+      "target": "components_admin_loadadmintags"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L689",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin_deletetag",
+      "target": "components_admin_synceditabletags"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L706",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin_handleprunetags",
+      "target": "components_admin_synceditabletags"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L649",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin_handlerenametag",
+      "target": "components_admin_synceditabletags"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L676",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin_savetag",
+      "target": "components_admin_synceditabletags"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L718",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin_savetagcolor",
+      "target": "components_admin_synceditabletags"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L857",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin_fileicon",
+      "target": "components_admin_ismarkdown"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L811",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_admin_previewtype",
+      "target": "components_admin_ismarkdown"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "frontend/src/lib/graph/community.js",
       "source_location": "L63",
       "weight": 1.0,
@@ -37133,5 +37129,5 @@
       "source_file": "CLAUDE.md"
     }
   ],
-  "built_at_commit": "aa75990601a3f2a6bbef379b5d44d7de65fdc899"
+  "built_at_commit": "442cd1126e031cee27fdcd6cc776c321494f1a15"
 }
