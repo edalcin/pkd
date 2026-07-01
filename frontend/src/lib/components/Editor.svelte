@@ -113,7 +113,9 @@
     scheduleAutoSave()
   }
 
-  function onLinkBlur() {
+  function onLinkBlur(e) {
+    const next = e.relatedTarget
+    if (next && next.closest?.('.tb-panel')) return
     setTimeout(() => { linkOpen = false; linkHref = ''; linkText = '' }, 150)
   }
 

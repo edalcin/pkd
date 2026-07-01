@@ -48,404 +48,124 @@
   },
   "nodes": [
     {
-      "label": "Admin.svelte",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "label": "CLAUDE.md",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "components_admin",
-      "community": 8,
-      "norm_label": "admin.svelte"
+      "id": "claude",
+      "community": 62,
+      "norm_label": "claude.md"
     },
     {
-      "label": "formatCountdown()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L484",
+      "label": "pkd Development Guidelines",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
       "_origin": "ast",
-      "id": "components_admin_formatcountdown",
-      "community": 8,
-      "norm_label": "formatcountdown()"
+      "id": "claude_pkd_development_guidelines",
+      "community": 62,
+      "norm_label": "pkd development guidelines"
     },
     {
-      "label": "startRestore()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L492",
+      "label": "Active Technologies",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L5",
       "_origin": "ast",
-      "id": "components_admin_startrestore",
-      "community": 8,
-      "norm_label": "startrestore()"
+      "id": "claude_active_technologies",
+      "community": 62,
+      "norm_label": "active technologies"
     },
     {
-      "label": "pollRestoreJob()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L520",
+      "label": "Project Structure",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L16",
       "_origin": "ast",
-      "id": "components_admin_pollrestorejob",
-      "community": 8,
-      "norm_label": "pollrestorejob()"
+      "id": "claude_project_structure",
+      "community": 62,
+      "norm_label": "project structure"
     },
     {
-      "label": "restoreAttachments()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L538",
+      "label": "Commands",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L24",
       "_origin": "ast",
-      "id": "components_admin_restoreattachments",
-      "community": 8,
-      "norm_label": "restoreattachments()"
+      "id": "claude_commands",
+      "community": 62,
+      "norm_label": "commands"
     },
     {
-      "label": "cleanupStorageSource()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L552",
+      "label": "Add commands for Go 1.23 (pure Go, CGO disabled)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L26",
       "_origin": "ast",
-      "id": "components_admin_cleanupstoragesource",
-      "community": 8,
-      "norm_label": "cleanupstoragesource()"
+      "id": "claude_add_commands_for_go_1_23_pure_go_cgo_disabled",
+      "community": 62,
+      "norm_label": "add commands for go 1.23 (pure go, cgo disabled)"
     },
     {
-      "label": "loadShares()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L557",
+      "label": "Code Style",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L28",
       "_origin": "ast",
-      "id": "components_admin_loadshares",
-      "community": 8,
-      "norm_label": "loadshares()"
+      "id": "claude_code_style",
+      "community": 62,
+      "norm_label": "code style"
     },
     {
-      "label": "revokeShare()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L566",
+      "label": "Recent Changes",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L32",
       "_origin": "ast",
-      "id": "components_admin_revokeshare",
-      "community": 8,
-      "norm_label": "revokeshare()"
+      "id": "claude_recent_changes",
+      "community": 62,
+      "norm_label": "recent changes"
     },
     {
-      "label": "copyShareURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L573",
+      "label": "Branch Strategy",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L41",
       "_origin": "ast",
-      "id": "components_admin_copyshareurl",
-      "community": 8,
-      "norm_label": "copyshareurl()"
+      "id": "claude_branch_strategy",
+      "community": 62,
+      "norm_label": "branch strategy"
     },
     {
-      "label": "loadAdminTags()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L583",
+      "label": "Docker Tags",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L45",
       "_origin": "ast",
-      "id": "components_admin_loadadmintags",
-      "community": 8,
-      "norm_label": "loadadmintags()"
+      "id": "claude_docker_tags",
+      "community": 62,
+      "norm_label": "docker tags"
     },
     {
-      "label": "syncEditableTags()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L588",
+      "label": "graphify",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L58",
       "_origin": "ast",
-      "id": "components_admin_synceditabletags",
-      "community": 8,
-      "norm_label": "synceditabletags()"
+      "id": "claude_graphify",
+      "community": 62,
+      "norm_label": "graphify"
     },
     {
-      "label": "handleBackup()",
+      "label": "ShareDialog.svelte",
       "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L593",
+      "source_file": "frontend/src/lib/components/ShareDialog.svelte",
+      "source_location": "L1",
       "_origin": "ast",
-      "id": "components_admin_handlebackup",
-      "community": 8,
-      "norm_label": "handlebackup()"
-    },
-    {
-      "label": "downloadPreviewAtt()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L604",
-      "_origin": "ast",
-      "id": "components_admin_downloadpreviewatt",
-      "community": 8,
-      "norm_label": "downloadpreviewatt()"
-    },
-    {
-      "label": "downloadS3Backup()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L610",
-      "_origin": "ast",
-      "id": "components_admin_downloads3backup",
-      "community": 8,
-      "norm_label": "downloads3backup()"
-    },
-    {
-      "label": "handleRestore()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L618",
-      "_origin": "ast",
-      "id": "components_admin_handlerestore",
-      "community": 8,
-      "norm_label": "handlerestore()"
-    },
-    {
-      "label": "restoreFromTrash()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L638",
-      "_origin": "ast",
-      "id": "components_admin_restorefromtrash",
-      "community": 8,
-      "norm_label": "restorefromtrash()"
-    },
-    {
-      "label": "permanentDelete()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L643",
-      "_origin": "ast",
-      "id": "components_admin_permanentdelete",
-      "community": 8,
-      "norm_label": "permanentdelete()"
-    },
-    {
-      "label": "emptyTrash()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L649",
-      "_origin": "ast",
-      "id": "components_admin_emptytrash",
-      "community": 8,
-      "norm_label": "emptytrash()"
-    },
-    {
-      "label": "handleRenameTag()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L656",
-      "_origin": "ast",
-      "id": "components_admin_handlerenametag",
-      "community": 8,
-      "norm_label": "handlerenametag()"
-    },
-    {
-      "label": "startEdit()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L674",
-      "_origin": "ast",
-      "id": "components_admin_startedit",
-      "community": 8,
-      "norm_label": "startedit()"
-    },
-    {
-      "label": "cancelEdit()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L681",
-      "_origin": "ast",
-      "id": "components_admin_canceledit",
-      "community": 8,
-      "norm_label": "canceledit()"
-    },
-    {
-      "label": "saveTag()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L686",
-      "_origin": "ast",
-      "id": "components_admin_savetag",
-      "community": 8,
-      "norm_label": "savetag()"
-    },
-    {
-      "label": "deleteTag()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L702",
-      "_origin": "ast",
-      "id": "components_admin_deletetag",
-      "community": 8,
-      "norm_label": "deletetag()"
-    },
-    {
-      "label": "handlePruneTags()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L715",
-      "_origin": "ast",
-      "id": "components_admin_handleprunetags",
-      "community": 8,
-      "norm_label": "handleprunetags()"
-    },
-    {
-      "label": "saveTagColor()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L731",
-      "_origin": "ast",
-      "id": "components_admin_savetagcolor",
-      "community": 8,
-      "norm_label": "savetagcolor()"
-    },
-    {
-      "label": "deleteAttachment()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L741",
-      "_origin": "ast",
-      "id": "components_admin_deleteattachment",
-      "community": 8,
-      "norm_label": "deleteattachment()"
-    },
-    {
-      "label": "handleCleanup()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L748",
-      "_origin": "ast",
-      "id": "components_admin_handlecleanup",
-      "community": 8,
-      "norm_label": "handlecleanup()"
-    },
-    {
-      "label": "handleCheckLinks()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L758",
-      "_origin": "ast",
-      "id": "components_admin_handlechecklinks",
-      "community": 8,
-      "norm_label": "handlechecklinks()"
-    },
-    {
-      "label": "deleteInvalidLinks()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L768",
-      "_origin": "ast",
-      "id": "components_admin_deleteinvalidlinks",
-      "community": 8,
-      "norm_label": "deleteinvalidlinks()"
-    },
-    {
-      "label": "loadAdminURLs()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L779",
-      "_origin": "ast",
-      "id": "components_admin_loadadminurls",
-      "community": 8,
-      "norm_label": "loadadminurls()"
-    },
-    {
-      "label": "startEditURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L787",
-      "_origin": "ast",
-      "id": "components_admin_startediturl",
-      "community": 8,
-      "norm_label": "startediturl()"
-    },
-    {
-      "label": "cancelEditURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L792",
-      "_origin": "ast",
-      "id": "components_admin_cancelediturl",
-      "community": 8,
-      "norm_label": "cancelediturl()"
-    },
-    {
-      "label": "saveEditURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L796",
-      "_origin": "ast",
-      "id": "components_admin_saveediturl",
-      "community": 8,
-      "norm_label": "saveediturl()"
-    },
-    {
-      "label": "deleteAdminURL()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L808",
-      "_origin": "ast",
-      "id": "components_admin_deleteadminurl",
-      "community": 8,
-      "norm_label": "deleteadminurl()"
-    },
-    {
-      "label": "isImage()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L814",
-      "_origin": "ast",
-      "id": "components_admin_isimage",
-      "community": 8,
-      "norm_label": "isimage()"
-    },
-    {
-      "label": "isMarkdown()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L818",
-      "_origin": "ast",
-      "id": "components_admin_ismarkdown",
-      "community": 8,
-      "norm_label": "ismarkdown()"
-    },
-    {
-      "label": "previewType()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L824",
-      "_origin": "ast",
-      "id": "components_admin_previewtype",
-      "community": 8,
-      "norm_label": "previewtype()"
-    },
-    {
-      "label": "formatBytes()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L860",
-      "_origin": "ast",
-      "id": "components_admin_formatbytes",
-      "community": 8,
-      "norm_label": "formatbytes()"
-    },
-    {
-      "label": "fileIcon()",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "source_location": "L867",
-      "_origin": "ast",
-      "id": "components_admin_fileicon",
-      "community": 8,
-      "norm_label": "fileicon()"
-    },
-    {
-      "label": "svelte",
-      "file_type": "code",
-      "source_file": "svelte",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "id": "svelte",
-      "community": 14,
-      "norm_label": "svelte"
+      "id": "components_sharedialog",
+      "community": 25,
+      "norm_label": "sharedialog.svelte"
     },
     {
       "label": "../api.js",
@@ -454,8 +174,758 @@
       "confidence": "EXTRACTED",
       "_origin": "ast",
       "id": "d_git_pkd_frontend_src_lib_api_ts",
-      "community": 102,
+      "community": 25,
       "norm_label": "../api.js"
+    },
+    {
+      "label": "share.go",
+      "file_type": "code",
+      "source_file": "internal/model/share.go",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "model_share",
+      "community": 54,
+      "norm_label": "share.go"
+    },
+    {
+      "label": "ShareLink",
+      "file_type": "code",
+      "source_file": "internal/model/share.go",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "model_sharelink",
+      "community": 54,
+      "norm_label": "sharelink"
+    },
+    {
+      "label": "Time",
+      "file_type": "code",
+      "source_file": "internal/model/share.go",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "time",
+      "community": 54,
+      "norm_label": "time"
+    },
+    {
+      "label": "ShareCreateResponse",
+      "file_type": "code",
+      "source_file": "internal/model/share.go",
+      "source_location": "L18",
+      "_origin": "ast",
+      "id": "model_sharecreateresponse",
+      "community": 54,
+      "norm_label": "sharecreateresponse"
+    },
+    {
+      "label": "ShareWithDoc",
+      "file_type": "code",
+      "source_file": "internal/model/share.go",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "model_sharewithdoc",
+      "community": 54,
+      "norm_label": "sharewithdoc"
+    },
+    {
+      "label": "handlers_share.go",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "server_handlers_share",
+      "community": 50,
+      "norm_label": "handlers_share.go"
+    },
+    {
+      "label": "shareChildData",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "server_sharechilddata",
+      "community": 50,
+      "norm_label": "sharechilddata"
+    },
+    {
+      "label": "sharePageData",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L27",
+      "_origin": "ast",
+      "id": "server_sharepagedata",
+      "community": 50,
+      "norm_label": "sharepagedata"
+    },
+    {
+      "label": "HTML",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L33",
+      "_origin": "ast",
+      "id": "html",
+      "community": 50,
+      "norm_label": "html"
+    },
+    {
+      "label": "Server",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L42",
+      "_origin": "ast",
+      "id": "server_server",
+      "community": 50,
+      "norm_label": "server"
+    },
+    {
+      "label": ".collectDescendantIDs()",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L42",
+      "_origin": "ast",
+      "id": "server_server_collectdescendantids",
+      "community": 50,
+      "norm_label": ".collectdescendantids()"
+    },
+    {
+      "label": ".handleCreateShare()",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L60",
+      "_origin": "ast",
+      "id": "server_server_handlecreateshare",
+      "community": 50,
+      "norm_label": ".handlecreateshare()"
+    },
+    {
+      "label": "HandlerFunc",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L60",
+      "_origin": "ast",
+      "id": "handlerfunc",
+      "community": 50,
+      "norm_label": "handlerfunc"
+    },
+    {
+      "label": ".handleRevokeShare()",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L117",
+      "_origin": "ast",
+      "id": "server_server_handlerevokeshare",
+      "community": 50,
+      "norm_label": ".handlerevokeshare()"
+    },
+    {
+      "label": ".baseURL()",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L141",
+      "_origin": "ast",
+      "id": "server_server_baseurl",
+      "community": 50,
+      "norm_label": ".baseurl()"
+    },
+    {
+      "label": "Request",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L141",
+      "_origin": "ast",
+      "id": "request",
+      "community": 9,
+      "norm_label": "request"
+    },
+    {
+      "label": "isBoxicon()",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L157",
+      "_origin": "ast",
+      "id": "server_handlers_share_isboxicon",
+      "community": 50,
+      "norm_label": "isboxicon()"
+    },
+    {
+      "label": ".handlePublicShare()",
+      "file_type": "code",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L161",
+      "_origin": "ast",
+      "id": "server_server_handlepublicshare",
+      "community": 50,
+      "norm_label": ".handlepublicshare()"
+    },
+    {
+      "label": "migrate.go",
+      "file_type": "code",
+      "source_file": "internal/store/migrate.go",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "store_migrate",
+      "community": 28,
+      "norm_label": "migrate.go"
+    },
+    {
+      "label": "Open()",
+      "file_type": "code",
+      "source_file": "internal/store/migrate.go",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "store_migrate_open",
+      "community": 28,
+      "norm_label": "open()"
+    },
+    {
+      "label": "DB",
+      "file_type": "code",
+      "source_file": "internal/store/migrate.go",
+      "source_location": "L21",
+      "_origin": "ast",
+      "id": "internal_store_migrate_go_db",
+      "community": 28,
+      "norm_label": "db"
+    },
+    {
+      "label": "shares.go",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "store_shares",
+      "community": 10,
+      "norm_label": "shares.go"
+    },
+    {
+      "label": "ShareStore",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "store_sharestore",
+      "community": 10,
+      "norm_label": "sharestore"
+    },
+    {
+      "label": "DB",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L15",
+      "_origin": "ast",
+      "id": "internal_store_shares_go_db",
+      "community": 10,
+      "norm_label": "db"
+    },
+    {
+      "label": "NewShareStore()",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "store_shares_newsharestore",
+      "community": 10,
+      "norm_label": "newsharestore()"
+    },
+    {
+      "label": ".Create()",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "store_sharestore_create",
+      "community": 10,
+      "norm_label": ".create()"
+    },
+    {
+      "label": "ShareLink",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "sharelink",
+      "community": 10,
+      "norm_label": "sharelink"
+    },
+    {
+      "label": ".LookupByToken()",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L68",
+      "_origin": "ast",
+      "id": "store_sharestore_lookupbytoken",
+      "community": 10,
+      "norm_label": ".lookupbytoken()"
+    },
+    {
+      "label": ".Revoke()",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L104",
+      "_origin": "ast",
+      "id": "store_sharestore_revoke",
+      "community": 10,
+      "norm_label": ".revoke()"
+    },
+    {
+      "label": ".CreateAuto()",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L130",
+      "_origin": "ast",
+      "id": "store_sharestore_createauto",
+      "community": 10,
+      "norm_label": ".createauto()"
+    },
+    {
+      "label": ".RevokeAutoForDocument()",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L151",
+      "_origin": "ast",
+      "id": "store_sharestore_revokeautofordocument",
+      "community": 10,
+      "norm_label": ".revokeautofordocument()"
+    },
+    {
+      "label": ".ListByDocument()",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L160",
+      "_origin": "ast",
+      "id": "store_sharestore_listbydocument",
+      "community": 10,
+      "norm_label": ".listbydocument()"
+    },
+    {
+      "label": ".ListAllActive()",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L188",
+      "_origin": "ast",
+      "id": "store_sharestore_listallactive",
+      "community": 10,
+      "norm_label": ".listallactive()"
+    },
+    {
+      "label": "ShareWithDoc",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L188",
+      "_origin": "ast",
+      "id": "sharewithdoc",
+      "community": 10,
+      "norm_label": "sharewithdoc"
+    },
+    {
+      "label": ".GetActiveShareForDocument()",
+      "file_type": "code",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L216",
+      "_origin": "ast",
+      "id": "store_sharestore_getactivesharefordocument",
+      "community": 10,
+      "norm_label": ".getactivesharefordocument()"
+    },
+    {
+      "label": "Admin.svelte",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "admin.svelte",
+      "id": "components_admin"
+    },
+    {
+      "label": "formatCountdown()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L484",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "formatcountdown()",
+      "id": "components_admin_formatcountdown"
+    },
+    {
+      "label": "startRestore()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L492",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "startrestore()",
+      "id": "components_admin_startrestore"
+    },
+    {
+      "label": "pollRestoreJob()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L520",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "pollrestorejob()",
+      "id": "components_admin_pollrestorejob"
+    },
+    {
+      "label": "restoreAttachments()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L538",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "restoreattachments()",
+      "id": "components_admin_restoreattachments"
+    },
+    {
+      "label": "cleanupStorageSource()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L552",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "cleanupstoragesource()",
+      "id": "components_admin_cleanupstoragesource"
+    },
+    {
+      "label": "loadShares()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L557",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "loadshares()",
+      "id": "components_admin_loadshares"
+    },
+    {
+      "label": "revokeShare()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L566",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "revokeshare()",
+      "id": "components_admin_revokeshare"
+    },
+    {
+      "label": "copyShareURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L573",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "copyshareurl()",
+      "id": "components_admin_copyshareurl"
+    },
+    {
+      "label": "loadAdminTags()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L583",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "loadadmintags()",
+      "id": "components_admin_loadadmintags"
+    },
+    {
+      "label": "syncEditableTags()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L588",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "synceditabletags()",
+      "id": "components_admin_synceditabletags"
+    },
+    {
+      "label": "handleBackup()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L593",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlebackup()",
+      "id": "components_admin_handlebackup"
+    },
+    {
+      "label": "downloadPreviewAtt()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L604",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "downloadpreviewatt()",
+      "id": "components_admin_downloadpreviewatt"
+    },
+    {
+      "label": "downloadS3Backup()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L610",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "downloads3backup()",
+      "id": "components_admin_downloads3backup"
+    },
+    {
+      "label": "handleRestore()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L618",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlerestore()",
+      "id": "components_admin_handlerestore"
+    },
+    {
+      "label": "restoreFromTrash()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L638",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "restorefromtrash()",
+      "id": "components_admin_restorefromtrash"
+    },
+    {
+      "label": "permanentDelete()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L643",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "permanentdelete()",
+      "id": "components_admin_permanentdelete"
+    },
+    {
+      "label": "emptyTrash()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L649",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "emptytrash()",
+      "id": "components_admin_emptytrash"
+    },
+    {
+      "label": "handleRenameTag()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L656",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlerenametag()",
+      "id": "components_admin_handlerenametag"
+    },
+    {
+      "label": "startEdit()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L674",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "startedit()",
+      "id": "components_admin_startedit"
+    },
+    {
+      "label": "cancelEdit()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L681",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "canceledit()",
+      "id": "components_admin_canceledit"
+    },
+    {
+      "label": "saveTag()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L686",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "savetag()",
+      "id": "components_admin_savetag"
+    },
+    {
+      "label": "deleteTag()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L702",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "deletetag()",
+      "id": "components_admin_deletetag"
+    },
+    {
+      "label": "handlePruneTags()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L715",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handleprunetags()",
+      "id": "components_admin_handleprunetags"
+    },
+    {
+      "label": "saveTagColor()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L731",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "savetagcolor()",
+      "id": "components_admin_savetagcolor"
+    },
+    {
+      "label": "deleteAttachment()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L741",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "deleteattachment()",
+      "id": "components_admin_deleteattachment"
+    },
+    {
+      "label": "handleCleanup()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L748",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlecleanup()",
+      "id": "components_admin_handlecleanup"
+    },
+    {
+      "label": "handleCheckLinks()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L758",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "handlechecklinks()",
+      "id": "components_admin_handlechecklinks"
+    },
+    {
+      "label": "deleteInvalidLinks()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L768",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "deleteinvalidlinks()",
+      "id": "components_admin_deleteinvalidlinks"
+    },
+    {
+      "label": "loadAdminURLs()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L779",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "loadadminurls()",
+      "id": "components_admin_loadadminurls"
+    },
+    {
+      "label": "startEditURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L787",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "startediturl()",
+      "id": "components_admin_startediturl"
+    },
+    {
+      "label": "cancelEditURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L792",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "cancelediturl()",
+      "id": "components_admin_cancelediturl"
+    },
+    {
+      "label": "saveEditURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L796",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "saveediturl()",
+      "id": "components_admin_saveediturl"
+    },
+    {
+      "label": "deleteAdminURL()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L808",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "deleteadminurl()",
+      "id": "components_admin_deleteadminurl"
+    },
+    {
+      "label": "isImage()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L814",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "isimage()",
+      "id": "components_admin_isimage"
+    },
+    {
+      "label": "isMarkdown()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L818",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "ismarkdown()",
+      "id": "components_admin_ismarkdown"
+    },
+    {
+      "label": "previewType()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L824",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "previewtype()",
+      "id": "components_admin_previewtype"
+    },
+    {
+      "label": "formatBytes()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L860",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "formatbytes()",
+      "id": "components_admin_formatbytes"
+    },
+    {
+      "label": "fileIcon()",
+      "file_type": "code",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "source_location": "L867",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "fileicon()",
+      "id": "components_admin_fileicon"
+    },
+    {
+      "label": "svelte",
+      "file_type": "code",
+      "source_file": "svelte",
+      "confidence": "EXTRACTED",
+      "_origin": "ast",
+      "community": 14,
+      "norm_label": "svelte",
+      "id": "svelte"
     },
     {
       "label": "../stores/tags.js",
@@ -463,9 +933,9 @@
       "source_file": "frontend/src/lib/stores/tags.ts",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "id": "d_git_pkd_frontend_src_lib_stores_tags_ts",
       "community": 102,
-      "norm_label": "../stores/tags.js"
+      "norm_label": "../stores/tags.js",
+      "id": "d_git_pkd_frontend_src_lib_stores_tags_ts"
     },
     {
       "label": "../stores/settings.js",
@@ -473,9 +943,9 @@
       "source_file": "frontend/src/lib/stores/settings.ts",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "id": "d_git_pkd_frontend_src_lib_stores_settings_ts",
       "community": 102,
-      "norm_label": "../stores/settings.js"
+      "norm_label": "../stores/settings.js",
+      "id": "d_git_pkd_frontend_src_lib_stores_settings_ts"
     },
     {
       "label": "../stores/documents.js",
@@ -483,9 +953,9 @@
       "source_file": "frontend/src/lib/stores/documents.ts",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "id": "d_git_pkd_frontend_src_lib_stores_documents_ts",
-      "community": 102,
-      "norm_label": "../stores/documents.js"
+      "community": 25,
+      "norm_label": "../stores/documents.js",
+      "id": "d_git_pkd_frontend_src_lib_stores_documents_ts"
     },
     {
       "label": "marked",
@@ -493,9 +963,9 @@
       "source_file": "marked",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "id": "marked",
-      "community": 19,
-      "norm_label": "marked"
+      "community": 102,
+      "norm_label": "marked",
+      "id": "marked"
     },
     {
       "label": "dompurify",
@@ -503,9 +973,9 @@
       "source_file": "dompurify",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "id": "dompurify",
-      "community": 19,
-      "norm_label": "dompurify"
+      "community": 102,
+      "norm_label": "dompurify",
+      "id": "dompurify"
     },
     {
       "label": "Editor.svelte",
@@ -663,7 +1133,7 @@
       "source_file": "turndown",
       "confidence": "EXTRACTED",
       "_origin": "ast",
-      "community": 19,
+      "community": 102,
       "norm_label": "turndown",
       "id": "turndown"
     },
@@ -903,7 +1373,7 @@
       "source_file": "frontend/src/lib/components/TreeNode.svelte",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 102,
+      "community": 25,
       "norm_label": "treenode.svelte",
       "id": "components_treenode"
     },
@@ -916,16 +1386,6 @@
       "community": 54,
       "norm_label": "document",
       "id": "model_document"
-    },
-    {
-      "label": "Time",
-      "file_type": "code",
-      "source_file": "internal/model/document.go",
-      "source_location": "L15",
-      "_origin": "ast",
-      "community": 54,
-      "norm_label": "time",
-      "id": "time"
     },
     {
       "label": "DocumentTreeNode",
@@ -988,16 +1448,6 @@
       "id": "server_handlers_tree"
     },
     {
-      "label": "Server",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_tree.go",
-      "source_location": "L9",
-      "_origin": "ast",
-      "community": 50,
-      "norm_label": "server",
-      "id": "server_server"
-    },
-    {
       "label": ".handleTree()",
       "file_type": "code",
       "source_file": "internal/server/handlers_tree.go",
@@ -1006,16 +1456,6 @@
       "community": 50,
       "norm_label": ".handletree()",
       "id": "server_server_handletree"
-    },
-    {
-      "label": "HandlerFunc",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_tree.go",
-      "source_location": "L9",
-      "_origin": "ast",
-      "community": 50,
-      "norm_label": "handlerfunc",
-      "id": "handlerfunc"
     },
     {
       "label": "buildTree()",
@@ -1466,16 +1906,6 @@
       "community": 14,
       "norm_label": "./lib/components/calendar.svelte",
       "id": "d_git_pkd_frontend_src_lib_components_calendar_svelte"
-    },
-    {
-      "label": "./lib/components/ShareDialog.svelte",
-      "file_type": "code",
-      "source_file": "frontend/src/lib/components/ShareDialog.svelte",
-      "confidence": "EXTRACTED",
-      "_origin": "ast",
-      "community": 14,
-      "norm_label": "./lib/components/sharedialog.svelte",
-      "id": "d_git_pkd_frontend_src_lib_components_sharedialog_svelte"
     },
     {
       "label": "update-context.ps1",
@@ -2316,7 +2746,7 @@
       "source_file": "frontend/package.json",
       "source_location": "L35",
       "_origin": "ast",
-      "community": 19,
+      "community": 102,
       "norm_label": "dompurify",
       "community_name": "Job Backend Handlers",
       "id": "frontend_package_dependencies_dompurify"
@@ -2327,7 +2757,7 @@
       "source_file": "frontend/package.json",
       "source_location": "L36",
       "_origin": "ast",
-      "community": 19,
+      "community": 102,
       "norm_label": "marked",
       "community_name": "Job Backend Handlers",
       "id": "frontend_package_dependencies_marked"
@@ -2349,7 +2779,7 @@
       "source_file": "frontend/package.json",
       "source_location": "L38",
       "_origin": "ast",
-      "community": 19,
+      "community": 102,
       "norm_label": "turndown",
       "community_name": "Job Backend Handlers",
       "id": "frontend_package_dependencies_turndown"
@@ -2583,7 +3013,7 @@
       "confidence": "EXTRACTED",
       "_origin": "ast",
       "source_location": "L1",
-      "community": 102,
+      "community": 25,
       "norm_label": "versionhistorydialog.svelte",
       "community_name": "Attachment Job Handlers",
       "id": "components_versionhistorydialog"
@@ -3702,61 +4132,6 @@
       "id": "internal_model_session_go_time"
     },
     {
-      "label": "share.go",
-      "file_type": "code",
-      "source_file": "internal/model/share.go",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 65,
-      "norm_label": "share.go",
-      "community_name": "Share Link Model",
-      "id": "model_share"
-    },
-    {
-      "label": "ShareLink",
-      "file_type": "code",
-      "source_file": "internal/model/share.go",
-      "source_location": "L6",
-      "_origin": "ast",
-      "community": 65,
-      "norm_label": "sharelink",
-      "community_name": "Share Link Model",
-      "id": "model_sharelink"
-    },
-    {
-      "label": "Time",
-      "file_type": "code",
-      "source_file": "internal/model/share.go",
-      "source_location": "L11",
-      "_origin": "ast",
-      "community": 65,
-      "norm_label": "time",
-      "community_name": "Share Link Model",
-      "id": "internal_model_share_go_time"
-    },
-    {
-      "label": "ShareCreateResponse",
-      "file_type": "code",
-      "source_file": "internal/model/share.go",
-      "source_location": "L17",
-      "_origin": "ast",
-      "community": 65,
-      "norm_label": "sharecreateresponse",
-      "community_name": "Share Link Model",
-      "id": "model_sharecreateresponse"
-    },
-    {
-      "label": "ShareWithDoc",
-      "file_type": "code",
-      "source_file": "internal/model/share.go",
-      "source_location": "L25",
-      "_origin": "ast",
-      "community": 65,
-      "norm_label": "sharewithdoc",
-      "community_name": "Share Link Model",
-      "id": "model_sharewithdoc"
-    },
-    {
       "label": "Tag",
       "file_type": "code",
       "source_file": "internal/model/tag.go",
@@ -4499,7 +4874,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "handlers_admin_storage_restore.go",
       "community_name": "Attachment Store Core",
       "id": "server_handlers_admin_storage_restore"
@@ -4510,7 +4885,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L26",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "attachmentlookup",
       "community_name": "Attachment Store Core",
       "id": "server_attachmentlookup"
@@ -4521,7 +4896,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L26",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "attachmentstore",
       "community_name": "Attachment Store Core",
       "id": "internal_server_handlers_admin_storage_restore_go_attachmentstore"
@@ -4532,7 +4907,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L28",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": ".lookupbysha256()",
       "community_name": "Attachment Store Core",
       "id": "server_attachmentlookup_lookupbysha256"
@@ -4543,7 +4918,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L28",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "context",
       "community_name": "Attachment Store Core",
       "id": "internal_server_handlers_admin_storage_restore_go_context"
@@ -4554,7 +4929,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L28",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "lookupref",
       "community_name": "Attachment Store Core",
       "id": "internal_server_handlers_admin_storage_restore_go_lookupref"
@@ -4565,7 +4940,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L45",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "server",
       "community_name": "Attachment Store Core",
       "id": "internal_server_handlers_admin_storage_restore_go_server_server"
@@ -4576,7 +4951,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L45",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": ".handleadminstoragerestorestart()",
       "community_name": "Attachment Store Core",
       "id": "server_server_handleadminstoragerestorestart"
@@ -4587,7 +4962,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L45",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "handlerfunc",
       "community_name": "Attachment Store Core",
       "id": "internal_server_handlers_admin_storage_restore_go_handlerfunc"
@@ -4598,7 +4973,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L106",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "preparerestoresources3()",
       "community_name": "Attachment Store Core",
       "id": "server_handlers_admin_storage_restore_preparerestoresources3"
@@ -4609,7 +4984,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L106",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "job",
       "community_name": "Attachment Store Core",
       "id": "internal_server_handlers_admin_storage_restore_go_job"
@@ -4620,7 +4995,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L106",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "s3capable",
       "community_name": "Attachment Store Core",
       "id": "internal_server_handlers_admin_storage_restore_go_s3capable"
@@ -4631,7 +5006,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L106",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "reader",
       "community_name": "Attachment Store Core",
       "id": "internal_server_handlers_admin_storage_restore_go_reader"
@@ -4642,7 +5017,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L106",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "readerat",
       "community_name": "Attachment Store Core",
       "id": "internal_server_handlers_admin_storage_restore_go_readerat"
@@ -4653,7 +5028,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L129",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": "preparerestoresourcelocal()",
       "community_name": "Attachment Store Core",
       "id": "server_handlers_admin_storage_restore_preparerestoresourcelocal"
@@ -4664,7 +5039,7 @@
       "source_file": "internal/server/handlers_admin_storage_restore.go",
       "source_location": "L150",
       "_origin": "ast",
-      "community": 25,
+      "community": 3,
       "norm_label": ".runrestorejob()",
       "community_name": "Attachment Store Core",
       "id": "server_server_runrestorejob"
@@ -5295,149 +5670,6 @@
       "norm_label": "handlerfunc",
       "community_name": "TipTap Editor Extensions",
       "id": "internal_server_handlers_search_go_handlerfunc"
-    },
-    {
-      "label": "handlers_share.go",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": "handlers_share.go",
-      "community_name": "Admin Svelte UI",
-      "id": "server_handlers_share"
-    },
-    {
-      "label": "shareChildData",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L19",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": "sharechilddata",
-      "community_name": "Admin Svelte UI",
-      "id": "server_sharechilddata"
-    },
-    {
-      "label": "sharePageData",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L27",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": "sharepagedata",
-      "community_name": "Admin Svelte UI",
-      "id": "server_sharepagedata"
-    },
-    {
-      "label": "HTML",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L33",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": "html",
-      "community_name": "Admin Svelte UI",
-      "id": "html"
-    },
-    {
-      "label": "Server",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L42",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": "server",
-      "community_name": "Admin Svelte UI",
-      "id": "internal_server_handlers_share_go_server_server"
-    },
-    {
-      "label": ".collectDescendantIDs()",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L42",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": ".collectdescendantids()",
-      "community_name": "Admin Svelte UI",
-      "id": "server_server_collectdescendantids"
-    },
-    {
-      "label": ".handleCreateShare()",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L60",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": ".handlecreateshare()",
-      "community_name": "Admin Svelte UI",
-      "id": "server_server_handlecreateshare"
-    },
-    {
-      "label": "HandlerFunc",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L60",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": "handlerfunc",
-      "community_name": "Admin Svelte UI",
-      "id": "internal_server_handlers_share_go_handlerfunc"
-    },
-    {
-      "label": ".handleRevokeShare()",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L112",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": ".handlerevokeshare()",
-      "community_name": "Admin Svelte UI",
-      "id": "server_server_handlerevokeshare"
-    },
-    {
-      "label": ".baseURL()",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L136",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": ".baseurl()",
-      "community_name": "Admin Svelte UI",
-      "id": "server_server_baseurl"
-    },
-    {
-      "label": "Request",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L136",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": "request",
-      "community_name": "Admin Svelte UI",
-      "id": "internal_server_handlers_share_go_request"
-    },
-    {
-      "label": "isBoxicon()",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L152",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": "isboxicon()",
-      "community_name": "Admin Svelte UI",
-      "id": "server_handlers_share_isboxicon"
-    },
-    {
-      "label": ".handlePublicShare()",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L156",
-      "_origin": "ast",
-      "community": 7,
-      "norm_label": ".handlepublicshare()",
-      "community_name": "Admin Svelte UI",
-      "id": "server_server_handlepublicshare"
     },
     {
       "label": "handlers_tags.go",
@@ -7528,160 +7760,6 @@
       "norm_label": "ignorenosuchrowid()",
       "community_name": "Sanitize Handlers",
       "id": "store_search_ignorenosuchrowid"
-    },
-    {
-      "label": "shares.go",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": "shares.go",
-      "community_name": "HTTP Handler Core",
-      "id": "store_shares"
-    },
-    {
-      "label": "ShareStore",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L14",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": "sharestore",
-      "community_name": "HTTP Handler Core",
-      "id": "store_sharestore"
-    },
-    {
-      "label": "DB",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L15",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": "db",
-      "community_name": "HTTP Handler Core",
-      "id": "internal_store_shares_go_db"
-    },
-    {
-      "label": "NewShareStore()",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L19",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": "newsharestore()",
-      "community_name": "HTTP Handler Core",
-      "id": "store_shares_newsharestore"
-    },
-    {
-      "label": ".Create()",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L26",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": ".create()",
-      "community_name": "HTTP Handler Core",
-      "id": "store_sharestore_create"
-    },
-    {
-      "label": "ShareLink",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L26",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": "sharelink",
-      "community_name": "HTTP Handler Core",
-      "id": "sharelink"
-    },
-    {
-      "label": ".LookupByToken()",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L63",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": ".lookupbytoken()",
-      "community_name": "HTTP Handler Core",
-      "id": "store_sharestore_lookupbytoken"
-    },
-    {
-      "label": ".Revoke()",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L98",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": ".revoke()",
-      "community_name": "HTTP Handler Core",
-      "id": "store_sharestore_revoke"
-    },
-    {
-      "label": ".CreateAuto()",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L124",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": ".createauto()",
-      "community_name": "HTTP Handler Core",
-      "id": "store_sharestore_createauto"
-    },
-    {
-      "label": ".RevokeAutoForDocument()",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L145",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": ".revokeautofordocument()",
-      "community_name": "HTTP Handler Core",
-      "id": "store_sharestore_revokeautofordocument"
-    },
-    {
-      "label": ".ListByDocument()",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L154",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": ".listbydocument()",
-      "community_name": "HTTP Handler Core",
-      "id": "store_sharestore_listbydocument"
-    },
-    {
-      "label": ".ListAllActive()",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L182",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": ".listallactive()",
-      "community_name": "HTTP Handler Core",
-      "id": "store_sharestore_listallactive"
-    },
-    {
-      "label": "ShareWithDoc",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L182",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": "sharewithdoc",
-      "community_name": "HTTP Handler Core",
-      "id": "sharewithdoc"
-    },
-    {
-      "label": ".GetActiveShareForDocument()",
-      "file_type": "code",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L210",
-      "_origin": "ast",
-      "community": 10,
-      "norm_label": ".getactivesharefordocument()",
-      "community_name": "HTTP Handler Core",
-      "id": "store_sharestore_getactivesharefordocument"
     },
     {
       "label": "tags.go",
@@ -13283,20 +13361,6 @@
       "id": "store_settingsstore_setembedmodel"
     },
     {
-      "label": "document_embeddings table",
-      "file_type": "code",
-      "source_file": "internal/store/migrate.go",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 127,
-      "norm_label": "document_embeddings table",
-      "community_name": "Community 127",
-      "id": "semanticgraph_document_embeddings"
-    },
-    {
       "label": "./lib/components/GraphView.svelte",
       "file_type": "code",
       "source_file": "frontend/src/lib/components/GraphView.svelte",
@@ -13907,7 +13971,7 @@
       "source_file": "internal/server/handlers_admin.go",
       "source_location": "L121",
       "_origin": "ast",
-      "community": 9,
+      "community": 1,
       "norm_label": ".handleadminrestore()",
       "community_name": "Async Storage Operations",
       "id": "server_server_handleadminrestore"
@@ -14043,17 +14107,6 @@
       "norm_label": ".isorphankey()",
       "community_name": "Async Storage Operations",
       "id": "server_server_isorphankey"
-    },
-    {
-      "label": "Request",
-      "file_type": "code",
-      "source_file": "internal/server/handlers_admin.go",
-      "source_location": "L463",
-      "_origin": "ast",
-      "community": 9,
-      "norm_label": "request",
-      "community_name": "Async Storage Operations",
-      "id": "request"
     },
     {
       "label": ".handleAdminDeleteAllOrphans()",
@@ -15482,121 +15535,772 @@
       "norm_label": "algoritmo: louvain local-moving",
       "community_name": "FTS5 AutoLink GraphView",
       "id": "semanticgraph_louvain"
-    },
-    {
-      "label": "pkd Development Guidelines",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 62,
-      "norm_label": "pkd development guidelines",
-      "community_name": "URL Handlers",
-      "id": "claude_pkd_development_guidelines"
-    },
-    {
-      "label": "Go Backend (1.25)",
-      "file_type": "code",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 62,
-      "norm_label": "go backend (1.25)",
-      "community_name": "URL Handlers",
-      "id": "claude_go_backend"
-    },
-    {
-      "label": "Svelte 5 Frontend",
-      "file_type": "code",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 62,
-      "norm_label": "svelte 5 frontend",
-      "community_name": "URL Handlers",
-      "id": "claude_svelte_frontend"
-    },
-    {
-      "label": "SQLite Database",
-      "file_type": "code",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 62,
-      "norm_label": "sqlite database",
-      "community_name": "URL Handlers",
-      "id": "claude_sqlite_db"
-    },
-    {
-      "label": "internal/backup/",
-      "file_type": "code",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 79,
-      "norm_label": "internal/backup/",
-      "community_name": "Presigned Download URL",
-      "id": "claude_internal_backup"
-    },
-    {
-      "label": "internal/server/jobs.go",
-      "file_type": "code",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 79,
-      "norm_label": "internal/server/jobs.go",
-      "community_name": "Presigned Download URL",
-      "id": "claude_internal_server_jobs"
-    },
-    {
-      "label": "Graphify Semantic Extraction",
-      "file_type": "concept",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 62,
-      "norm_label": "graphify semantic extraction",
-      "community_name": "URL Handlers",
-      "id": "claude_graphify"
-    },
-    {
-      "label": "005-s3-attachments-backup",
-      "file_type": "rationale",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 79,
-      "norm_label": "005-s3-attachments-backup",
-      "community_name": "Presigned Download URL",
-      "id": "claude_s3_attachments_backup"
     }
   ],
   "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "claude",
+      "target": "claude_add_commands_for_go_1_23_pure_go_cgo_disabled",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "claude",
+      "target": "claude_pkd_development_guidelines",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "claude_pkd_development_guidelines",
+      "target": "claude_active_technologies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "claude_pkd_development_guidelines",
+      "target": "claude_commands",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source": "claude_pkd_development_guidelines",
+      "target": "claude_graphify"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "claude_pkd_development_guidelines",
+      "target": "claude_project_structure",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "claude_add_commands_for_go_1_23_pure_go_cgo_disabled",
+      "target": "claude_branch_strategy",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "claude_add_commands_for_go_1_23_pure_go_cgo_disabled",
+      "target": "claude_code_style",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "claude_add_commands_for_go_1_23_pure_go_cgo_disabled",
+      "target": "claude_docker_tags",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "claude_add_commands_for_go_1_23_pure_go_cgo_disabled",
+      "target": "claude_graphify",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "claude_add_commands_for_go_1_23_pure_go_cgo_disabled",
+      "target": "claude_recent_changes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/ShareDialog.svelte",
+      "source": "components_sharedialog",
+      "target": "d_git_pkd_frontend_src_lib_api_ts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Admin.svelte",
+      "confidence_score": 1.0,
+      "source": "components_admin",
+      "target": "d_git_pkd_frontend_src_lib_api_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/Editor.svelte",
+      "confidence_score": 1.0,
+      "source": "components_editor",
+      "target": "d_git_pkd_frontend_src_lib_api_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/GraphView.svelte",
+      "confidence_score": 1.0,
+      "source": "components_graphview",
+      "target": "d_git_pkd_frontend_src_lib_api_ts"
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/lib/components/TreeNode.svelte",
+      "confidence_score": 1.0,
+      "source": "components_treenode",
+      "target": "d_git_pkd_frontend_src_lib_api_ts"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/share.go",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "model_share",
+      "target": "model_sharecreateresponse"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/share.go",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "model_share",
+      "target": "model_sharelink"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/share.go",
+      "source_location": "L25",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "model_share",
+      "target": "model_sharewithdoc"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/share.go",
+      "source_location": "L13",
+      "weight": 1.0,
+      "context": "field",
+      "source": "model_sharelink",
+      "target": "time",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/document.go",
+      "source_location": "L24",
+      "weight": 1.0,
+      "context": "field",
+      "confidence_score": 1.0,
+      "source": "model_document",
+      "target": "time"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/document.go",
+      "source_location": "L41",
+      "weight": 1.0,
+      "context": "field",
+      "confidence_score": 1.0,
+      "source": "model_documenttreenode",
+      "target": "time"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/document.go",
+      "source_location": "L80",
+      "weight": 1.0,
+      "context": "field",
+      "confidence_score": 1.0,
+      "source": "model_documentversion",
+      "target": "time"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/link.go",
+      "source_location": "L10",
+      "weight": 1.0,
+      "context": "field",
+      "confidence_score": 1.0,
+      "source": "model_link",
+      "target": "time"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/link.go",
+      "source_location": "L22",
+      "weight": 1.0,
+      "context": "field",
+      "confidence_score": 1.0,
+      "source": "model_relatedlink",
+      "target": "time"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/model/share.go",
+      "source_location": "L31",
+      "weight": 1.0,
+      "context": "field",
+      "source": "model_sharewithdoc",
+      "target": "time",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L152",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_handlers_share",
+      "target": "server_handlers_share_isboxicon"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_handlers_share",
+      "target": "server_sharechilddata"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L27",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_handlers_share",
+      "target": "server_sharepagedata"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L34",
+      "weight": 1.0,
+      "context": "field",
+      "confidence_score": 1.0,
+      "source": "server_sharepagedata",
+      "target": "server_sharechilddata"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L33",
+      "weight": 1.0,
+      "context": "field",
+      "confidence_score": 1.0,
+      "source": "server_sharepagedata",
+      "target": "html"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L237",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_server_handlepublicshare",
+      "target": "html"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L141",
+      "weight": 1.0,
+      "source": "server_server",
+      "target": "server_server_baseurl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "server_server",
+      "target": "server_server_collectdescendantids",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L60",
+      "weight": 1.0,
+      "source": "server_server",
+      "target": "server_server_handlecreateshare",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L161",
+      "weight": 1.0,
+      "source": "server_server",
+      "target": "server_server_handlepublicshare",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L117",
+      "weight": 1.0,
+      "source": "server_server",
+      "target": "server_server_handlerevokeshare",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_tree.go",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_server",
+      "target": "server_server_handletree"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L96",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_server_handlecreateshare",
+      "target": "server_server_collectdescendantids"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L128",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_server_handlerevokeshare",
+      "target": "server_server_collectdescendantids"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L60",
+      "weight": 1.0,
+      "context": "return_type",
+      "source": "server_server_handlecreateshare",
+      "target": "handlerfunc",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "server_server_handlecreateshare",
+      "target": "server_handlers_documents_parseid"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L104",
+      "weight": 1.0,
+      "source": "server_server_handlecreateshare",
+      "target": "server_handlers_documents_writejson"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L101",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_server_handlecreateshare",
+      "target": "server_server_baseurl"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L161",
+      "weight": 1.0,
+      "context": "return_type",
+      "source": "server_server_handlepublicshare",
+      "target": "handlerfunc",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L117",
+      "weight": 1.0,
+      "context": "return_type",
+      "source": "server_server_handlerevokeshare",
+      "target": "handlerfunc",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_tree.go",
+      "source_location": "L9",
+      "weight": 1.0,
+      "context": "return_type",
+      "confidence_score": 1.0,
+      "source": "server_server_handletree",
+      "target": "handlerfunc"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "server_server_handlerevokeshare",
+      "target": "server_handlers_documents_parseid"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L141",
+      "weight": 1.0,
+      "context": "parameter_type",
+      "source": "server_server_baseurl",
+      "target": "request",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L191",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_server_handlepublicshare",
+      "target": "server_server_baseurl"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_admin.go",
+      "source_location": "L463",
+      "weight": 1.0,
+      "context": "parameter_type",
+      "confidence_score": 1.0,
+      "source": "server_server_isorphankey",
+      "target": "request"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L213",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "server_server_handlepublicshare",
+      "target": "server_handlers_share_isboxicon"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "internal/server/handlers_share.go",
+      "source_location": "L237",
+      "weight": 1.0,
+      "source": "server_server_handlepublicshare",
+      "target": "security_sanitize_sanitizepublichtml"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/migrate.go",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "store_migrate",
+      "target": "store_migrate_open",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/migrate.go",
+      "source_location": "L21",
+      "weight": 1.0,
+      "context": "return_type",
+      "source": "store_migrate_open",
+      "target": "internal_store_migrate_go_db",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_shares",
+      "target": "store_shares_newsharestore"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_shares",
+      "target": "store_sharestore"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L19",
+      "weight": 1.0,
+      "context": "return_type",
+      "confidence_score": 1.0,
+      "source": "store_shares_newsharestore",
+      "target": "store_sharestore"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L15",
+      "weight": 1.0,
+      "context": "field",
+      "confidence_score": 1.0,
+      "source": "store_sharestore",
+      "target": "internal_store_shares_go_db"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L26",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_sharestore",
+      "target": "store_sharestore_create"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L124",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_sharestore",
+      "target": "store_sharestore_createauto"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L210",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_sharestore",
+      "target": "store_sharestore_getactivesharefordocument"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L182",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_sharestore",
+      "target": "store_sharestore_listallactive"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L154",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_sharestore",
+      "target": "store_sharestore_listbydocument"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L63",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_sharestore",
+      "target": "store_sharestore_lookupbytoken"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L98",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_sharestore",
+      "target": "store_sharestore_revoke"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L145",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "store_sharestore",
+      "target": "store_sharestore_revokeautofordocument"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L19",
+      "weight": 1.0,
+      "context": "parameter_type",
+      "confidence_score": 1.0,
+      "source": "store_shares_newsharestore",
+      "target": "internal_store_shares_go_db"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L26",
+      "weight": 1.0,
+      "context": "return_type",
+      "confidence_score": 1.0,
+      "source": "store_sharestore_create",
+      "target": "sharelink"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "internal/store/shares.go",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "store_sharestore_create",
+      "target": "store_tx_withtx"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L154",
+      "weight": 1.0,
+      "context": "return_type",
+      "confidence_score": 1.0,
+      "source": "store_sharestore_listbydocument",
+      "target": "sharelink"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L63",
+      "weight": 1.0,
+      "context": "return_type",
+      "confidence_score": 1.0,
+      "source": "store_sharestore_lookupbytoken",
+      "target": "sharelink"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "internal/store/shares.go",
+      "source_location": "L99",
+      "weight": 1.0,
+      "source": "store_sharestore_revoke",
+      "target": "store_tx_withtx"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "internal/store/shares.go",
+      "source_location": "L182",
+      "weight": 1.0,
+      "context": "return_type",
+      "confidence_score": 1.0,
+      "source": "store_sharestore_listallactive",
+      "target": "sharewithdoc"
+    },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
@@ -15683,9 +16387,9 @@
       "source_file": "frontend/src/lib/components/Admin.svelte",
       "source_location": "L604",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_admin",
-      "target": "components_admin_downloadpreviewatt",
-      "confidence_score": 1.0
+      "target": "components_admin_downloadpreviewatt"
     },
     {
       "relation": "contains",
@@ -15693,9 +16397,9 @@
       "source_file": "frontend/src/lib/components/Admin.svelte",
       "source_location": "L610",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_admin",
-      "target": "components_admin_downloads3backup",
-      "confidence_score": 1.0
+      "target": "components_admin_downloads3backup"
     },
     {
       "relation": "contains",
@@ -15983,14 +16687,6 @@
       "source_file": "frontend/src/lib/components/Admin.svelte",
       "confidence_score": 1.0,
       "source": "components_admin",
-      "target": "d_git_pkd_frontend_src_lib_api_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Admin.svelte",
-      "confidence_score": 1.0,
-      "source": "components_admin",
       "target": "d_git_pkd_frontend_src_lib_stores_documents_ts"
     },
     {
@@ -16185,30 +16881,6 @@
       "confidence_score": 1.0,
       "source": "src_main",
       "target": "svelte"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/Editor.svelte",
-      "confidence_score": 1.0,
-      "source": "components_editor",
-      "target": "d_git_pkd_frontend_src_lib_api_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/GraphView.svelte",
-      "confidence_score": 1.0,
-      "source": "components_graphview",
-      "target": "d_git_pkd_frontend_src_lib_api_ts"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/lib/components/TreeNode.svelte",
-      "confidence_score": 1.0,
-      "source": "components_treenode",
-      "target": "d_git_pkd_frontend_src_lib_api_ts"
     },
     {
       "relation": "imports_from",
@@ -16743,17 +17415,6 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "internal/model/document.go",
-      "source_location": "L24",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "model_document",
-      "target": "time"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/document.go",
       "source_location": "L58",
       "weight": 1.0,
       "context": "field",
@@ -16773,50 +17434,6 @@
       "target": "model_document"
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/document.go",
-      "source_location": "L41",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "model_documenttreenode",
-      "target": "time"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/document.go",
-      "source_location": "L80",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "model_documentversion",
-      "target": "time"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/link.go",
-      "source_location": "L10",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "model_link",
-      "target": "time"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/link.go",
-      "source_location": "L22",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "model_relatedlink",
-      "target": "time"
-    },
-    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "internal/server/handlers_tree.go",
@@ -16825,27 +17442,6 @@
       "confidence_score": 1.0,
       "source": "server_handlers_tree",
       "target": "server_handlers_tree_buildtree"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_tree.go",
-      "source_location": "L9",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_server",
-      "target": "server_server_handletree"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_tree.go",
-      "source_location": "L9",
-      "weight": 1.0,
-      "context": "return_type",
-      "confidence_score": 1.0,
-      "source": "server_server_handletree",
-      "target": "handlerfunc"
     },
     {
       "relation": "calls",
@@ -17251,14 +17847,6 @@
       "confidence_score": 1.0,
       "source": "src_app",
       "target": "d_git_pkd_frontend_src_lib_components_loginpage_svelte"
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/App.svelte",
-      "confidence_score": 1.0,
-      "source": "src_app",
-      "target": "d_git_pkd_frontend_src_lib_components_sharedialog_svelte"
     },
     {
       "relation": "imports_from",
@@ -20448,58 +21036,6 @@
       "target": "internal_model_session_go_time"
     },
     {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/share.go",
-      "source_location": "L17",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "model_share",
-      "target": "model_sharecreateresponse"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/share.go",
-      "source_location": "L6",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "model_share",
-      "target": "model_sharelink"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/share.go",
-      "source_location": "L25",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "model_share",
-      "target": "model_sharewithdoc"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/share.go",
-      "source_location": "L12",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "model_sharelink",
-      "target": "internal_model_share_go_time"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/model/share.go",
-      "source_location": "L30",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "model_sharewithdoc",
-      "target": "internal_model_share_go_time"
-    },
-    {
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "internal/model/tag.go",
@@ -20773,17 +21309,6 @@
       "weight": 1.0,
       "source": "unit_sanitize_test_testsanitizeeditorhtml_stripscript",
       "target": "security_sanitize_sanitizeeditorhtml"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L237",
-      "weight": 1.0,
-      "source": "server_server_handlepublicshare",
-      "target": "security_sanitize_sanitizepublichtml"
     },
     {
       "relation": "calls",
@@ -22696,251 +23221,6 @@
       "weight": 1.0,
       "source": "server_server_handlesearch",
       "target": "server_handlers_documents_writejson"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L152",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_handlers_share",
-      "target": "server_handlers_share_isboxicon"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L19",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_handlers_share",
-      "target": "server_sharechilddata"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L27",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_handlers_share",
-      "target": "server_sharepagedata"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L34",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "server_sharepagedata",
-      "target": "server_sharechilddata"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L33",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "server_sharepagedata",
-      "target": "html"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L237",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_server_handlepublicshare",
-      "target": "html"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L136",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "internal_server_handlers_share_go_server_server",
-      "target": "server_server_baseurl"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L42",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "internal_server_handlers_share_go_server_server",
-      "target": "server_server_collectdescendantids"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L60",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "internal_server_handlers_share_go_server_server",
-      "target": "server_server_handlecreateshare"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L156",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "internal_server_handlers_share_go_server_server",
-      "target": "server_server_handlepublicshare"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L112",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "internal_server_handlers_share_go_server_server",
-      "target": "server_server_handlerevokeshare"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L96",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_server_handlecreateshare",
-      "target": "server_server_collectdescendantids"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L128",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_server_handlerevokeshare",
-      "target": "server_server_collectdescendantids"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L60",
-      "weight": 1.0,
-      "context": "return_type",
-      "confidence_score": 1.0,
-      "source": "server_server_handlecreateshare",
-      "target": "internal_server_handlers_share_go_handlerfunc"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L65",
-      "weight": 1.0,
-      "source": "server_server_handlecreateshare",
-      "target": "server_handlers_documents_parseid"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L104",
-      "weight": 1.0,
-      "source": "server_server_handlecreateshare",
-      "target": "server_handlers_documents_writejson"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L101",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_server_handlecreateshare",
-      "target": "server_server_baseurl"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L156",
-      "weight": 1.0,
-      "context": "return_type",
-      "confidence_score": 1.0,
-      "source": "server_server_handlepublicshare",
-      "target": "internal_server_handlers_share_go_handlerfunc"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L112",
-      "weight": 1.0,
-      "context": "return_type",
-      "confidence_score": 1.0,
-      "source": "server_server_handlerevokeshare",
-      "target": "internal_server_handlers_share_go_handlerfunc"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L114",
-      "weight": 1.0,
-      "source": "server_server_handlerevokeshare",
-      "target": "server_handlers_documents_parseid"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L136",
-      "weight": 1.0,
-      "context": "parameter_type",
-      "confidence_score": 1.0,
-      "source": "server_server_baseurl",
-      "target": "internal_server_handlers_share_go_request"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L191",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_server_handlepublicshare",
-      "target": "server_server_baseurl"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_share.go",
-      "source_location": "L213",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "server_server_handlepublicshare",
-      "target": "server_handlers_share_isboxicon"
     },
     {
       "relation": "method",
@@ -26352,205 +26632,6 @@
       "confidence_score": 1.0,
       "source": "store_search_scanhits",
       "target": "internal_store_search_go_rows"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L19",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_shares",
-      "target": "store_shares_newsharestore"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L14",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_shares",
-      "target": "store_sharestore"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L19",
-      "weight": 1.0,
-      "context": "return_type",
-      "confidence_score": 1.0,
-      "source": "store_shares_newsharestore",
-      "target": "store_sharestore"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L15",
-      "weight": 1.0,
-      "context": "field",
-      "confidence_score": 1.0,
-      "source": "store_sharestore",
-      "target": "internal_store_shares_go_db"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L26",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_sharestore",
-      "target": "store_sharestore_create"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L124",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_sharestore",
-      "target": "store_sharestore_createauto"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L210",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_sharestore",
-      "target": "store_sharestore_getactivesharefordocument"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L182",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_sharestore",
-      "target": "store_sharestore_listallactive"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L154",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_sharestore",
-      "target": "store_sharestore_listbydocument"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L63",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_sharestore",
-      "target": "store_sharestore_lookupbytoken"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L98",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_sharestore",
-      "target": "store_sharestore_revoke"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L145",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "store_sharestore",
-      "target": "store_sharestore_revokeautofordocument"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L19",
-      "weight": 1.0,
-      "context": "parameter_type",
-      "confidence_score": 1.0,
-      "source": "store_shares_newsharestore",
-      "target": "internal_store_shares_go_db"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L26",
-      "weight": 1.0,
-      "context": "return_type",
-      "confidence_score": 1.0,
-      "source": "store_sharestore_create",
-      "target": "sharelink"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "internal/store/shares.go",
-      "source_location": "L37",
-      "weight": 1.0,
-      "source": "store_sharestore_create",
-      "target": "store_tx_withtx"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L154",
-      "weight": 1.0,
-      "context": "return_type",
-      "confidence_score": 1.0,
-      "source": "store_sharestore_listbydocument",
-      "target": "sharelink"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L63",
-      "weight": 1.0,
-      "context": "return_type",
-      "confidence_score": 1.0,
-      "source": "store_sharestore_lookupbytoken",
-      "target": "sharelink"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "internal/store/shares.go",
-      "source_location": "L99",
-      "weight": 1.0,
-      "source": "store_sharestore_revoke",
-      "target": "store_tx_withtx"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/store/shares.go",
-      "source_location": "L182",
-      "weight": 1.0,
-      "context": "return_type",
-      "confidence_score": 1.0,
-      "source": "store_sharestore_listallactive",
-      "target": "sharewithdoc"
     },
     {
       "relation": "contains",
@@ -35180,17 +35261,6 @@
       "target": "server_server_isorphankey"
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "internal/server/handlers_admin.go",
-      "source_location": "L463",
-      "weight": 1.0,
-      "context": "parameter_type",
-      "confidence_score": 1.0,
-      "source": "server_server_isorphankey",
-      "target": "request"
-    },
-    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
@@ -37032,62 +37102,6 @@
       "weight": 1.0,
       "source": "semanticgraph_overview",
       "target": "semanticgraph_louvain"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source": "claude_pkd_development_guidelines",
-      "target": "claude_go_backend"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source": "claude_pkd_development_guidelines",
-      "target": "claude_graphify"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source": "claude_pkd_development_guidelines",
-      "target": "claude_sqlite_db"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source": "claude_pkd_development_guidelines",
-      "target": "claude_svelte_frontend"
-    },
-    {
-      "relation": "shares_data_with",
-      "confidence": "INFERRED",
-      "confidence_score": 0.9,
-      "source_file": "CLAUDE.md",
-      "source": "claude_go_backend",
-      "target": "claude_sqlite_db"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source": "claude_s3_attachments_backup",
-      "target": "claude_internal_backup"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source": "claude_s3_attachments_backup",
-      "target": "claude_internal_server_jobs"
     }
   ],
   "hyperedges": [
@@ -37133,5 +37147,5 @@
       "source_file": "CLAUDE.md"
     }
   ],
-  "built_at_commit": "aa75990601a3f2a6bbef379b5d44d7de65fdc899"
+  "built_at_commit": "cb461f32ac4974fdf85b203ee1596b33db1d8f5c"
 }

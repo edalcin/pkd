@@ -125,9 +125,9 @@
     "semantic_hash": "0585cc915e45b8f278ed47618bf10885"
   },
   "frontend/src/lib/components/ShareDialog.svelte": {
-    "mtime": 1782071509.8906474,
-    "ast_hash": "6b950074b1eae66c5f354a923f30f5d4",
-    "semantic_hash": "6b950074b1eae66c5f354a923f30f5d4"
+    "mtime": 1782727452.348369,
+    "ast_hash": "663fcca8b77f1a64f62446e17ade1072",
+    "semantic_hash": ""
   },
   "frontend/src/lib/components/Sidebar.svelte": {
     "mtime": 1781689164.242188,
@@ -260,9 +260,9 @@
     "semantic_hash": "c828694ce0299002df066f2e804e487b"
   },
   "internal/model/share.go": {
-    "mtime": 1782072801.0343225,
-    "ast_hash": "28037d9fb85f6ce7f621cd77fbbf54cb",
-    "semantic_hash": "28037d9fb85f6ce7f621cd77fbbf54cb"
+    "mtime": 1782727390.5483756,
+    "ast_hash": "aaa91f0111b1e6af0d7ca47db58c433e",
+    "semantic_hash": ""
   },
   "internal/model/tag.go": {
     "mtime": 1776506474.2557063,
@@ -380,9 +380,9 @@
     "semantic_hash": "e88ec106110dc8cff3231e1bb01eaef1"
   },
   "internal/server/handlers_share.go": {
-    "mtime": 1782070597.0513902,
-    "ast_hash": "f97a5c62617f95135595c37625843365",
-    "semantic_hash": "f97a5c62617f95135595c37625843365"
+    "mtime": 1782727433.337337,
+    "ast_hash": "ca01473b568946c4477e25a4a63ab407",
+    "semantic_hash": ""
   },
   "internal/server/handlers_tags.go": {
     "mtime": 1776252594.6437044,
@@ -475,9 +475,9 @@
     "semantic_hash": "bd080e187e0d2033d967b98c14bfa1ae"
   },
   "internal/store/migrate.go": {
-    "mtime": 1782329724.3180192,
-    "ast_hash": "db62facad669a68fda7604280d9ba391",
-    "semantic_hash": "db62facad669a68fda7604280d9ba391"
+    "mtime": 1782727386.3858662,
+    "ast_hash": "7b8559726aff4ede17b43c79b9a82707",
+    "semantic_hash": ""
   },
   "internal/store/schema.sql": {
     "mtime": 1779997232.6401093,
@@ -495,9 +495,9 @@
     "semantic_hash": "2b6c3e3452eeae092b7055791c67f830"
   },
   "internal/store/shares.go": {
-    "mtime": 1782072813.390191,
-    "ast_hash": "f7dad49cf2ec4ab380f6b32969b8b5db",
-    "semantic_hash": "f7dad49cf2ec4ab380f6b32969b8b5db"
+    "mtime": 1782727410.986186,
+    "ast_hash": "bed03feefce903260039b6c037af6611",
+    "semantic_hash": ""
   },
   "internal/store/tags.go": {
     "mtime": 1777113161.9404798,
