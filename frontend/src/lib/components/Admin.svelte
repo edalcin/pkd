@@ -3,7 +3,7 @@
   import { apiGet, apiPost, apiPut, apiDelete, apiFetch } from '../api.js'
   import { loadTags, tags } from '../stores/tags.js'
   import { autoSaveInterval } from '../stores/settings.js'
-  import { docBodyRefreshedSignal } from '../stores/documents.js'
+  import { docBodyRefreshedSignal, loadTree } from '../stores/documents.js'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
 
@@ -963,8 +963,8 @@
         <div class="share-list">
           {#each stats.root_stats as rs}
             <div class="share-item">
-              <span class="share-doc-title">{rs.title}</span>
-              <span class="muted" style="white-space:nowrap">{rs.active} ativos · {rs.archived} arquivados</span>
+              <a class="share-doc-title" href="#/doc/{rs.id}" onclick={() => activeTab = ''}>{rs.title}</a>
+              <span class="muted" style="white-space:nowrap">{rs.active} ativos · {rs.archived} arquivados · {rs.active + rs.archived} total</span>
             </div>
           {/each}
         </div>
@@ -984,8 +984,8 @@
           <div class="share-list" id="admin-tag-stats-list">
             {#each stats.tag_stats as t}
               <div class="share-item">
-                <span class="share-doc-title">🏷️ {t.name}</span>
-                <span class="muted" style="white-space:nowrap">{t.active} ativos · {t.archived} arquivados</span>
+                <a class="share-doc-title" href="#/" onclick={() => loadTree([t.name])}>🏷️ {t.name}</a>
+                <span class="muted" style="white-space:nowrap">{t.active} ativos · {t.archived} arquivados · {t.active + t.archived} total</span>
               </div>
             {/each}
           </div>
