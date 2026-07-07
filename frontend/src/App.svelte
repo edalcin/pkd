@@ -72,6 +72,7 @@
       if (!href.startsWith('http://') && !href.startsWith('https://')) return
       try { if (new URL(href).origin === window.location.origin) return } catch { return }
       e.preventDefault()
+      e.stopPropagation()
       if (window.__TAURI_INTERNALS__) {
         window.__TAURI_INTERNALS__.invoke('plugin:shell|open', { path: href })
           .catch(() => window.open(href, '_blank', 'noreferrer'))
