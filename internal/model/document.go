@@ -16,6 +16,8 @@ type Document struct {
 	OriginalParentID *int64     `json:"original_parent_id,omitempty"`
 	IsFavorite       bool       `json:"is_favorite"`
 	Locked           bool       `json:"locked"`
+	Encrypted        bool       `json:"encrypted"`
+	EncryptedLocked  bool       `json:"encrypted_locked,omitempty"` // transient: set by GET when body withheld
 	Archived         bool       `json:"archived"`
 	ArchivedAt       *time.Time `json:"archived_at"`
 	Tags             []string   `json:"tags,omitempty"`
@@ -37,6 +39,7 @@ type DocumentTreeNode struct {
 	Version    int64               `json:"version"`
 	IsFavorite bool                `json:"is_favorite"`
 	Locked     bool                `json:"locked"`
+	Encrypted  bool                `json:"encrypted"`
 	Archived   bool                `json:"archived"`
 	ArchivedAt *time.Time          `json:"archived_at"`
 	Tags       []string            `json:"tags,omitempty"`

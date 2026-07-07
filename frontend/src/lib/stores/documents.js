@@ -114,6 +114,18 @@ export async function toggleLock(id) {
   return doc
 }
 
+/** Encrypt a document at rest (Protect). Returns updated doc with plaintext body still visible. */
+export async function protectDoc(id) { return apiPost(`/api/documents/${id}/protect`) }
+
+/** Decrypt a document back to plaintext (Unprotect). Requires the doc to be unlocked in this session. */
+export async function unprotectDoc(id) { return apiPost(`/api/documents/${id}/unprotect`) }
+
+/** Request a fresh unlock code by e-mail for an encrypted document. Returns null on 204 (already unlocked). */
+export async function requestDocCode(id) { return apiPost(`/api/documents/${id}/unlock/request`) }
+
+/** Submit an unlock code/challenge to decrypt a document for the current session. */
+export async function unlockDoc(id, challengeId, code) { return apiPost(`/api/documents/${id}/unlock`, { challenge_id: challengeId, code }) }
+
 /** Archive a document. Triggers a tree reload so it disappears from the current view. */
 export async function archiveDoc(id) {
   const doc = await apiPost(`/api/documents/${id}/archive`, {})

@@ -181,6 +181,9 @@
     {#if node.archived}
       <i class="bx bx-archive archive-indicator" title="Documento arquivado"></i>
     {/if}
+    {#if node.encrypted}
+      <i class="bx bxs-shield encrypted-indicator" title="Protegido"></i>
+    {/if}
     {#if node.score}
       {@const scoreColor = node.score >= 0.80 ? '#22c55e' : node.score >= 0.65 ? '#f59e0b' : '#f97316'}
       <span class="score-badge" style="color:{scoreColor}; border-color:{scoreColor}" title="Similaridade semântica: {node.score.toFixed(2)}">{node.score.toFixed(2)}</span>
@@ -297,6 +300,14 @@
     font-size: .7rem;
     opacity: .5;
     color: var(--text-muted);
+    margin-left: 2px;
+  }
+
+  .encrypted-indicator {
+    flex-shrink: 0;
+    font-size: .7rem;
+    opacity: .6;
+    color: var(--accent);
     margin-left: 2px;
   }
 

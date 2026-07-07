@@ -157,6 +157,14 @@ Você pode adicionar estas variáveis para personalizar o comportamento:
 | `PKD_MAX_ATTACHMENT_MB` | `100` | Tamanho máximo de arquivo anexado (MB) |
 | `PKD_TRUST_PROXY_HEADERS` | `0` | Defina como `1` apenas quando há um proxy reverso confiável na frente |
 | `PKD_BASE_URL` | *(host da req.)* | URL pública base para links de compartilhamento (ex: `https://pkd.dalc.in/`). Essencial atrás de proxy reverso. |
+| `SES_USERNAME` | *(desativado)* | Usuário SMTP do Amazon SES |
+| `SES_PASSWORD` | *(desativado)* | Senha SMTP do Amazon SES |
+| `EMAIL_SENDER` | *(desativado)* | Endereço `From:` do e-mail de código (identidade verificada no SES) |
+| `EMAIL_2FA` | *(desativado)* | Endereço que recebe os códigos de 2FA |
+
+As quatro variáveis `SES_USERNAME`, `SES_PASSWORD`, `EMAIL_SENDER` e `EMAIL_2FA` juntas habilitam o 2FA por e-mail no login (vinculado ao dispositivo) e a proteção (criptografia) de documentos individuais.
+
+> ⚠️ **A chave de criptografia dos documentos protegidos é derivada de `PKD_PASSWORD`.** Trocar a senha mestra torna os documentos já protegidos indecifráveis — use **Desproteger** em cada um antes de rotacionar a senha.
 
 ---
 

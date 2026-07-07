@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS documents (
     version             INTEGER NOT NULL DEFAULT 1,
     is_favorite         INTEGER NOT NULL DEFAULT 0,
     locked              INTEGER NOT NULL DEFAULT 0,
+    encrypted           INTEGER NOT NULL DEFAULT 0,
     archived_at         TEXT,
     trashed_at          TEXT,
     original_parent_id  INTEGER REFERENCES documents(id) ON DELETE SET NULL,
@@ -144,4 +145,15 @@ CREATE TABLE IF NOT EXISTS sessions (
     ip           TEXT    NOT NULL DEFAULT '',
     created_at   INTEGER NOT NULL,
     last_seen_at INTEGER NOT NULL
+);
+
+-- ---------------------------------------------------------------------------
+-- trusted_devices (device-bound 2FA: a device that passed e-mail 2FA once)
+-- token_hash = SHA-256 of the pkd_device cookie value.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS trusted_devices (
+    token_hash   BLOB    PRIMARY KEY NOT NULL,
+    user_agent   TEXT    NOT NULL DEFAULT '',
+    created_at   TEXT    NOT NULL,
+    last_seen_at TEXT    NOT NULL
 );

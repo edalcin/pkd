@@ -95,6 +95,7 @@ func Open(dbPath string) (*sql.DB, error) {
 		{`ALTER TABLE documents ADD COLUMN assoc_month INTEGER`, "alter documents assoc_month"},
 		{`ALTER TABLE documents ADD COLUMN assoc_day   INTEGER`, "alter documents assoc_day"},
 		{`ALTER TABLE documents ADD COLUMN locked      INTEGER NOT NULL DEFAULT 0`, "alter documents locked"},
+		{`ALTER TABLE documents ADD COLUMN encrypted   INTEGER NOT NULL DEFAULT 0`, "alter documents encrypted"},
 		{`ALTER TABLE documents ADD COLUMN archived_at TEXT`, "alter documents archived_at"},
 		{`ALTER TABLE attachments ADD COLUMN storage_location TEXT NOT NULL DEFAULT 'local'`, "alter attachments storage_location"},
 		{`ALTER TABLE attachments ADD COLUMN content_sha256 TEXT`, "alter attachments content_sha256"},
@@ -248,7 +249,7 @@ func Open(dbPath string) (*sql.DB, error) {
 		           WHERE dt.document_id = d.id
 		       ), '')
 		FROM documents d
-		WHERE d.trashed_at IS NULL`); err != nil {
+		WHERE d.trashed_at IS NULL AND d.encrypted = 0`); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("store.Open fts5 rebuild: %w", err)
 	}

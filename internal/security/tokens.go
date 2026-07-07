@@ -22,3 +22,17 @@ func HashSHA256(s string) []byte {
 	h := sha256.Sum256([]byte(s))
 	return h[:]
 }
+
+// NewNumericCode returns an n-digit numeric 2FA code (leading zeros kept),
+// generated with crypto/rand. Panics if crypto/rand fails.
+func NewNumericCode(n int) string {
+	const digits = "0123456789"
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		panic("security.NewNumericCode: crypto/rand failed: " + err.Error())
+	}
+	for i := range b {
+		b[i] = digits[int(b[i])%10] // modulo bias negligible for a 2FA code
+	}
+	return string(b)
+}

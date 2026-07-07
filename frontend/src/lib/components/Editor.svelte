@@ -13,7 +13,7 @@
   import { DocLink } from '../editor/doclink-extension.js'
   import { MermaidCodeBlock } from '../editor/mermaid-code-block.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal, docBodyRefreshedSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc, restoreVersion } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, docBodyRefreshedSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc, restoreVersion, protectDoc, unprotectDoc, requestDocCode, unlockDoc } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
@@ -323,6 +323,12 @@
   let editorReady = $state(false)
   let editorTick = $state(0)
 
+  // Encrypted-document unlock panel state
+  let unlockChallengeId = $state('')
+  let unlockCode = $state('')
+  let unlockErr = $state('')
+  let unlockSending = $state(false)
+
   function isActive(type, attrs) {
     return editorInstance?.isActive(type, attrs) ?? false
   }
@@ -511,6 +517,60 @@
   async function handleToggleArchive() {
     const updated = doc.archived ? await unarchiveDoc(doc.id) : await archiveDoc(doc.id)
     doc = updated
+  }
+
+  async function handleToggleProtect() {
+    try {
+      if (!doc.encrypted) {
+        const updated = await protectDoc(doc.id)
+        doc = updated // updated.body_html is plaintext, updated.encrypted === true — editor content unchanged
+      } else {
+        const updated = await unprotectDoc(doc.id)
+        doc = updated
+        editorInstance?.commands.setContent(updated.body_html || '', false)
+      }
+      saveError = ''
+    } catch (e) {
+      if (e?.status === 503) saveError = 'E-mail 2FA não configurado.'
+      else if (e?.status === 403) saveError = 'É preciso desbloquear o documento antes de desproteger.'
+      else saveError = 'Falha ao alterar proteção do documento.'
+    }
+  }
+
+  async function handleRequestUnlockCode() {
+    unlockErr = ''
+    unlockSending = true
+    try {
+      const res = await requestDocCode(doc.id)
+      if (res && res.challenge_id) {
+        unlockChallengeId = res.challenge_id
+      } else {
+        // 204: already unlocked in this session — just reload
+        await loadDocument()
+      }
+    } catch (e) {
+      unlockErr = e?.status === 503 ? 'E-mail 2FA não configurado.' : 'Falha ao enviar código.'
+    } finally {
+      unlockSending = false
+    }
+  }
+
+  async function handleUnlockSubmit() {
+    unlockErr = ''
+    try {
+      const updated = await unlockDoc(doc.id, unlockChallengeId, unlockCode)
+      doc = { ...updated, encrypted_locked: false }
+      unlockChallengeId = ''
+      unlockCode = ''
+      // The tiptap-editor div only mounts once !doc.encrypted_locked, and
+      // mountEditor() reads doc.body_html at mount time — so the fresh mount
+      // already picks up the decrypted content. This covers the (unexpected)
+      // case where an editor instance already exists.
+      if (editorInstance) editorInstance.commands.setContent(updated.body_html || '', false)
+    } catch (e) {
+      unlockErr = 'Código inválido ou expirado.'
+      unlockCode = ''
+    }
   }
 
   async function handleCreateSubDoc() {
@@ -1037,6 +1097,12 @@
           aria-label={doc.locked ? 'Destrancar' : 'Trancar'}
         ><i class="bx {doc.locked ? 'bx-lock' : 'bx-lock-open'}"></i></button>
         <button
+          class="protect-btn {doc.encrypted ? 'is-protected' : ''}"
+          onclick={handleToggleProtect}
+          title={doc.encrypted ? 'Desproteger documento' : 'Proteger (encriptar) documento'}
+          aria-label={doc.encrypted ? 'Desproteger' : 'Proteger'}
+        ><i class="bx {doc.encrypted ? 'bxs-shield' : 'bx-shield'}"></i></button>
+        <button
           class="archive-btn {doc.archived ? 'is-archived' : ''}"
           onclick={handleToggleArchive}
           title={doc.archived ? 'Desarquivar documento' : 'Arquivar documento'}
@@ -1124,6 +1190,7 @@
       </div>
     {/if}
 
+    {#if !doc.encrypted_locked}
     <!-- Formatting toolbar — always visible when a document is open.
          {#key editorTick} forces re-evaluation of isActive() on every
          TipTap transaction (selection change, content edit). -->
@@ -1295,6 +1362,21 @@
 
     <!-- TipTap editor -->
     <div class="tiptap-editor" use:mountEditor></div>
+    {:else}
+      <div class="encrypted-locked-panel">
+        <i class="bx bxs-shield-x" style="font-size:2rem"></i>
+        <p>Este documento está protegido. Envie um código por e-mail para abri-lo.</p>
+        {#if !unlockChallengeId}
+          <button class="btn btn-primary" onclick={handleRequestUnlockCode} disabled={unlockSending}>
+            {unlockSending ? 'Enviando…' : 'Enviar código por e-mail'}
+          </button>
+        {:else}
+          <input type="text" maxlength="6" inputmode="numeric" pattern="[0-9]*" bind:value={unlockCode} placeholder="000000" />
+          <button class="btn btn-primary" onclick={handleUnlockSubmit} disabled={unlockCode.length !== 6}>Abrir</button>
+        {/if}
+        {#if unlockErr}<p class="error-msg" role="alert">{unlockErr}</p>{/if}
+      </div>
+    {/if}
 
     </div><!-- /content-pane -->
 
@@ -1733,6 +1815,39 @@
     border-color: var(--accent);
   }
 
+  /* ── Encrypted document unlock panel ────────────── */
+  .encrypted-locked-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .encrypted-locked-panel i {
+    color: var(--accent);
+  }
+
+  .encrypted-locked-panel input {
+    width: 140px;
+    padding: .5rem;
+    font-size: 1.3rem;
+    letter-spacing: .3rem;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .encrypted-locked-panel .error-msg {
+    color: var(--danger);
+    font-size: .875rem;
+  }
+
   /* ── Formatting toolbar ─────────────────────────── */
   .toolbar {
     display: flex;
@@ -1954,6 +2069,24 @@
   }
   .lock-btn:hover { background: var(--bg-hover); }
   .lock-btn.is-locked { color: var(--accent); }
+
+  .protect-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text);
+    transition: color .15s, background .15s;
+  }
+  .protect-btn:hover { background: var(--bg-hover); }
+  .protect-btn.is-protected { color: var(--accent); }
 
   .fav-btn {
     flex-shrink: 0;

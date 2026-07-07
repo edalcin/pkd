@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/edalcin/pkd/internal/model"
@@ -221,6 +222,118 @@ func (s *DocumentStore) UpdateAndSync(id int64, clientVersion int64, title, body
 			return syncFn(tx)
 		}
 		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &doc, nil
+}
+
+// Protect encrypts a document at rest: stores cipherHTML in body_html, blanks
+// body_text, sets encrypted=1, bumps version, purges plaintext version snapshots,
+// and removes the doc from FTS and the embeddings cache. Idempotency is enforced
+// by the caller (409 if already encrypted).
+func (s *DocumentStore) Protect(id int64, cipherHTML string) (*model.Document, error) {
+	var doc model.Document
+	err := WithTx(s.db, func(tx *sql.Tx) error {
+		var exists int
+		if err := tx.QueryRow(`SELECT 1 FROM documents WHERE id=? AND trashed_at IS NULL`, id).Scan(&exists); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		if _, err := tx.Exec(`UPDATE documents
+			SET body_html=?, body_text='', encrypted=1, version=version+1, updated_at=`+nowISO+`
+			WHERE id=? AND trashed_at IS NULL`, cipherHTML, id); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`DELETE FROM document_versions WHERE document_id=?`, id); err != nil {
+			return err
+		}
+		// contentless FTS5 delete (same pattern as SearchStore.deindex)
+		if _, err := tx.Exec(`INSERT INTO documents_fts(documents_fts, rowid, title, body_text, tags) VALUES ('delete', ?, '', '', '')`, id); err != nil {
+			if err2 := ignoreNoSuchRowid(err); err2 != nil {
+				return err2
+			}
+		}
+		if _, err := tx.Exec(`DELETE FROM document_embeddings WHERE document_id=?`, id); err != nil {
+			return err
+		}
+		return scanDocFromTx(tx, id, &doc)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &doc, nil
+}
+
+// Unprotect decrypts a document back to plaintext: restores body_html/body_text,
+// sets encrypted=0, bumps version, and re-indexes it in FTS (with its tags).
+// Caller supplies the already-decrypted plainHTML/plainText.
+func (s *DocumentStore) Unprotect(id int64, plainHTML, plainText string) (*model.Document, error) {
+	var doc model.Document
+	err := WithTx(s.db, func(tx *sql.Tx) error {
+		res, err := tx.Exec(`UPDATE documents
+			SET body_html=?, body_text=?, encrypted=0, version=version+1, updated_at=`+nowISO+`
+			WHERE id=? AND trashed_at IS NULL`, plainHTML, plainText, id)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		tagNames, _ := queryTagNamesTx(tx, id)
+		if _, err := tx.Exec(`INSERT INTO documents_fts(documents_fts, rowid, title, body_text, tags) VALUES ('delete', ?, '', '', '')`, id); err != nil {
+			if err2 := ignoreNoSuchRowid(err); err2 != nil {
+				return err2
+			}
+		}
+		if _, err := tx.Exec(`INSERT INTO documents_fts(rowid, title, body_text, tags) VALUES (?, (SELECT title FROM documents WHERE id=?), ?, ?)`,
+			id, id, plainText, strings.Join(tagNames, " ")); err != nil {
+			return err
+		}
+		return scanDocFromTx(tx, id, &doc)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &doc, nil
+}
+
+// UpdateEncrypted saves an edit to an already-encrypted document: title +
+// cipherHTML, version-checked and title-unique-checked like UpdateAndSync, but
+// with NO FTS indexing, NO version snapshot, and NO link sync (body is ciphertext).
+func (s *DocumentStore) UpdateEncrypted(id, clientVersion int64, title, cipherHTML string) (*model.Document, error) {
+	var doc model.Document
+	err := WithTx(s.db, func(tx *sql.Tx) error {
+		var storedVersion int64
+		var locked bool
+		if err := tx.QueryRow(`SELECT version, locked FROM documents WHERE id=? AND trashed_at IS NULL`, id).Scan(&storedVersion, &locked); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		if locked {
+			return ErrLocked
+		}
+		if storedVersion != clientVersion {
+			return ErrVersionConflict
+		}
+		var dupID int64
+		var dupTitle string
+		err := tx.QueryRow(`SELECT id, title FROM documents WHERE title=? COLLATE NOCASE AND trashed_at IS NULL AND id!=? LIMIT 1`, title, id).Scan(&dupID, &dupTitle)
+		if err == nil {
+			return &DuplicateTitleError{ExistingID: dupID, ExistingTitle: dupTitle}
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if _, err := tx.Exec(`UPDATE documents SET title=?, body_html=?, body_text='', version=version+1, updated_at=`+nowISO+` WHERE id=? AND trashed_at IS NULL`, title, cipherHTML, id); err != nil {
+			return err
+		}
+		return scanDocFromTx(tx, id, &doc)
 	})
 	if err != nil {
 		return nil, err
@@ -614,7 +727,7 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 		favExtra = " AND is_favorite = 1"
 	}
 
-	const cols = `id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
+	const cols = `id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, encrypted, archived_at,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day`
 
 	var rows *sql.Rows
@@ -704,7 +817,7 @@ func (s *DocumentStore) listByQuery(view string, tagFilter []string, favoriteOnl
 		)`, ph, len(tagFilter))
 	}
 	rows, err := s.db.Query(`
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.archived_at,
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.encrypted, d.archived_at,
 		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
 		FROM documents d
 		WHERE `+cond+`
@@ -840,7 +953,7 @@ func (s *DocumentStore) Ancestors(id int64) ([]*model.Ancestor, error) {
 // ListChildren returns all non-trashed direct children of parentID, ordered by position then id.
 func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) {
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, encrypted, archived_at,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents
 		WHERE parent_id = ? AND trashed_at IS NULL
@@ -868,7 +981,7 @@ func (s *DocumentStore) listByTags(view string, tags []string, favoriteOnly bool
 		extra += " AND d.is_favorite = 1"
 	}
 	query := `
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.archived_at,
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.encrypted, d.archived_at,
 		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
 		FROM documents d
 		WHERE d.trashed_at IS NULL` + extra + `
@@ -923,7 +1036,7 @@ func checkCircular(tx *sql.Tx, sourceID, targetID int64) error {
 
 func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 	row := db.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, encrypted, archived_at,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents WHERE id = ? AND trashed_at IS NULL`, id)
 	if err := scanDocRow(row, doc); err != nil {
@@ -936,7 +1049,7 @@ func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 
 func scanDocFromTx(tx *sql.Tx, id int64, doc *model.Document) error {
 	row := tx.QueryRow(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, encrypted, archived_at,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents WHERE id = ?`, id)
 	if err := scanDocRow(row, doc); err != nil {
@@ -956,7 +1069,7 @@ func scanDocRow(row *sql.Row, doc *model.Document) error {
 		&doc.ID, &parentID, &doc.Title,
 		&bodyHTML, &bodyText, &icon,
 		&doc.Position, &doc.Version,
-		&doc.IsFavorite, &doc.Locked, &archivedAtStr,
+		&doc.IsFavorite, &doc.Locked, &doc.Encrypted, &archivedAtStr,
 		&createdStr, &updatedStr,
 		&assocYear, &assocMonth, &assocDay,
 	)
@@ -1185,7 +1298,7 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 			&doc.ID, &parentID, &doc.Title,
 			&bodyHTML, &bodyText, &icon,
 			&doc.Position, &doc.Version,
-			&doc.IsFavorite, &doc.Locked, &archivedAtStr,
+			&doc.IsFavorite, &doc.Locked, &doc.Encrypted, &archivedAtStr,
 			&createdStr, &updatedStr,
 			&assocYear, &assocMonth, &assocDay,
 		); err != nil {
@@ -1237,7 +1350,7 @@ func (s *DocumentStore) ListByIDs(ids []int64) ([]*model.Document, error) {
 		args[i] = id
 	}
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, archived_at,
+		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, encrypted, archived_at,
 		       created_at, updated_at, assoc_year, assoc_month, assoc_day
 		FROM documents
 		WHERE id IN (`+ph+`) AND trashed_at IS NULL

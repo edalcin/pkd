@@ -650,7 +650,20 @@ func (s *Server) handleAdminGetSettings() http.HandlerFunc {
 			"embed.sweep_minutes":  strconv.Itoa(s.cfg.EmbedSweepMinutes),
 			"embed.key_configured": keyConfigured,
 			"embed.count":          strconv.Itoa(embedCount),
+			"email_2fa_enabled":    strconv.FormatBool(s.emailEnabled),
 		})
+	}
+}
+
+// handleAdminForgetDevices revokes every trusted 2FA device, forcing a code
+// prompt on the next login from any browser.
+func (s *Server) handleAdminForgetDevices() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := s.devices.ForgetAll(); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

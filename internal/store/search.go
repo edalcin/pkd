@@ -92,10 +92,7 @@ func (s *SearchStore) ftsSearch(q string, limit int) ([]SearchHit, error) {
 // Call after Create or Update to keep the index current.
 func (s *SearchStore) IndexDoc(docID int64, title, bodyText string, tagNames []string) error {
 	tags := strings.Join(tagNames, " ")
-	if _, err := s.db.Exec(
-		`INSERT INTO documents_fts(documents_fts, rowid, title, body_text, tags) VALUES ('delete', ?, '', '', '')`,
-		docID,
-	); err != nil && !strings.Contains(err.Error(), "no such rowid") {
+	if err := ignoreNoSuchRowid(s.deleteFTSProbe(docID)); err != nil {
 		return err
 	}
 	_, err := s.db.Exec(
@@ -133,12 +130,28 @@ func scanHits(rows *sql.Rows) ([]SearchHit, error) {
 	return hits, rows.Err()
 }
 
-// ignoreNoSuchRowid swallows the "no such rowid" error from FTS5 delete.
+// deleteFTSProbe issues the contentless-FTS5 "delete" probe for docID. Its
+// result must always be routed through ignoreNoSuchRowid — this is a
+// best-effort "remove if present" operation, never the sole write of a call.
+func (s *SearchStore) deleteFTSProbe(docID int64) error {
+	_, err := s.db.Exec(
+		`INSERT INTO documents_fts(documents_fts, rowid, title, body_text, tags) VALUES ('delete', ?, '', '', '')`,
+		docID)
+	return err
+}
+
+// ignoreNoSuchRowid swallows the errors modernc.org/sqlite returns when the
+// contentless-FTS5 "delete" probe targets a rowid that was never indexed.
+// Confirmed empirically: this driver does NOT return a clean "no such rowid"
+// for a never-inserted rowid — it returns "database disk image is malformed"
+// (SQLITE_CORRUPT_VTAB), because FTS5 can't locate index entries to remove
+// for content that was never written. Both texts are swallowed; any other
+// error (e.g. a real I/O failure) still propagates.
 func ignoreNoSuchRowid(err error) error {
 	if err == nil {
 		return nil
 	}
-	if strings.Contains(err.Error(), "no such rowid") {
+	if strings.Contains(err.Error(), "no such rowid") || strings.Contains(err.Error(), "malformed") {
 		return nil
 	}
 	return err

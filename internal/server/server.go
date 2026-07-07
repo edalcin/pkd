@@ -17,6 +17,7 @@ import (
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/edalcin/pkd/internal/config"
+	"github.com/edalcin/pkd/internal/email"
 	"github.com/edalcin/pkd/internal/sessions"
 	"github.com/edalcin/pkd/internal/storage"
 	"github.com/edalcin/pkd/internal/store"
@@ -40,6 +41,11 @@ type Server struct {
 	jobs        *BackupJobManager
 	embedder    *embedder
 	handler     http.Handler
+
+	devices      *store.DeviceStore
+	email        email.Sender
+	emailEnabled bool
+	challenges   *challengeStore
 
 	localBackend storage.Backend // always non-nil
 	s3Backend    storage.Backend // nil when S3 not configured
@@ -130,6 +136,11 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 	// backends). Non-blocking — does not delay HTTP listener startup.
 	s.startBackupTempSweep()
 
+	s.devices = store.NewDeviceStore(db)
+	s.emailEnabled = cfg.Email2FAEnabled()
+	s.email = email.Sender{Host: cfg.SESHost, Port: cfg.SESPort, Username: cfg.SESUsername, Password: cfg.SESPassword, From: cfg.EmailSender}
+	s.challenges = newChallengeStore() // starts its own sweep goroutine
+
 	s.handler = s.buildRouter()
 	return s
 }
@@ -181,6 +192,7 @@ func (s *Server) buildRouter() http.Handler {
 	// Public unauthenticated routes
 	r.Get("/healthz", (&healthHandler{db: s.db}).ServeHTTP)
 	r.Post("/api/login", s.handleLogin())
+	r.Post("/api/login/2fa", s.handleLogin2FA())
 	registerPWAHandlers(r, root)
 
 	// SPA shell — served publicly so unauthenticated users see the login page.
@@ -231,6 +243,10 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/api/documents/{id}/versions/{vid}", s.handleGetVersion())
 		r.Delete("/api/documents/{id}/versions/{vid}", s.handleDeleteVersion())
 		r.Post("/api/documents/{id}/versions/{vid}/restore", s.handleRestoreVersion())
+		r.Post("/api/documents/{id}/protect", s.handleProtectDocument())
+		r.Post("/api/documents/{id}/unprotect", s.handleUnprotectDocument())
+		r.Post("/api/documents/{id}/unlock/request", s.handleRequestDocCode())
+		r.Post("/api/documents/{id}/unlock", s.handleUnlockDocument())
 		r.Patch("/api/documents/{id}/associated-date", s.handleUpdateAssocDate())
 			r.Get("/api/documents/{id}/children", s.handleListChildren())
 			r.Get("/api/documents/{id}/ancestors", s.handleListAncestors())
@@ -302,6 +318,7 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/check-urls", s.handleAdminCheckURLs())
 		r.Get("/api/admin/shares", s.handleAdminListShares())
 		r.Delete("/api/admin/shares/{shareID}", s.handleAdminRevokeShare())
+		r.Post("/api/admin/trusted-devices/forget", s.handleAdminForgetDevices())
 
 		// Disk usage
 		r.Get("/api/admin/disk-usage", s.handleAdminDiskUsage())

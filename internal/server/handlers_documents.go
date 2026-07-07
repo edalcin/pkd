@@ -55,6 +55,22 @@ func (s *Server) handleGetDocument() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		if doc.Encrypted {
+			sess := SessionFromContext(r.Context())
+			if sess != nil && s.sessions.IsDocUnlocked(sess.ID, doc.ID) {
+				key := security.DeriveDocKey(s.cfg.Password)
+				if plain, err := security.DecryptDoc(doc.BodyHTML, key); err == nil {
+					doc.BodyHTML = plain
+				} else {
+					http.Error(w, "decrypt failed", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				doc.BodyHTML = ""
+				doc.BodyText = ""
+				doc.EncryptedLocked = true
+			}
+		}
 		writeJSON(w, http.StatusOK, doc)
 	}
 }
@@ -88,6 +104,58 @@ func (s *Server) handleUpdateDocument() http.HandlerFunc {
 		safeHTML := security.SanitizeEditorHTML(req.BodyHTML)
 		// Derive plain text for FTS5 indexing from the sanitized HTML
 		plainText := security.ExtractPlainText(safeHTML)
+
+		sess := SessionFromContext(r.Context())
+		if cur, err := s.docs.GetByID(id); err == nil && cur.Encrypted {
+			if sess == nil || !s.sessions.IsDocUnlocked(sess.ID, id) {
+				writeJSON(w, http.StatusForbidden, map[string]string{"error": "unlock required"})
+				return
+			}
+			key := security.DeriveDocKey(s.cfg.Password)
+			cipherHTML, err := security.EncryptDoc(safeHTML, key)
+			if err != nil {
+				http.Error(w, "encrypt failed", http.StatusInternalServerError)
+				return
+			}
+			doc, err := s.docs.UpdateEncrypted(id, req.Version, req.Title, cipherHTML)
+			if errors.Is(err, store.ErrNotFound) {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			if errors.Is(err, store.ErrLocked) {
+				writeJSON(w, http.StatusForbidden, map[string]string{"error": "document is locked"})
+				return
+			}
+			if errors.Is(err, store.ErrVersionConflict) {
+				stored, _ := s.docs.GetByID(id)
+				if stored != nil {
+					if p, derr := security.DecryptDoc(stored.BodyHTML, key); derr == nil {
+						stored.BodyHTML = p
+					}
+				}
+				writeJSON(w, http.StatusConflict, model.VersionConflict{
+					ConflictType:  "version",
+					StoredVersion: stored.Version,
+					Stored:        stored,
+				})
+				return
+			}
+			var dupErr *store.DuplicateTitleError
+			if errors.As(err, &dupErr) {
+				writeJSON(w, http.StatusConflict, model.TitleConflict{
+					ConflictType: "title",
+					ExistingDoc:  &model.Document{ID: dupErr.ExistingID, Title: dupErr.ExistingTitle},
+				})
+				return
+			}
+			if err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			doc.BodyHTML = safeHTML // return plaintext to the still-open editor
+			writeJSON(w, http.StatusOK, doc)
+			return
+		}
 
 		docID := id // capture for closure
 		docHTML := safeHTML

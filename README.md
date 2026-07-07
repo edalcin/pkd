@@ -186,6 +186,14 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 | `GEMINI_API_KEY` | não | *(desativado)* | Chave de API Google Gemini para embeddings semânticos. Sem ela o toggle **Semântico** no Graph View fica indisponível e o worker de embedding não roda |
 | `PKD_EMBED_MODEL` | não | `models/gemini-embedding-001` | Modelo Gemini para geração de embeddings. Alterar o modelo invalida todos os embeddings em cache (re-embed automático na próxima varredura) |
 | `PKD_EMBED_SWEEP_MINUTES` | não | `15` | Cadência do worker de embedding em background (minutos). O worker também dispara imediatamente ao criar/editar documentos |
+| `SES_USERNAME` | não | *(desativado)* | Usuário SMTP do Amazon SES. Junto com `SES_PASSWORD`, `EMAIL_SENDER` e `EMAIL_2FA`, habilita o 2FA por e-mail no login (vinculado ao dispositivo) e a criptografia de documentos protegidos |
+| `SES_PASSWORD` | não | *(desativado)* | Senha SMTP do Amazon SES |
+| `EMAIL_SENDER` | não | *(desativado)* | Endereço `From:` do e-mail de código (precisa ser uma identidade verificada no SES) |
+| `EMAIL_2FA` | não | *(desativado)* | Endereço que recebe todo código de 2FA (login e desbloqueio de documento) |
+| `SES_HOST` | não | `email-smtp.us-east-1.amazonaws.com` | Host SMTP do Amazon SES |
+| `SES_PORT` | não | `587` | Porta SMTP (STARTTLS) |
+
+> ⚠️ **A chave de criptografia dos documentos protegidos é derivada de `PKD_PASSWORD`.** Trocar a senha mestra torna os documentos já protegidos indecifráveis — use **Desproteger** em cada um antes de rotacionar a senha.
 
 ---
 

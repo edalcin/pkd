@@ -24,3 +24,9 @@ func ConstantTimeEqual(a, b string) bool {
 	}
 	return diff == 0
 }
+
+// ConstantTimeEqualBytes is the []byte form of ConstantTimeEqual, used to
+// compare 2FA code hashes without leaking timing information.
+func ConstantTimeEqualBytes(a, b []byte) bool {
+	return ConstantTimeEqual(string(a), string(b))
+}

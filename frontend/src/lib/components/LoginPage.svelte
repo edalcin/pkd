@@ -1,7 +1,10 @@
 <script>
-  import { login } from '../stores/auth.js'
+  import { login, submit2FA } from '../stores/auth.js'
 
+  let step = $state('password')
   let password = $state('')
+  let challengeId = $state('')
+  let code = $state('')
   let error = $state('')
   let loading = $state(false)
 
@@ -10,14 +13,34 @@
     error = ''
     loading = true
     try {
-      const { ok, status } = await login(password)
-      if (!ok) {
-        if (status === 429) {
+      const res = await login(password)
+      if (res.ok && res.twoFactor) {
+        challengeId = res.challengeId
+        step = 'code'
+      } else if (!res.ok) {
+        if (res.status === 429) {
           error = 'Muitas tentativas. Aguarde 30 minutos.'
         } else {
           error = 'Senha incorreta.'
         }
         password = ''
+      }
+    } catch {
+      error = 'Erro de conexão. Tente novamente.'
+    } finally {
+      loading = false
+    }
+  }
+
+  async function handleSubmit2FA(e) {
+    e.preventDefault()
+    error = ''
+    loading = true
+    try {
+      const { ok } = await submit2FA(challengeId, code)
+      if (!ok) {
+        error = 'Código inválido ou expirado.'
+        code = ''
       }
     } catch {
       error = 'Erro de conexão. Tente novamente.'
@@ -33,28 +56,58 @@
     <h1>PKD</h1>
     <p class="subtitle">Personal Knowledge Database</p>
 
-    <form onsubmit={handleSubmit}>
-      <label for="password">Senha mestra</label>
-      <input
-        id="password"
-        type="password"
-        bind:value={password}
-        placeholder="Digite sua senha"
-        autocomplete="current-password"
-        required
-        disabled={loading}
-      />
-      <button type="submit" class="btn btn-primary submit-btn" disabled={loading}>
-        {#if loading}
-          <span class="spinner-sm"></span> Entrando…
-        {:else}
-          Entrar
+    {#if step === 'password'}
+      <form onsubmit={handleSubmit}>
+        <label for="password">Senha mestra</label>
+        <input
+          id="password"
+          type="password"
+          bind:value={password}
+          placeholder="Digite sua senha"
+          autocomplete="current-password"
+          required
+          disabled={loading}
+        />
+        <button type="submit" class="btn btn-primary submit-btn" disabled={loading}>
+          {#if loading}
+            <span class="spinner-sm"></span> Entrando…
+          {:else}
+            Entrar
+          {/if}
+        </button>
+        {#if error}
+          <p class="error-msg" role="alert">{error}</p>
         {/if}
-      </button>
-      {#if error}
-        <p class="error-msg" role="alert">{error}</p>
-      {/if}
-    </form>
+      </form>
+    {:else}
+      <form onsubmit={handleSubmit2FA}>
+        <p class="subtitle">Digite o código de 6 dígitos enviado por e-mail.</p>
+        <label for="code">Código</label>
+        <input
+          id="code"
+          class="code-input"
+          type="text"
+          bind:value={code}
+          placeholder="000000"
+          maxlength="6"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          autocomplete="one-time-code"
+          required
+          disabled={loading}
+        />
+        <button type="submit" class="btn btn-primary submit-btn" disabled={loading}>
+          {#if loading}
+            <span class="spinner-sm"></span> Verificando…
+          {:else}
+            Verificar
+          {/if}
+        </button>
+        {#if error}
+          <p class="error-msg" role="alert">{error}</p>
+        {/if}
+      </form>
+    {/if}
   </div>
 </div>
 
@@ -103,11 +156,18 @@
     margin-bottom: .375rem;
   }
 
-  input[type="password"] {
+  input[type="password"],
+  .code-input {
     width: 100%;
     padding: .65rem .875rem;
     margin-bottom: 1rem;
     font-size: 1rem;
+  }
+
+  .code-input {
+    text-align: center;
+    letter-spacing: .5rem;
+    font-size: 1.25rem;
   }
 
   .submit-btn {

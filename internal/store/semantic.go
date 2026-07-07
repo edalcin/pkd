@@ -63,7 +63,7 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, title, SUBSTR(body_text, 1, 800) AS body
 		FROM documents
-		WHERE trashed_at IS NULL AND archived_at IS NULL
+		WHERE trashed_at IS NULL AND archived_at IS NULL AND encrypted = 0
 		ORDER BY id`)
 	if err != nil {
 		return 0, fmt.Errorf("embed: load docs: %w", err)
@@ -131,7 +131,7 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 	_, _ = s.db.ExecContext(ctx, `
 		DELETE FROM document_embeddings
 		WHERE document_id NOT IN (
-			SELECT id FROM documents WHERE trashed_at IS NULL AND archived_at IS NULL
+			SELECT id FROM documents WHERE trashed_at IS NULL AND archived_at IS NULL AND encrypted = 0
 		)`)
 	if len(stales) == 0 {
 		return 0, nil

@@ -14,6 +14,7 @@ type Session struct {
 	IP         string
 	CreatedAt  time.Time
 	LastSeenAt time.Time
+	unlocked   map[int64]struct{} // in-memory only: doc IDs unlocked this session
 }
 
 // Store is a thread-safe session store backed by SQLite for persistence across
@@ -96,6 +97,30 @@ func (s *Store) Get(id string) (*Session, bool) {
 	sess, ok := s.sessions[id]
 	s.mu.RUnlock()
 	return sess, ok
+}
+
+// UnlockDoc marks docID decrypted for sessionID (in-memory; gone on session
+// delete/expiry/restart).
+func (s *Store) UnlockDoc(sessionID string, docID int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess, ok := s.sessions[sessionID]; ok {
+		if sess.unlocked == nil {
+			sess.unlocked = make(map[int64]struct{})
+		}
+		sess.unlocked[docID] = struct{}{}
+	}
+}
+
+// IsDocUnlocked reports whether docID was unlocked in sessionID.
+func (s *Store) IsDocUnlocked(sessionID string, docID int64) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if sess, ok := s.sessions[sessionID]; ok {
+		_, u := sess.unlocked[docID]
+		return u
+	}
+	return false
 }
 
 // Touch updates the last-seen time for the given session.

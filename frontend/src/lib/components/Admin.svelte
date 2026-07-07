@@ -61,6 +61,10 @@
   let embedModelSaving = $state(false)
   let embedModelMsg = $state('')
 
+  // Security tab — trusted devices
+  let forgettingDevices = $state(false)
+  let forgetDevicesMsg = $state('')
+
   // Tags tab — local editable copy
   let editableTags = $state([])
   let tagMsg = $state('')
@@ -656,6 +660,21 @@
     if (!confirm('Esvaziar toda a lixeira? Esta ação não pode ser desfeita.')) return
     await apiPost('/api/admin/trash/empty')
     await loadTrash()
+  }
+
+  async function forgetTrustedDevices() {
+    if (!confirm('Esquecer todos os dispositivos confiáveis? Próximo login em qualquer navegador exigirá código por e-mail.')) return
+    forgettingDevices = true
+    forgetDevicesMsg = ''
+    try {
+      await apiPost('/api/admin/trusted-devices/forget')
+      forgetDevicesMsg = 'Dispositivos esquecidos.'
+    } catch {
+      forgetDevicesMsg = 'Falha ao esquecer dispositivos.'
+    } finally {
+      forgettingDevices = false
+      setTimeout(() => { forgetDevicesMsg = '' }, 4000)
+    }
   }
 
   // Tag management
@@ -1746,6 +1765,21 @@
       </div>
       {:else}
       <p class="muted">Carregando…</p>
+      {/if}
+    </div>
+
+    <div class="admin-section">
+      <h3>2FA por e-mail</h3>
+      {#if embedSettings}
+        <p class="muted" style="margin-bottom:1rem">
+          Status: {embedSettings.email_2fa_enabled === 'true' ? '✓ Ativado' : '✗ Desativado'}
+        </p>
+        {#if embedSettings.email_2fa_enabled === 'true'}
+          <button class="btn btn-danger" onclick={forgetTrustedDevices} disabled={forgettingDevices}>
+            {forgettingDevices ? 'Removendo…' : 'Esquecer dispositivos confiáveis'}
+          </button>
+          {#if forgetDevicesMsg}<span class="versions-setting-msg">{forgetDevicesMsg}</span>{/if}
+        {/if}
       {/if}
     </div>
   {/if}

@@ -54,6 +54,16 @@ type Config struct {
 	// Default: 15
 	EmbedSweepMinutes int
 
+	// E-mail 2FA (Amazon SES SMTP). All four of SESUsername, SESPassword,
+	// EmailSender, Email2FA must be set to enable login 2FA and document
+	// encryption. SESHost/SESPort have defaults.
+	SESUsername string
+	SESPassword string
+	EmailSender string // From: address (verified SES identity)
+	Email2FA    string // recipient of every 2FA code
+	SESHost     string // default email-smtp.us-east-1.amazonaws.com
+	SESPort     string // default 587 (STARTTLS)
+
 	// S3 is populated when PKD_S3_BUCKET and PKD_S3_REGION are set.
 	// Nil means S3 is not configured and the local backend is the only option.
 	S3 *S3Config
@@ -93,6 +103,8 @@ func Load() (*Config, error) {
 		MaxAttachmentMB:   100,
 		EmbedModel:        "models/gemini-embedding-001",
 		EmbedSweepMinutes: 15,
+		SESHost:           "email-smtp.us-east-1.amazonaws.com",
+		SESPort:           "587",
 	}
 
 	if v := os.Getenv("PKD_LISTEN_ADDR"); v != "" {
@@ -152,6 +164,25 @@ func Load() (*Config, error) {
 		cfg.EmbedSweepMinutes = n
 	}
 
+	if v := os.Getenv("SES_USERNAME"); v != "" {
+		cfg.SESUsername = v
+	}
+	if v := os.Getenv("SES_PASSWORD"); v != "" {
+		cfg.SESPassword = v
+	}
+	if v := os.Getenv("EMAIL_SENDER"); v != "" {
+		cfg.EmailSender = v
+	}
+	if v := os.Getenv("EMAIL_2FA"); v != "" {
+		cfg.Email2FA = v
+	}
+	if v := os.Getenv("SES_HOST"); v != "" {
+		cfg.SESHost = v
+	}
+	if v := os.Getenv("SES_PORT"); v != "" {
+		cfg.SESPort = v
+	}
+
 	// S3 configuration — optional. Both bucket and region must be set to enable.
 	s3Bucket := os.Getenv("PKD_S3_BUCKET")
 	s3Region := os.Getenv("PKD_S3_REGION")
@@ -166,4 +197,10 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// Email2FAEnabled reports whether e-mail 2FA (and thus document encryption)
+// is enabled: all four required SES/e-mail vars are non-empty.
+func (c *Config) Email2FAEnabled() bool {
+	return c.SESUsername != "" && c.SESPassword != "" && c.EmailSender != "" && c.Email2FA != ""
 }

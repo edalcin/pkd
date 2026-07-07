@@ -8,6 +8,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Adicionado
 
+- **2FA por e-mail (login vinculado ao dispositivo) + criptografia de documentos** — dois recursos opt-in habilitados quando as quatro variáveis `SES_USERNAME`, `SES_PASSWORD`, `EMAIL_SENDER` e `EMAIL_2FA` estão definidas:
+  - **Login com 2FA por e-mail:** após a senha mestra, se o navegador não for um dispositivo confiável, um código de 6 dígitos é enviado por e-mail (Amazon SES SMTP, `internal/email`); ao acertar o código o dispositivo é lembrado permanentemente (cookie `pkd_device`, tabela `trusted_devices`) e não é mais solicitado nesse navegador. Endpoint `POST /api/login/2fa`.
+  - **Proteção de documento (criptografia em repouso):** ícone de escudo na barra de título alterna Proteger/Desproteger. Um documento protegido guarda o corpo como AES-256-GCM (`internal/security/crypto.go`; chave derivada de `PKD_PASSWORD`) na coluna `documents.encrypted`; título/ícone/tags continuam visíveis na árvore, mas o conteúdo some da busca full-text e dos embeddings semânticos enquanto protegido. Abrir o documento envia um novo código por e-mail; após validado, o corpo é decifrado e permanece aberto pelo resto da sessão do servidor (reinício do servidor tranca novamente). Endpoints `POST /api/documents/{id}/protect`, `/unprotect`, `/unlock/request`, `/unlock`.
+  - **Administração:** botão "Esquecer dispositivos confiáveis" (`POST /api/admin/trusted-devices/forget`) revoga todos os dispositivos, exigindo código no próximo login em qualquer navegador; status do 2FA exposto em `GET /api/admin/settings` (`email_2fa_enabled`).
+  - Novas variáveis de ambiente: `SES_USERNAME`, `SES_PASSWORD`, `EMAIL_SENDER`, `EMAIL_2FA`, `SES_HOST` (padrão `email-smtp.us-east-1.amazonaws.com`), `SES_PORT` (padrão `587`). Recurso totalmente opt-in — sem as quatro variáveis obrigatórias, o login permanece de etapa única, como antes.
+  - ⚠️ Trocar `PKD_PASSWORD` torna documentos já protegidos indecifráveis (a chave é derivada da senha mestra) — é preciso desprotegê-los antes de rotacionar a senha.
+
 - **Dashboard na Administração** — nova aba "📊 Início" como tela padrão da área administrativa:
   - Cards de resumo: total de documentos, arquivos associados, links e tags (via `GET /api/admin/stats`)
   - Cards de uso de disco: banco de dados, WAL (SQLite), arquivos associados e total — movidos da aba Storage para o Dashboard
