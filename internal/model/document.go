@@ -79,3 +79,13 @@ type DocumentVersion struct {
 	ContentSHA256 string    `json:"content_sha256"`
 	CreatedAt     time.Time `json:"created_at"`
 }
+
+// RootDocStats is per-root-document (first-level) subtree counts split by
+// archived status, used by the admin dashboard "documents by root" card.
+type RootDocStats struct {
+	ID       int64  `json:"id"`
+	Title    string `json:"title"`
+	Icon     string `json:"icon,omitempty"`
+	Active   int64  `json:"active"`
+	Archived int64  `json:"archived"`
+}

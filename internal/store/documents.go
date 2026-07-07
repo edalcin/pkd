@@ -494,7 +494,7 @@ func (s *DocumentStore) SortAll(by string) error {
 			var crows *sql.Rows
 			if g.id == nil {
 				crows, err = tx.Query(
-					`SELECT id FROM documents WHERE parent_id IS NULL AND trashed_at IS NULL ORDER BY `+orderClause)
+					`SELECT id FROM documents WHERE parent_id IS NULL AND trashed_at IS NULL ORDER BY ` + orderClause)
 			} else {
 				crows, err = tx.Query(
 					`SELECT id FROM documents WHERE parent_id = ? AND trashed_at IS NULL ORDER BY `+orderClause, *g.id)
@@ -628,21 +628,21 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 		rows, err = s.db.Query(`
 			WITH RECURSIVE archived_subtree AS (
 			  SELECT id FROM documents
-			  WHERE archived_at IS NOT NULL AND trashed_at IS NULL`+favExtra+`
+			  WHERE archived_at IS NOT NULL AND trashed_at IS NULL` + favExtra + `
 			  UNION ALL
 			  SELECT d.id FROM documents d
 			  JOIN archived_subtree a ON d.parent_id = a.id
 			  WHERE d.trashed_at IS NULL AND d.archived_at IS NOT NULL
 			)
-			SELECT `+cols+`
+			SELECT ` + cols + `
 			FROM documents
 			WHERE id IN (SELECT id FROM archived_subtree)
 			ORDER BY position ASC, id ASC`)
 	case "all":
 		rows, err = s.db.Query(`
-			SELECT `+cols+`
+			SELECT ` + cols + `
 			FROM documents
-			WHERE trashed_at IS NULL`+favExtra+`
+			WHERE trashed_at IS NULL` + favExtra + `
 			ORDER BY position ASC, id ASC`)
 	default: // "active"
 		// Recursive CTE: traverse only non-archived nodes from non-archived roots.
@@ -658,9 +658,9 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 			  JOIN active_ids a ON d.parent_id = a.id
 			  WHERE d.trashed_at IS NULL AND d.archived_at IS NULL
 			)
-			SELECT `+cols+`
+			SELECT ` + cols + `
 			FROM documents
-			WHERE id IN (SELECT id FROM active_ids)`+favExtra+`
+			WHERE id IN (SELECT id FROM active_ids)` + favExtra + `
 			ORDER BY position ASC, id ASC`)
 	}
 	if err != nil {
@@ -718,8 +718,8 @@ func (s *DocumentStore) listByQuery(view string, tagFilter []string, favoriteOnl
 
 // DocWithBody is a minimal document projection used for content scanning.
 type DocWithBody struct {
-	ID      int64
-	Title   string
+	ID       int64
+	Title    string
 	BodyHTML string
 }
 
@@ -1247,4 +1247,42 @@ func (s *DocumentStore) ListByIDs(ids []int64) ([]*model.Document, error) {
 	}
 	defer rows.Close()
 	return scanDocRows(rows)
+}
+
+// RootStats returns, for every root document (parent_id IS NULL), the count
+// of active vs. archived documents in its whole subtree (root included).
+// Trashed documents, and anything beneath a trashed node, are excluded —
+// mirroring the traversal rules used by ListTree. Used by the admin
+// dashboard "documents by root document" card.
+func (s *DocumentStore) RootStats() ([]*model.RootDocStats, error) {
+	rows, err := s.db.Query(`
+		WITH RECURSIVE subtree(id, root_id) AS (
+		  SELECT id, id FROM documents WHERE parent_id IS NULL AND trashed_at IS NULL
+		  UNION ALL
+		  SELECT d.id, s.root_id
+		  FROM documents d
+		  JOIN subtree s ON d.parent_id = s.id
+		  WHERE d.trashed_at IS NULL
+		)
+		SELECT r.id, r.title, r.icon,
+		       SUM(CASE WHEN d.archived_at IS NULL THEN 1 ELSE 0 END) AS active,
+		       SUM(CASE WHEN d.archived_at IS NOT NULL THEN 1 ELSE 0 END) AS archived
+		FROM subtree s
+		JOIN documents d ON d.id = s.id
+		JOIN documents r ON r.id = s.root_id
+		GROUP BY r.id, r.title, r.icon
+		ORDER BY (active + archived) DESC, r.title COLLATE NOCASE`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*model.RootDocStats
+	for rows.Next() {
+		var rst model.RootDocStats
+		if err := rows.Scan(&rst.ID, &rst.Title, &rst.Icon, &rst.Active, &rst.Archived); err != nil {
+			return nil, err
+		}
+		out = append(out, &rst)
+	}
+	return out, rows.Err()
 }

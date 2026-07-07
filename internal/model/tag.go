@@ -17,3 +17,13 @@ type TagWithCount struct {
 	Color string `json:"color"`
 	Count int    `json:"count"`
 }
+
+// TagDocStats is per-tag document counts split by archived status, used by
+// the admin dashboard "documents by tag" card.
+type TagDocStats struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Color    string `json:"color"`
+	Active   int64  `json:"active"`
+	Archived int64  `json:"archived"`
+}

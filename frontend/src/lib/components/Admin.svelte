@@ -902,6 +902,7 @@
           <div class="disk-usage-card">
             <span class="disk-usage-label">Documentos</span>
             <span class="disk-usage-value">{stats.doc_count}</span>
+            <span class="disk-usage-sub">{stats.doc_count_active} ativos · {stats.doc_count_archived} arquivados</span>
           </div>
           <div class="disk-usage-card">
             <span class="disk-usage-label">Arquivos</span>
@@ -916,6 +917,40 @@
             <span class="disk-usage-value">{stats.tag_count}</span>
           </div>
         </div>
+      {/if}
+    </div>
+    <div class="admin-section">
+      <h3>Documentos por tag</h3>
+      {#if statsLoading}
+        <p class="muted">Carregando...</p>
+      {:else if stats?.tag_stats?.length}
+        <div class="share-list">
+          {#each stats.tag_stats as t}
+            <div class="share-item">
+              <span class="share-doc-title">🏷️ {t.name}</span>
+              <span class="muted" style="white-space:nowrap">{t.active} ativos · {t.archived} arquivados</span>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="muted">Nenhuma tag com documentos.</p>
+      {/if}
+    </div>
+    <div class="admin-section">
+      <h3>Documentos por documento-raiz</h3>
+      {#if statsLoading}
+        <p class="muted">Carregando...</p>
+      {:else if stats?.root_stats?.length}
+        <div class="share-list">
+          {#each stats.root_stats as rs}
+            <div class="share-item">
+              <span class="share-doc-title">{rs.icon || '📄'} {rs.title}</span>
+              <span class="muted" style="white-space:nowrap">{rs.active} ativos · {rs.archived} arquivados</span>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="muted">Nenhum documento-raiz encontrado.</p>
       {/if}
     </div>
     <div class="admin-section">
@@ -2405,5 +2440,10 @@
     font-size: 1.2rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+  }
+
+  .disk-usage-sub {
+    font-size: .72rem;
+    color: var(--text-muted);
   }
 </style>

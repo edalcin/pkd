@@ -24,9 +24,9 @@ type OrphanInfo struct {
 	AttachmentID int64  `json:"attachment_id,omitempty"` // >0 when DB record exists
 	OriginalName string `json:"original_name,omitempty"`
 	MimeType     string `json:"mime_type,omitempty"`
-	Reason       string `json:"reason"`               // "no_db_record" | "trashed_doc" | "no_doc"
-	DocID        int64  `json:"doc_id,omitempty"`     // trashed doc id (reason=trashed_doc only)
-	DocTitle     string `json:"doc_title,omitempty"`  // trashed doc title (reason=trashed_doc only)
+	Reason       string `json:"reason"`              // "no_db_record" | "trashed_doc" | "no_doc"
+	DocID        int64  `json:"doc_id,omitempty"`    // trashed doc id (reason=trashed_doc only)
+	DocTitle     string `json:"doc_title,omitempty"` // trashed doc title (reason=trashed_doc only)
 }
 
 func (s *Server) handleAdminListTrash() http.HandlerFunc {
@@ -242,8 +242,8 @@ func (s *Server) handleAdminCheckURLs() http.HandlerFunc {
 		DocumentID int64  `json:"document_id"`
 		URL        string `json:"url"`
 		Title      string `json:"title"`
-		Valid       bool   `json:"valid"`
-		StatusCode  int    `json:"status_code"`
+		Valid      bool   `json:"valid"`
+		StatusCode int    `json:"status_code"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		urls, err := s.urls.ListAll()
@@ -804,13 +804,18 @@ func (s *Server) handleAdminImportExternalImages() http.HandlerFunc {
 }
 
 type AdminStats struct {
-	DocCount  int64 `json:"doc_count"`
-	FileCount int64 `json:"file_count"`
-	LinkCount int64 `json:"link_count"`
-	TagCount  int64 `json:"tag_count"`
+	DocCount         int64                 `json:"doc_count"`
+	DocCountActive   int64                 `json:"doc_count_active"`
+	DocCountArchived int64                 `json:"doc_count_archived"`
+	FileCount        int64                 `json:"file_count"`
+	LinkCount        int64                 `json:"link_count"`
+	TagCount         int64                 `json:"tag_count"`
+	TagStats         []*model.TagDocStats  `json:"tag_stats"`
+	RootStats        []*model.RootDocStats `json:"root_stats"`
 }
 
-// handleAdminStats returns KB counts: documents, attachments, links, tags.
+// handleAdminStats returns KB counts: documents (active/archived split),
+// attachments, links, tags, plus per-tag and per-root-document breakdowns.
 // GET /api/admin/stats
 func (s *Server) handleAdminStats() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -819,7 +824,8 @@ func (s *Server) handleAdminStats() http.HandlerFunc {
 			dest  *int64
 			query string
 		}{
-			{&st.DocCount, `SELECT COUNT(*) FROM documents WHERE trashed_at IS NULL`},
+			{&st.DocCountActive, `SELECT COUNT(*) FROM documents WHERE trashed_at IS NULL AND archived_at IS NULL`},
+			{&st.DocCountArchived, `SELECT COUNT(*) FROM documents WHERE trashed_at IS NULL AND archived_at IS NOT NULL`},
 			{&st.FileCount, `SELECT COUNT(*) FROM attachments`},
 			{&st.LinkCount, `SELECT COUNT(*) FROM document_links`},
 			{&st.TagCount, `SELECT COUNT(*) FROM tags`},
@@ -829,6 +835,17 @@ func (s *Server) handleAdminStats() http.HandlerFunc {
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
+		}
+		st.DocCount = st.DocCountActive + st.DocCountArchived
+
+		var err error
+		if st.TagStats, err = s.tags.StatsByTag(); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if st.RootStats, err = s.docs.RootStats(); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
 		}
 		writeJSON(w, http.StatusOK, st)
 	}

@@ -256,3 +256,31 @@ func upsertTag(tx *sql.Tx, name string) (int64, error) {
 	}
 	return res.LastInsertId()
 }
+
+// StatsByTag returns, for every tag with at least one non-trashed document,
+// the count of active vs. archived documents carrying that tag. Used by the
+// admin dashboard "documents by tag" card.
+func (s *TagStore) StatsByTag() ([]*model.TagDocStats, error) {
+	rows, err := s.db.Query(`
+		SELECT t.id, t.name, t.color,
+		       SUM(CASE WHEN d.archived_at IS NULL THEN 1 ELSE 0 END) AS active,
+		       SUM(CASE WHEN d.archived_at IS NOT NULL THEN 1 ELSE 0 END) AS archived
+		FROM tags t
+		JOIN document_tags dt ON dt.tag_id = t.id
+		JOIN documents d ON d.id = dt.document_id AND d.trashed_at IS NULL
+		GROUP BY t.id, t.name, t.color
+		ORDER BY (active + archived) DESC, t.name COLLATE NOCASE`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*model.TagDocStats
+	for rows.Next() {
+		var t model.TagDocStats
+		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.Active, &t.Archived); err != nil {
+			return nil, err
+		}
+		out = append(out, &t)
+	}
+	return out, rows.Err()
+}
