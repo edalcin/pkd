@@ -76,6 +76,7 @@
   let diskUsageLoading = $state(false)
   let stats = $state(null)
   let statsLoading = $state(false)
+  let tagStatsCollapsed = $state(localStorage.getItem('pkd-admin-tagstats-collapsed') !== 'false')
   let storageTestResult = $state(null)
   let storageLoading = $state(false)
   let storageSwitching = $state(false)
@@ -323,6 +324,11 @@
     } finally {
       statsLoading = false
     }
+  }
+
+  function toggleTagStats() {
+    tagStatsCollapsed = !tagStatsCollapsed
+    localStorage.setItem('pkd-admin-tagstats-collapsed', String(tagStatsCollapsed))
   }
 
   async function switchStorageBackend(backend) {
@@ -920,40 +926,6 @@
       {/if}
     </div>
     <div class="admin-section">
-      <h3>Documentos por tag</h3>
-      {#if statsLoading}
-        <p class="muted">Carregando...</p>
-      {:else if stats?.tag_stats?.length}
-        <div class="share-list">
-          {#each stats.tag_stats as t}
-            <div class="share-item">
-              <span class="share-doc-title">🏷️ {t.name}</span>
-              <span class="muted" style="white-space:nowrap">{t.active} ativos · {t.archived} arquivados</span>
-            </div>
-          {/each}
-        </div>
-      {:else}
-        <p class="muted">Nenhuma tag com documentos.</p>
-      {/if}
-    </div>
-    <div class="admin-section">
-      <h3>Documentos por documento-raiz</h3>
-      {#if statsLoading}
-        <p class="muted">Carregando...</p>
-      {:else if stats?.root_stats?.length}
-        <div class="share-list">
-          {#each stats.root_stats as rs}
-            <div class="share-item">
-              <span class="share-doc-title">{rs.icon || '📄'} {rs.title}</span>
-              <span class="muted" style="white-space:nowrap">{rs.active} ativos · {rs.archived} arquivados</span>
-            </div>
-          {/each}
-        </div>
-      {:else}
-        <p class="muted">Nenhum documento-raiz encontrado.</p>
-      {/if}
-    </div>
-    <div class="admin-section">
       <h3>Uso de disco</h3>
       {#if diskUsageLoading}
         <p class="muted">Calculando...</p>
@@ -981,6 +953,45 @@
         <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick={() => { loadDiskUsage(); loadStats() }}>
           🔄 Atualizar
         </button>
+      {/if}
+    </div>
+    <div class="admin-section">
+      <h3>Documentos por documento-raiz</h3>
+      {#if statsLoading}
+        <p class="muted">Carregando...</p>
+      {:else if stats?.root_stats?.length}
+        <div class="share-list">
+          {#each stats.root_stats as rs}
+            <div class="share-item">
+              <span class="share-doc-title">{rs.title}</span>
+              <span class="muted" style="white-space:nowrap">{rs.active} ativos · {rs.archived} arquivados</span>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="muted">Nenhum documento-raiz encontrado.</p>
+      {/if}
+    </div>
+    <div class="admin-section">
+      <button class="tag-section-header" onclick={toggleTagStats} aria-expanded={!tagStatsCollapsed} aria-controls="admin-tag-stats-list">
+        <h3 style="margin:0">Documentos por tag</h3>
+        <span class="tag-section-arrow">{tagStatsCollapsed ? '▸' : '▾'}</span>
+      </button>
+      {#if !tagStatsCollapsed}
+        {#if statsLoading}
+          <p class="muted">Carregando...</p>
+        {:else if stats?.tag_stats?.length}
+          <div class="share-list" id="admin-tag-stats-list">
+            {#each stats.tag_stats as t}
+              <div class="share-item">
+                <span class="share-doc-title">🏷️ {t.name}</span>
+                <span class="muted" style="white-space:nowrap">{t.active} ativos · {t.archived} arquivados</span>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <p class="muted">Nenhuma tag com documentos.</p>
+        {/if}
       {/if}
     </div>
   {/if}
@@ -1883,6 +1894,26 @@
     justify-content: space-between;
     margin-bottom: .75rem;
     gap: .5rem;
+  }
+
+  .tag-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0;
+    margin-bottom: .75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+  }
+
+  .tag-section-arrow {
+    color: var(--text-muted);
+    font-size: .8rem;
   }
 
   .trash-item {
