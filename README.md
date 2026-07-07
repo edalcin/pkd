@@ -83,6 +83,13 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | 🧹 **Limpeza** | Executa `VACUUM` no banco de dados para recuperar espaço em disco |
 | ⚙️ **Configurações** | Retenção de versões configurável (padrão 50/documento); painel de embeddings semânticos: status da chave Gemini, contagem de vetores, **seletor de modelo** Gemini (3 opções; persiste no DB, sobrepõe env var, dispara re-embed automático ao trocar) |
 
+### Segurança
+
+| | |
+|---|---|
+| 📧 **2FA por e-mail (login vinculado ao dispositivo)** | Opcional — habilitado com `SES_USERNAME`, `SES_PASSWORD`, `EMAIL_SENDER` e `EMAIL_2FA`. Dispositivos não reconhecidos recebem um código de 6 dígitos por e-mail após a senha mestra; uma vez validado, o dispositivo é lembrado permanentemente e não pede código de novo |
+| 🛡️ **Proteção de documentos** | Ícone de escudo no editor criptografa o corpo do documento em repouso (AES-256-GCM). Título, ícone e tags continuam visíveis na árvore; o conteúdo some da busca e dos embeddings semânticos enquanto protegido. Abrir exige um código por e-mail; a sessão do servidor mantém o documento decifrado até o logout ou reinício do servidor |
+
 ### Interface
 
 | | |
@@ -254,6 +261,27 @@ Clique no ícone de caixa (📦) na barra superior do editor para arquivar ou de
 - Um documento arquivado pode ser editado se destrancado individualmente
 
 Ao desarquivar o documento pai, **todos os filhos** são desarquivados em cascata e ficam novamente disponíveis na árvore principal.
+
+### 2FA por e-mail e proteção de documentos
+
+Ambos os recursos usam o mesmo canal de e-mail (Amazon SES) e ficam desativados até as quatro variáveis `SES_USERNAME`, `SES_PASSWORD`, `EMAIL_SENDER` e `EMAIL_2FA` estarem definidas (ver [Variáveis de ambiente](#variáveis-de-ambiente)). Sem elas, o login continua de etapa única, como antes.
+
+**Login com 2FA (vinculado ao dispositivo)**
+
+1. Digite a senha mestra normalmente.
+2. Se o navegador não for reconhecido, um código de 6 dígitos chega por e-mail em `EMAIL_2FA` — digite-o na tela seguinte.
+3. Uma vez validado, esse navegador é lembrado permanentemente (cookie de dispositivo) e não pede código de novo, mesmo após logout/login.
+4. Para revogar todos os dispositivos (ex: perda de acesso a um navegador confiável), acesse **Administração → Configurações → Esquecer dispositivos confiáveis**. O próximo login em qualquer navegador volta a pedir código.
+
+**Proteção de documento (criptografia em repouso)**
+
+1. Abra o documento e clique no ícone de escudo (🛡) na barra de título.
+2. O corpo é criptografado (AES-256-GCM, chave derivada de `PKD_PASSWORD`) e permanece visível apenas na sessão atual — você não perde o que estava editando. O ícone muda para escudo preenchido confirmando a proteção.
+3. Ao reabrir o documento numa sessão nova (outro navegador, ou após logout/login), o editor mostra um painel de desbloqueio no lugar do conteúdo: clique em "Enviar código por e-mail", digite o código de 6 dígitos recebido e o conteúdo é decifrado para aquela sessão.
+4. Documentos protegidos **saem da busca por conteúdo e dos embeddings semânticos** enquanto criptografados — o título continua pesquisável e visível na árvore, já que não é secreto.
+5. Clique no escudo novamente para desproteger (exige que o documento já esteja desbloqueado na sessão atual).
+
+> ⚠️ A chave de criptografia é derivada de `PKD_PASSWORD` — trocar a senha mestra torna documentos protegidos indecifráveis. Desproteja-os antes de rotacionar a senha.
 
 ### Armazenamento S3
 
