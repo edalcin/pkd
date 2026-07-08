@@ -7,7 +7,7 @@ export const authenticated = writable(null)
 /**
  * Attempt login with the master password.
  * @param {string} password
- * @returns {Promise<{ok: boolean, status?: number, twoFactor?: boolean, challengeId?: string}>}
+ * @returns {Promise<{ok: boolean, status?: number, twoFactor?: boolean, challengeId?: string, emailFailed?: boolean}>}
  */
 export async function login(password) {
   const res = await apiFetch('/api/login', {
@@ -20,7 +20,7 @@ export async function login(password) {
   }
   if (res.status === 200) {
     const body = await res.json()
-    return { ok: true, twoFactor: true, challengeId: body.challenge_id }
+    return { ok: true, twoFactor: true, challengeId: body.challenge_id, emailFailed: !!body.email_failed }
   }
   return { ok: false, status: res.status }
 }

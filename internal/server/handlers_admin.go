@@ -644,13 +644,15 @@ func (s *Server) handleAdminGetSettings() http.HandlerFunc {
 		if s.cfg.GeminiAPIKey != "" {
 			keyConfigured = "true"
 		}
+		backupRemaining, _ := s.backupCodes.Count()
 		writeJSON(w, http.StatusOK, map[string]string{
-			"versions.max_per_doc": maxPerDoc,
-			"embed.model":          s.cfg.EmbedModel,
-			"embed.sweep_minutes":  strconv.Itoa(s.cfg.EmbedSweepMinutes),
-			"embed.key_configured": keyConfigured,
-			"embed.count":          strconv.Itoa(embedCount),
-			"email_2fa_enabled":    strconv.FormatBool(s.emailEnabled),
+			"versions.max_per_doc":   maxPerDoc,
+			"embed.model":            s.cfg.EmbedModel,
+			"embed.sweep_minutes":    strconv.Itoa(s.cfg.EmbedSweepMinutes),
+			"embed.key_configured":   keyConfigured,
+			"embed.count":            strconv.Itoa(embedCount),
+			"email_2fa_enabled":      strconv.FormatBool(s.emailEnabled),
+			"backup_codes_remaining": strconv.Itoa(backupRemaining),
 		})
 	}
 }
@@ -664,6 +666,67 @@ func (s *Server) handleAdminForgetDevices() http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleAdminRequestBackupCodesCode e-mails a 2FA code that authorizes
+// backup-code generation (POST /api/admin/backup-codes/request).
+func (s *Server) handleAdminRequestBackupCodesCode() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !s.emailEnabled {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "email 2FA not configured"})
+			return
+		}
+		sess := SessionFromContext(r.Context())
+		if sess == nil {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
+		code := security.NewNumericCode(codeDigits)
+		id := s.challenges.create("backup", code, sess.ID, 0)
+		if err := s.send2FACode("PKD — Código para gerar códigos de backup",
+			"Código para gerar novos códigos de backup: "+code+"\n\nExpira em 10 minutos."); err != nil {
+			http.Error(w, "email send failed", http.StatusBadGateway)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"challenge_id": id})
+	}
+}
+
+// handleAdminGenerateBackupCodes verifies the e-mailed 2FA code and returns a
+// fresh set of 10 single-use backup codes, replacing any existing set
+// (POST /api/admin/backup-codes).
+func (s *Server) handleAdminGenerateBackupCodes() http.HandlerFunc {
+	type request struct {
+		ChallengeID string `json:"challenge_id"`
+		Code        string `json:"code"`
+	}
+	const backupCodeCount = 10
+	return func(w http.ResponseWriter, r *http.Request) {
+		sess := SessionFromContext(r.Context())
+		if sess == nil {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ChallengeID == "" || req.Code == "" {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		ch, ok := s.challenges.verify(req.ChallengeID, req.Code)
+		if !ok || ch.kind != "backup" || ch.sessionID != sess.ID {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		codes := make([]string, backupCodeCount)
+		for i := range codes {
+			codes[i] = security.NewBackupCode()
+		}
+		if err := s.backupCodes.Replace(codes); err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"codes": codes})
 	}
 }
 

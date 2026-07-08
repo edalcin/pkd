@@ -328,6 +328,8 @@
   let unlockCode = $state('')
   let unlockErr = $state('')
   let unlockSending = $state(false)
+  let useBackupUnlock = $state(false)
+  let unlockBackupCode = $state('')
 
   function isActive(type, attrs) {
     return editorInstance?.isActive(type, attrs) ?? false
@@ -570,6 +572,20 @@
     } catch (e) {
       unlockErr = 'Código inválido ou expirado.'
       unlockCode = ''
+    }
+  }
+
+  async function handleUnlockBackup() {
+    unlockErr = ''
+    try {
+      const updated = await unlockDoc(doc.id, '', unlockBackupCode.trim())
+      doc = { ...updated, encrypted_locked: false }
+      unlockBackupCode = ''
+      useBackupUnlock = false
+      if (editorInstance) editorInstance.commands.setContent(updated.body_html || '', false)
+    } catch {
+      unlockErr = 'Código de backup inválido.'
+      unlockBackupCode = ''
     }
   }
 
@@ -1366,9 +1382,18 @@
       <div class="encrypted-locked-panel">
         <i class="bx bxs-shield-x" style="font-size:2rem"></i>
         <p>Este documento está protegido. Envie um código por e-mail para abri-lo.</p>
-        {#if !unlockChallengeId}
+        {#if useBackupUnlock}
+          <input type="text" bind:value={unlockBackupCode} placeholder="XXXXX-XXXXX" autocomplete="off" />
+          <button class="btn btn-primary" onclick={handleUnlockBackup} disabled={!unlockBackupCode.trim()}>Abrir</button>
+          <button type="button" style="background:none;border:none;color:var(--text);text-decoration:underline;cursor:pointer;font-size:.85rem" onclick={() => { useBackupUnlock = false; unlockErr = '' }}>
+            Usar código por e-mail
+          </button>
+        {:else if !unlockChallengeId}
           <button class="btn btn-primary" onclick={handleRequestUnlockCode} disabled={unlockSending}>
             {unlockSending ? 'Enviando…' : 'Enviar código por e-mail'}
+          </button>
+          <button type="button" style="background:none;border:none;color:var(--text);text-decoration:underline;cursor:pointer;font-size:.85rem" onclick={() => { useBackupUnlock = true; unlockErr = '' }}>
+            Usar código de backup
           </button>
         {:else}
           <input type="text" maxlength="6" inputmode="numeric" pattern="[0-9]*" bind:value={unlockCode} placeholder="000000" />

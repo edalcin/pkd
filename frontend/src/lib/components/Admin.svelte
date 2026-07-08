@@ -64,6 +64,12 @@
   // Security tab — trusted devices
   let forgettingDevices = $state(false)
   let forgetDevicesMsg = $state('')
+  let backupGenStep = $state('idle') // 'idle' | 'code' | 'shown'
+  let backupChallengeId = $state('')
+  let backup2faCode = $state('')
+  let generatedCodes = $state([])
+  let backupGenMsg = $state('')
+  let backupBusy = $state(false)
 
   // Tags tab — local editable copy
   let editableTags = $state([])
@@ -675,6 +681,54 @@
       forgettingDevices = false
       setTimeout(() => { forgetDevicesMsg = '' }, 4000)
     }
+  }
+
+  async function reloadSettings() {
+    const data = await apiGet('/api/admin/settings')
+    if (data) embedSettings = data
+  }
+
+  async function startBackupGen() {
+    backupGenMsg = ''
+    if (Number(embedSettings?.['backup_codes_remaining']) > 0) {
+      if (!confirm('Gerar novos códigos invalida os códigos de backup anteriores. Continuar?')) return
+    }
+    backupBusy = true
+    try {
+      const res = await apiPost('/api/admin/backup-codes/request')
+      backupChallengeId = res.challenge_id
+      backupGenStep = 'code'
+    } catch (err) {
+      backupGenMsg = err.status === 503 ? '2FA por e-mail não configurado.' : 'Falha ao solicitar código.'
+    } finally {
+      backupBusy = false
+    }
+  }
+
+  async function confirmBackupGen() {
+    backupGenMsg = ''
+    backupBusy = true
+    try {
+      const res = await apiPost('/api/admin/backup-codes', { challenge_id: backupChallengeId, code: backup2faCode })
+      generatedCodes = res.codes
+      backupGenStep = 'shown'
+      backup2faCode = ''
+      await reloadSettings()
+    } catch {
+      backupGenMsg = 'Código inválido ou expirado.'
+    } finally {
+      backupBusy = false
+    }
+  }
+
+  function copyBackupCodes() {
+    navigator.clipboard.writeText(generatedCodes.join('\n'))
+  }
+
+  function closeBackupCodes() {
+    backupGenStep = 'idle'
+    generatedCodes = []
+    backupChallengeId = ''
   }
 
   // Tag management
@@ -1779,6 +1833,24 @@
             {forgettingDevices ? 'Removendo…' : 'Esquecer dispositivos confiáveis'}
           </button>
           {#if forgetDevicesMsg}<span class="versions-setting-msg">{forgetDevicesMsg}</span>{/if}
+          <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+            <h4 style="margin-bottom:.5rem">Códigos de backup</h4>
+            {#if backupGenStep === 'idle'}
+              <p class="muted" style="margin-bottom:.5rem">{embedSettings['backup_codes_remaining']} código(s) de backup restante(s)</p>
+              <button class="btn btn-ghost btn-sm" onclick={startBackupGen} disabled={backupBusy}>Gerar novos códigos</button>
+            {:else if backupGenStep === 'code'}
+              <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                <input type="text" inputmode="numeric" maxlength="6" bind:value={backup2faCode} placeholder="Código recebido por e-mail" style="padding:.35rem .5rem;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:.9rem" />
+                <button class="btn btn-primary btn-sm" onclick={confirmBackupGen} disabled={backupBusy || !backup2faCode}>Confirmar</button>
+              </div>
+            {:else if backupGenStep === 'shown'}
+              <p class="muted" style="margin-bottom:.5rem">⚠ Guarde estes códigos; não serão exibidos novamente.</p>
+              <pre style="border:1px solid var(--border);border-radius:4px;padding:.75rem;font-size:.9rem;white-space:pre-wrap">{generatedCodes.join('\n')}</pre>
+              <button class="btn btn-ghost btn-sm" onclick={copyBackupCodes}>Copiar</button>
+              <button class="btn btn-primary btn-sm" onclick={closeBackupCodes}>Fechar</button>
+            {/if}
+            {#if backupGenMsg}<span class="versions-setting-msg">{backupGenMsg}</span>{/if}
+          </div>
         {/if}
       {/if}
     </div>

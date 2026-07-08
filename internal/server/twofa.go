@@ -16,7 +16,7 @@ const (
 )
 
 type challenge struct {
-	kind      string // "login" | "doc"
+	kind      string // "login" | "doc" | "backup"
 	codeHash  []byte
 	sessionID string // set for kind=="doc"
 	docID     int64  // set for kind=="doc"
@@ -44,8 +44,20 @@ func (c *challengeStore) create(kind, code, sessionID string, docID int64) strin
 	return id
 }
 
-// verify consumes and validates a challenge. Returns the challenge on success.
+// verify consumes and validates a challenge by comparing the emailed code.
 func (c *challengeStore) verify(id, code string) (*challenge, bool) {
+	return c.verifyFunc(id, func(ch *challenge) bool {
+		return security.ConstantTimeEqualBytes(ch.codeHash, security.HashSHA256(code))
+	})
+}
+
+// verifyFunc validates the challenge (existence, expiry, try count) and consumes
+// it iff match reports the supplied secret correct. match runs under the store
+// lock; keep it fast. A failing match keeps the challenge (its try counter was
+// already incremented, so challengeMaxTries still caps attempts).
+// ponytail: match may hit the DB (backup-code check) under the lock — this store
+// is contended only by rare 2FA verifies + the once-a-minute sweep, so fine.
+func (c *challengeStore) verifyFunc(id string, match func(*challenge) bool) (*challenge, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ch, ok := c.m[id]
@@ -58,7 +70,7 @@ func (c *challengeStore) verify(id, code string) (*challenge, bool) {
 		delete(c.m, id)
 		return nil, false
 	}
-	if !security.ConstantTimeEqualBytes(ch.codeHash, security.HashSHA256(code)) {
+	if !match(ch) {
 		return nil, false
 	}
 	delete(c.m, id) // single-use

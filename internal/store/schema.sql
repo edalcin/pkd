@@ -157,3 +157,12 @@ CREATE TABLE IF NOT EXISTS trusted_devices (
     created_at   TEXT    NOT NULL,
     last_seen_at TEXT    NOT NULL
 );
+
+-- ---------------------------------------------------------------------------
+-- backup_codes (single-use 2FA recovery codes; plaintext shown once at
+-- generation, only the SHA-256 hash of the normalized code is stored)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS backup_codes (
+    code_hash   BLOB    PRIMARY KEY NOT NULL,
+    created_at  TEXT    NOT NULL
+);

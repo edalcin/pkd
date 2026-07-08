@@ -168,7 +168,7 @@ func (s *Server) handleUnlockDocument() http.HandlerFunc {
 			return
 		}
 		var req request
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ChallengeID == "" || req.Code == "" {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Code == "" {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
@@ -177,17 +177,33 @@ func (s *Server) handleUnlockDocument() http.HandlerFunc {
 			http.Error(w, "authentication required", http.StatusUnauthorized)
 			return
 		}
-		ch, ok := s.challenges.verify(req.ChallengeID, req.Code)
-		if !ok || ch.kind != "doc" || ch.docID != id || ch.sessionID != sess.ID {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+		doc, err := s.docs.GetByID(id)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		s.sessions.UnlockDoc(sess.ID, id)
-		doc, err := s.docs.GetByID(id)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		if !doc.Encrypted {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "not encrypted"})
+			return
+		}
+		if req.ChallengeID != "" {
+			ch, ok := s.challenges.verify(req.ChallengeID, req.Code)
+			if !ok || ch.kind != "doc" || ch.docID != id || ch.sessionID != sess.ID {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+		} else {
+			used, _ := s.backupCodes.Consume(req.Code)
+			if !used {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
+		s.sessions.UnlockDoc(sess.ID, id)
 		key := security.DeriveDocKey(s.cfg.Password)
 		plain, err := security.DecryptDoc(doc.BodyHTML, key)
 		if err != nil {

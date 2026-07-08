@@ -47,7 +47,7 @@ func (s *Server) handleLogin() http.HandlerFunc {
 		id := s.challenges.create("login", code, "", 0)
 		if err := s.send2FACode("PKD — Código de acesso", "Seu código de acesso é: "+code+"\n\nExpira em 10 minutos."); err != nil {
 			log.Printf("2fa login e-mail send failed: %v", err)
-			http.Error(w, "email send failed", http.StatusBadGateway)
+			writeJSON(w, http.StatusOK, map[string]any{"two_factor_required": true, "challenge_id": id, "email_failed": true})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"two_factor_required": true, "challenge_id": id})
@@ -93,7 +93,13 @@ func (s *Server) handleLogin2FA() http.HandlerFunc {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		ch, ok := s.challenges.verify(req.ChallengeID, req.Code)
+		ch, ok := s.challenges.verifyFunc(req.ChallengeID, func(ch *challenge) bool {
+			if security.ConstantTimeEqualBytes(ch.codeHash, security.HashSHA256(req.Code)) {
+				return true
+			}
+			used, _ := s.backupCodes.Consume(req.Code)
+			return used
+		})
 		if !ok || ch.kind != "login" {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return

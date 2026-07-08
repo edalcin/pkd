@@ -46,6 +46,7 @@ type Server struct {
 	email        email.Sender
 	emailEnabled bool
 	challenges   *challengeStore
+	backupCodes  *store.BackupCodeStore
 
 	localBackend storage.Backend // always non-nil
 	s3Backend    storage.Backend // nil when S3 not configured
@@ -137,6 +138,7 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 	s.startBackupTempSweep()
 
 	s.devices = store.NewDeviceStore(db)
+	s.backupCodes = store.NewBackupCodeStore(db)
 	s.emailEnabled = cfg.Email2FAEnabled()
 	s.email = email.Sender{Host: cfg.SESHost, Port: cfg.SESPort, Username: cfg.SESUsername, Password: cfg.SESPassword, From: cfg.EmailSender}
 	s.challenges = newChallengeStore() // starts its own sweep goroutine
@@ -319,6 +321,8 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/api/admin/shares", s.handleAdminListShares())
 		r.Delete("/api/admin/shares/{shareID}", s.handleAdminRevokeShare())
 		r.Post("/api/admin/trusted-devices/forget", s.handleAdminForgetDevices())
+		r.Post("/api/admin/backup-codes/request", s.handleAdminRequestBackupCodesCode())
+		r.Post("/api/admin/backup-codes", s.handleAdminGenerateBackupCodes())
 
 		// Disk usage
 		r.Get("/api/admin/disk-usage", s.handleAdminDiskUsage())

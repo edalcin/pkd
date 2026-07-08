@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"strings"
 )
 
 // NewToken returns n cryptographically random bytes encoded as base64url
@@ -35,4 +36,41 @@ func NewNumericCode(n int) string {
 		b[i] = digits[int(b[i])%10] // modulo bias negligible for a 2FA code
 	}
 	return string(b)
+}
+
+// backupCodeAlphabet excludes ambiguous glyphs (I, L, O, U, 0, 1). 30 symbols.
+const backupCodeAlphabet = "ABCDEFGHJKMNPQRSTVWXYZ23456789"
+const backupCodeLen = 10 // 30^10 ≈ 49 bits; grouped 5-5 for readability
+
+// NewBackupCode returns a human-friendly single-use recovery code such as
+// "ABCDE-FGHJK". Uses rejection sampling (reject bytes >= 240 = 8*30) so the
+// alphabet is uniform — unlike NewNumericCode, backup codes bypass e-mail so
+// entropy must not be biased. Panics if crypto/rand fails.
+func NewBackupCode() string {
+	b := make([]byte, backupCodeLen)
+	var buf [1]byte
+	for i := 0; i < backupCodeLen; {
+		if _, err := rand.Read(buf[:]); err != nil {
+			panic("security.NewBackupCode: crypto/rand failed: " + err.Error())
+		}
+		if buf[0] >= 240 { // avoid modulo bias
+			continue
+		}
+		b[i] = backupCodeAlphabet[int(buf[0])%len(backupCodeAlphabet)]
+		i++
+	}
+	return string(b[:5]) + "-" + string(b[5:])
+}
+
+// NormalizeBackupCode uppercases s and drops every character outside the
+// backup-code alphabet (dashes, spaces), so a code verifies regardless of the
+// separators/case the user typed.
+func NormalizeBackupCode(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToUpper(s) {
+		if strings.ContainsRune(backupCodeAlphabet, r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }

@@ -7,6 +7,8 @@
   let code = $state('')
   let error = $state('')
   let loading = $state(false)
+  let emailFailed = $state(false)
+  let useBackup = $state(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -16,6 +18,8 @@
       const res = await login(password)
       if (res.ok && res.twoFactor) {
         challengeId = res.challengeId
+        emailFailed = res.emailFailed
+        useBackup = res.emailFailed
         step = 'code'
       } else if (!res.ok) {
         if (res.status === 429) {
@@ -81,21 +85,46 @@
       </form>
     {:else}
       <form onsubmit={handleSubmit2FA}>
-        <p class="subtitle">Digite o código de 6 dígitos enviado por e-mail.</p>
+        <p class="subtitle">
+          {#if useBackup}
+            Digite um código de backup.
+          {:else}
+            Digite o código de 6 dígitos enviado por e-mail.
+          {/if}
+        </p>
+        {#if emailFailed}
+          <p class="error-msg" role="alert">Não foi possível enviar o e-mail. Use um código de backup.</p>
+        {/if}
         <label for="code">Código</label>
-        <input
-          id="code"
-          class="code-input"
-          type="text"
-          bind:value={code}
-          placeholder="000000"
-          maxlength="6"
-          inputmode="numeric"
-          pattern="[0-9]*"
-          autocomplete="one-time-code"
-          required
-          disabled={loading}
-        />
+        {#if useBackup}
+          <input
+            id="code"
+            class="code-input"
+            type="text"
+            bind:value={code}
+            placeholder="XXXXX-XXXXX"
+            autocomplete="off"
+            required
+            disabled={loading}
+          />
+        {:else}
+          <input
+            id="code"
+            class="code-input"
+            type="text"
+            bind:value={code}
+            placeholder="000000"
+            maxlength="6"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            autocomplete="one-time-code"
+            required
+            disabled={loading}
+          />
+        {/if}
+        <button type="button" style="background:none;border:none;color:var(--text);text-decoration:underline;cursor:pointer;font-size:.85rem;margin-top:.5rem" onclick={() => { useBackup = !useBackup; code = '' }}>
+          {useBackup ? 'Usar código do e-mail' : 'Usar código de backup'}
+        </button>
         <button type="submit" class="btn btn-primary submit-btn" disabled={loading}>
           {#if loading}
             <span class="spinner-sm"></span> Verificando…
