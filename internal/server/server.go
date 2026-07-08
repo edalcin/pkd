@@ -323,6 +323,9 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/admin/trusted-devices/forget", s.handleAdminForgetDevices())
 		r.Post("/api/admin/backup-codes/request", s.handleAdminRequestBackupCodesCode())
 		r.Post("/api/admin/backup-codes", s.handleAdminGenerateBackupCodes())
+		r.Get("/api/admin/protected", s.handleAdminListProtected())
+		r.Post("/api/admin/unprotect/request", s.handleAdminRequestUnprotectCode())
+		r.Post("/api/admin/unprotect", s.handleAdminUnprotect())
 
 		// Disk usage
 		r.Get("/api/admin/disk-usage", s.handleAdminDiskUsage())

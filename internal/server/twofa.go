@@ -16,7 +16,7 @@ const (
 )
 
 type challenge struct {
-	kind      string // "login" | "doc" | "backup"
+	kind      string // "login" | "doc" | "backup" | "bulk_unprotect"
 	codeHash  []byte
 	sessionID string // set for kind=="doc"
 	docID     int64  // set for kind=="doc"

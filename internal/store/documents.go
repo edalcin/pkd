@@ -890,6 +890,34 @@ func (s *DocumentStore) ListTrash() ([]*model.Document, error) {
 	return docs, rows.Err()
 }
 
+// ListEncrypted returns all non-trashed encrypted (protected) documents,
+// projected to id/title/icon/updated_at, ordered by title. Body is not loaded.
+func (s *DocumentStore) ListEncrypted() ([]*model.Document, error) {
+	rows, err := s.db.Query(`
+		SELECT id, title, icon, updated_at
+		FROM documents
+		WHERE encrypted = 1 AND trashed_at IS NULL
+		ORDER BY title COLLATE NOCASE ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var docs []*model.Document
+	for rows.Next() {
+		var doc model.Document
+		var icon sql.NullString
+		var updatedStr string
+		if err := rows.Scan(&doc.ID, &doc.Title, &icon, &updatedStr); err != nil {
+			return nil, err
+		}
+		doc.Icon = icon.String
+		doc.Encrypted = true
+		doc.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedStr)
+		docs = append(docs, &doc)
+	}
+	return docs, rows.Err()
+}
+
 // PermanentDelete hard-deletes a trashed document. Use EmptyTrash for bulk.
 // Non-trashed children are moved to root to satisfy the FK RESTRICT constraint.
 func (s *DocumentStore) PermanentDelete(id int64) error {

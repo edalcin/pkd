@@ -127,6 +127,80 @@ func TestProtect_NonExistentDocument(t *testing.T) {
 	}
 }
 
+// TestListEncrypted verifies ListEncrypted returns exactly the non-trashed
+// encrypted documents, each flagged Encrypted==true, ordered by title
+// COLLATE NOCASE ASC — excluding both never-protected and trashed+encrypted
+// documents.
+func TestListEncrypted(t *testing.T) {
+	db, err := store.Open("file:store_list_encrypted_test?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	docs := store.NewDocumentStore(db)
+
+	zebra, err := docs.Create(nil, "Zebra Doc")
+	if err != nil {
+		t.Fatalf("Create(Zebra Doc): %v", err)
+	}
+	alpha, err := docs.Create(nil, "Alpha Doc")
+	if err != nil {
+		t.Fatalf("Create(Alpha Doc): %v", err)
+	}
+	middle, err := docs.Create(nil, "Middle Doc")
+	if err != nil {
+		t.Fatalf("Create(Middle Doc): %v", err)
+	}
+	trashed, err := docs.Create(nil, "Trashed Doc")
+	if err != nil {
+		t.Fatalf("Create(Trashed Doc): %v", err)
+	}
+
+	if _, err := docs.Protect(zebra.ID, "fake-cipher-zebra"); err != nil {
+		t.Fatalf("Protect(zebra): %v", err)
+	}
+	if _, err := docs.Protect(alpha.ID, "fake-cipher-alpha"); err != nil {
+		t.Fatalf("Protect(alpha): %v", err)
+	}
+	// Middle Doc is deliberately left unprotected.
+	if _, err := docs.Protect(trashed.ID, "fake-cipher-trashed"); err != nil {
+		t.Fatalf("Protect(trashed): %v", err)
+	}
+	if err := docs.SoftDelete(trashed.ID); err != nil {
+		t.Fatalf("SoftDelete(trashed): %v", err)
+	}
+	_ = middle
+
+	got, err := docs.ListEncrypted()
+	if err != nil {
+		t.Fatalf("ListEncrypted: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("expected 2 results, got %d: %+v", len(got), got)
+	}
+
+	// Alpha Doc < Zebra Doc COLLATE NOCASE ASC.
+	wantOrder := []int64{alpha.ID, zebra.ID}
+	for i, id := range wantOrder {
+		if got[i].ID != id {
+			t.Fatalf("result[%d]: expected id %d, got %d (%+v)", i, id, got[i].ID, got[i])
+		}
+		if !got[i].Encrypted {
+			t.Fatalf("result[%d] (id=%d): expected Encrypted==true", i, got[i].ID)
+		}
+	}
+
+	for _, doc := range got {
+		if doc.ID == middle.ID {
+			t.Fatalf("unprotected document %d must not appear in ListEncrypted", middle.ID)
+		}
+		if doc.ID == trashed.ID {
+			t.Fatalf("trashed document %d must not appear in ListEncrypted", trashed.ID)
+		}
+	}
+}
+
 func containsHit(hits []store.SearchHit, id int64) bool {
 	for _, h := range hits {
 		if h.ID == id {

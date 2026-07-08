@@ -36,6 +36,8 @@
   let attachmentsTotal = $state(0)
   let attachmentsOffset = $state(0)
   let attachmentsHasMore = $derived(allAttachments.length < attachmentsTotal)
+  let protectedAllSelected = $derived(protectedDocs.length > 0 && protectedDocs.every(d => protectedSelected[d.id]))
+  let protectedSelCount = $derived(protectedDocs.filter(d => protectedSelected[d.id]).length)
   let attSentinel = $state(null)
   let allOrphans = $state([])
   let orphansLoading = $state(false)
@@ -70,6 +72,16 @@
   let generatedCodes = $state([])
   let backupGenMsg = $state('')
   let backupBusy = $state(false)
+
+  // Protected documents tab
+  let protectedDocs = $state([])
+  let protectedLoading = $state(false)
+  let protectedSelected = $state({}) // { [docId]: true }
+  let unprotectStep = $state('idle') // 'idle' | 'code'
+  let unprotectChallengeId = $state('')
+  let unprotect2faCode = $state('')
+  let unprotectBusy = $state(false)
+  let unprotectMsg = $state('')
 
   // Tags tab — local editable copy
   let editableTags = $state([])
@@ -312,6 +324,7 @@
     if (id === 'links') loadAdminURLs()
     if (id === 'dashboard') { loadStats(); loadDiskUsage() }
     if (id === 'storage') { loadStorageConfig(); loadDiskUsage() }
+    if (id === 'protected') loadProtected()
   }
 
   async function loadStorageConfig() {
@@ -731,6 +744,72 @@
     backupChallengeId = ''
   }
 
+  async function loadProtected() {
+    protectedLoading = true
+    try {
+      protectedDocs = (await apiGet('/api/admin/protected')) || []
+      protectedSelected = {}
+    } finally {
+      protectedLoading = false
+    }
+  }
+
+  function toggleProtectedSel(docId) {
+    protectedSelected = { ...protectedSelected, [docId]: !protectedSelected[docId] }
+  }
+
+  function toggleAllProtected(on) {
+    const next = {}
+    if (on) for (const d of protectedDocs) next[d.id] = true
+    protectedSelected = next
+  }
+
+  function selectedProtectedIds() {
+    return protectedDocs.filter(d => protectedSelected[d.id]).map(d => d.id)
+  }
+
+  async function startUnprotect() {
+    unprotectMsg = ''
+    if (selectedProtectedIds().length === 0) { unprotectMsg = 'Selecione ao menos um documento.'; return }
+    unprotectBusy = true
+    try {
+      const res = await apiPost('/api/admin/unprotect/request')
+      unprotectChallengeId = res.challenge_id
+      unprotectStep = 'code'
+    } catch (err) {
+      unprotectMsg = err.status === 503 ? '2FA por e-mail não configurado.' : 'Falha ao solicitar código.'
+    } finally {
+      unprotectBusy = false
+    }
+  }
+
+  async function confirmUnprotect() {
+    unprotectMsg = ''
+    unprotectBusy = true
+    const ids = selectedProtectedIds()
+    try {
+      const res = await apiPost('/api/admin/unprotect', { challenge_id: unprotectChallengeId, code: unprotect2faCode, ids })
+      const n = (res.unprotected || []).length
+      const f = (res.failed || []).length
+      unprotectStep = 'idle'
+      unprotect2faCode = ''
+      unprotectChallengeId = ''
+      unprotectMsg = `${n} documento(s) desprotegido(s)${f ? `, ${f} falha(s)` : ''}.`
+      await loadProtected()
+      await loadTree() // atualiza indicadores de escudo na árvore lateral
+    } catch {
+      unprotectMsg = 'Código inválido ou expirado.'
+    } finally {
+      unprotectBusy = false
+    }
+  }
+
+  function cancelUnprotect() {
+    unprotectStep = 'idle'
+    unprotect2faCode = ''
+    unprotectChallengeId = ''
+  }
+
   // Tag management
   async function handleRenameTag() {
     renameMsg = ''
@@ -962,7 +1041,7 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    {#each [['dashboard','📊 Início'], ['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links'], ['shares','🌐 Compartilhados'], ['storage','☁️ Storage'], ['settings','⚙️ Preferências']] as [id, label]}
+    {#each [['dashboard','📊 Início'], ['backup','💾 Backup'], ['trash','🗑️ Lixeira'], ['tags','🏷️ Tags'], ['attachments','📎 Arquivos'], ['cleanup','🧹 Limpeza'], ['links','🔗 Links'], ['shares','🌐 Compartilhados'], ['protected','🛡️ Protegidos'], ['storage','☁️ Storage'], ['settings','⚙️ Preferências']] as [id, label]}
       <button
         class="tab-btn {activeTab === id ? 'active' : ''}"
         onclick={() => setTab(id)}
@@ -1482,6 +1561,59 @@
               </div>
             </div>
           {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
+
+  <!-- Protegidos -->
+  {#if activeTab === 'protected'}
+    <div class="admin-section">
+      <div class="section-header">
+        <h3>Documentos protegidos ({protectedDocs.length})</h3>
+        <button class="btn btn-ghost btn-sm" onclick={loadProtected} disabled={protectedLoading}>
+          {protectedLoading ? 'Carregando…' : '↻ Atualizar'}
+        </button>
+      </div>
+
+      {#if protectedLoading}
+        <p class="muted">Carregando…</p>
+      {:else if protectedDocs.length === 0}
+        <p class="muted">Nenhum documento protegido.</p>
+      {:else}
+        <label style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;font-size:.9rem">
+          <input type="checkbox" checked={protectedAllSelected} onchange={e => toggleAllProtected(e.currentTarget.checked)} />
+          Selecionar todos
+        </label>
+        <div class="share-list">
+          {#each protectedDocs as doc}
+            <div class="share-item">
+              <label style="display:flex;gap:.6rem;align-items:center;flex:1;min-width:0;cursor:pointer">
+                <input type="checkbox" checked={!!protectedSelected[doc.id]} onchange={() => toggleProtectedSel(doc.id)} />
+                <i class="bx {doc.icon || 'bx-dock-top'}"></i>
+                <a class="share-doc-title" href="#/doc/{doc.id}" onclick={() => activeTab = ''}>{doc.title}</a>
+                <span class="muted" style="white-space:nowrap">
+                  {new Date(doc.updated_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' })}
+                </span>
+              </label>
+            </div>
+          {/each}
+        </div>
+
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          {#if unprotectStep === 'idle'}
+            <button class="btn btn-danger btn-sm" onclick={startUnprotect} disabled={unprotectBusy || protectedSelCount === 0}>
+              Desproteger selecionados ({protectedSelCount})
+            </button>
+          {:else if unprotectStep === 'code'}
+            <p class="muted" style="margin-bottom:.5rem">Um código foi enviado por e-mail para desproteger {protectedSelCount} documento(s).</p>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+              <input type="text" inputmode="numeric" maxlength="6" bind:value={unprotect2faCode} placeholder="Código recebido por e-mail" style="padding:.35rem .5rem;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:.9rem" />
+              <button class="btn btn-primary btn-sm" onclick={confirmUnprotect} disabled={unprotectBusy || !unprotect2faCode}>Confirmar</button>
+              <button class="btn btn-ghost btn-sm" onclick={cancelUnprotect} disabled={unprotectBusy}>Cancelar</button>
+            </div>
+          {/if}
+          {#if unprotectMsg}<span class="versions-setting-msg">{unprotectMsg}</span>{/if}
         </div>
       {/if}
     </div>

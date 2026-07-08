@@ -730,6 +730,94 @@ func (s *Server) handleAdminGenerateBackupCodes() http.HandlerFunc {
 	}
 }
 
+// handleAdminListProtected lists all encrypted (protected) documents
+// (GET /api/admin/protected).
+func (s *Server) handleAdminListProtected() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		docs, err := s.docs.ListEncrypted()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, docs)
+	}
+}
+
+// handleAdminRequestUnprotectCode e-mails a 2FA code that authorizes bulk
+// unprotect of documents (POST /api/admin/unprotect/request).
+func (s *Server) handleAdminRequestUnprotectCode() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !s.emailEnabled {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "email 2FA not configured"})
+			return
+		}
+		sess := SessionFromContext(r.Context())
+		if sess == nil {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
+		code := security.NewNumericCode(codeDigits)
+		id := s.challenges.create("bulk_unprotect", code, sess.ID, 0)
+		if err := s.send2FACode("PKD — Código para desproteger documentos",
+			"Código para desproteger documentos: "+code+"\n\nExpira em 10 minutos."); err != nil {
+			http.Error(w, "email send failed", http.StatusBadGateway)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"challenge_id": id})
+	}
+}
+
+// handleAdminUnprotect verifies a single bulk-unprotect 2FA code and decrypts
+// every requested document back to plaintext (POST /api/admin/unprotect).
+func (s *Server) handleAdminUnprotect() http.HandlerFunc {
+	type request struct {
+		ChallengeID string  `json:"challenge_id"`
+		Code        string  `json:"code"`
+		IDs         []int64 `json:"ids"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		sess := SessionFromContext(r.Context())
+		if sess == nil {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ChallengeID == "" || req.Code == "" || len(req.IDs) == 0 {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		ch, ok := s.challenges.verify(req.ChallengeID, req.Code)
+		if !ok || ch.kind != "bulk_unprotect" || ch.sessionID != sess.ID {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		key := security.DeriveDocKey(s.cfg.Password)
+		unprotected := []int64{}
+		failed := []int64{}
+		for _, id := range req.IDs {
+			doc, err := s.docs.GetByID(id)
+			if err != nil || !doc.Encrypted {
+				continue // missing or already plaintext — skip silently (list may be stale)
+			}
+			plain, err := security.DecryptDoc(doc.BodyHTML, key)
+			if err != nil {
+				failed = append(failed, id) // e.g. master password changed
+				continue
+			}
+			plainText := security.ExtractPlainText(plain)
+			if _, err := s.docs.Unprotect(id, plain, plainText); err != nil {
+				failed = append(failed, id)
+				continue
+			}
+			unprotected = append(unprotected, id)
+		}
+		if len(unprotected) > 0 {
+			s.embedder.notify()
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"unprotected": unprotected, "failed": failed})
+	}
+}
+
 // handleAdminSetSettings updates a whitelisted server-side setting.
 func (s *Server) handleAdminSetSettings() http.HandlerFunc {
 	type request struct {
