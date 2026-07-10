@@ -340,10 +340,12 @@
       .attr('r', d => nodeRadius(d))
       .attr('fill', d => d.node_type === 'tag'
         ? '#e879f9'
-        : showSemantic
-          ? ((ns._commSize?.get(d.community) || 0) > 1 ? communityColor(d.community) : '#94a3b8')
-          : getColor(d.tags))
-      .attr('stroke', d => d.node_type === 'tag' ? '#c026d3' : 'var(--bg-panel)')
+        : d.root
+          ? '#eab308'
+          : showSemantic
+            ? ((ns._commSize?.get(d.community) || 0) > 1 ? communityColor(d.community) : '#94a3b8')
+            : getColor(d.tags))
+      .attr('stroke', d => d.node_type === 'tag' ? '#c026d3' : d.root ? '#a16207' : 'var(--bg-panel)')
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', d => d.node_type === 'tag' ? '3,2' : 'none')
 
@@ -476,6 +478,10 @@
       <div class="legend-item">
         <svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#94a3b8" stroke="var(--bg-panel)" stroke-width="2"/></svg>
         <span>Documento</span>
+      </div>
+      <div class="legend-item">
+        <svg width="14" height="14"><circle cx="7" cy="7" r="7" fill="#eab308" stroke="#a16207" stroke-width="2"/></svg>
+        <span>Documento-raiz</span>
       </div>
       <div class="legend-item">
         <svg width="14" height="14">

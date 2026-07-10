@@ -103,7 +103,7 @@
               style={c && isActive
                 ? `background:${c}; border-color:${c}; color:${tc || '#fff'}`
                 : c
-                ? `background:${c}22; border-color:${c}; color:${c}`
+                ? `background:${c}22; border-color:${c}; color:${tc || c}`
                 : ''}
               onclick={() => toggleTag(tag.name)}
               title="#{tag.name} — {tag.count} documentos"
