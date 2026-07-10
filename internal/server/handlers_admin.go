@@ -530,8 +530,9 @@ func (s *Server) handleAdminDeleteAllOrphans() http.HandlerFunc {
 
 func (s *Server) handleAdminUpdateTag() http.HandlerFunc {
 	type request struct {
-		Name  string `json:"name"`
-		Color string `json:"color"`
+		Name      string `json:"name"`
+		Color     string `json:"color"`
+		TextColor string `json:"text_color"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseID(r, "id")
@@ -544,7 +545,7 @@ func (s *Server) handleAdminUpdateTag() http.HandlerFunc {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		if err := s.tags.Update(id, req.Name, req.Color); err != nil {
+		if err := s.tags.Update(id, req.Name, req.Color, req.TextColor); err != nil {
 			http.Error(w, "internal error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}

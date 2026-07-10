@@ -94,14 +94,14 @@ func (s *TagStore) ListAllWithCounts() ([]*model.TagWithCount, error) {
 func (s *TagStore) listCounts(includeEmpty bool) ([]*model.TagWithCount, error) {
 	var q string
 	if includeEmpty {
-		q = `SELECT t.id, t.name, t.color, COUNT(d.id) as cnt
+		q = `SELECT t.id, t.name, t.color, t.text_color, COUNT(d.id) as cnt
 			 FROM tags t
 			 LEFT JOIN document_tags dt ON dt.tag_id = t.id
 			 LEFT JOIN documents d ON d.id = dt.document_id AND d.trashed_at IS NULL
 			 GROUP BY t.id
 			 ORDER BY t.name`
 	} else {
-		q = `SELECT t.id, t.name, t.color, COUNT(d.id) as cnt
+		q = `SELECT t.id, t.name, t.color, t.text_color, COUNT(d.id) as cnt
 			 FROM tags t
 			 INNER JOIN document_tags dt ON dt.tag_id = t.id
 			 INNER JOIN documents d ON d.id = dt.document_id AND d.trashed_at IS NULL
@@ -116,7 +116,7 @@ func (s *TagStore) listCounts(includeEmpty bool) ([]*model.TagWithCount, error) 
 	var tags []*model.TagWithCount
 	for rows.Next() {
 		var t model.TagWithCount
-		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.Count); err != nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.TextColor, &t.Count); err != nil {
 			return nil, err
 		}
 		tags = append(tags, &t)
@@ -130,13 +130,13 @@ func (s *TagStore) Delete(id int64) error {
 	return err
 }
 
-// Update changes the name and/or color of a tag.
-func (s *TagStore) Update(id int64, name, color string) error {
+// Update changes the name and/or colors of a tag.
+func (s *TagStore) Update(id int64, name, color, textColor string) error {
 	norm := NormalizeName(name)
 	if norm == "" {
 		return errors.New("tag name must not be empty")
 	}
-	_, err := s.db.Exec(`UPDATE tags SET name = ?, color = ? WHERE id = ?`, norm, color, id)
+	_, err := s.db.Exec(`UPDATE tags SET name = ?, color = ?, text_color = ? WHERE id = ?`, norm, color, textColor, id)
 	return err
 }
 

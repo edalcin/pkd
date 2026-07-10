@@ -34,6 +34,7 @@ type GraphNode struct {
 	Icon     string   `json:"icon,omitempty"`
 	Tags     []string `json:"tags,omitempty"`
 	NodeType string   `json:"node_type"` // "doc" or "tag"
+	Root     bool     `json:"root,omitempty"`
 }
 
 // GraphEdge is a directed edge in the graph response.

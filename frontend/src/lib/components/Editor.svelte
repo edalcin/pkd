@@ -58,9 +58,9 @@
   let editUrlTitle = $state('')
   let iconPickerOpen = $state(false)
 
-  // Map tag name → color, derived from the global tags store
-  const tagColorMap = $derived(
-    Object.fromEntries(($allTags || []).map(t => [t.name, t.color || '']))
+  // Map tag name → tag object (color, text_color), derived from the global tags store
+  const tagByName = $derived(
+    Object.fromEntries(($allTags || []).map(t => [t.name, t]))
   )
 
   let highlightColor = $state('#fef08a') // default yellow
@@ -1153,10 +1153,11 @@
       {/if}
       <div class="doc-meta">
         {#each docTags as tag}
-          {@const c = tagColorMap[tag] || ''}
+          {@const t = tagByName[tag]}
+          {@const c = t?.color || ''}
           <span
             class="tag-chip active"
-            style={c ? `background:${c}; border-color:${c}; color:#fff` : ''}
+            style={c ? `background:${c}; border-color:${c}; color:${t?.text_color || '#fff'}` : ''}
           >
             #{tag}
             <button class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remover tag" disabled={doc.locked}>×</button>

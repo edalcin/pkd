@@ -611,7 +611,7 @@
 
   async function loadAdminTags() {
     const all = (await apiGet('/api/admin/tags')) || []
-    editableTags = all.map(t => ({ ...t, _editing: false, _editName: t.name, _editColor: t.color || '#6b7280' }))
+    editableTags = all.map(t => ({ ...t, _editing: false, _editName: t.name, _editColor: t.color || '#6b7280', _editTextColor: t.text_color || '#ffffff' }))
   }
 
   function syncEditableTags() {
@@ -833,6 +833,7 @@
     tag._editing = true
     tag._editName = tag.name
     tag._editColor = tag.color || '#6b7280'
+    tag._editTextColor = tag.text_color || '#ffffff'
     editableTags = [...editableTags]
   }
 
@@ -845,7 +846,7 @@
     tagMsg = ''
     const res = await apiFetch(`/api/admin/tags/${tag.id}`, {
       method: 'PUT',
-      body: JSON.stringify({ name: tag._editName, color: tag._editColor }),
+      body: JSON.stringify({ name: tag._editName, color: tag._editColor, text_color: tag._editTextColor }),
     })
     if (res.ok) {
       tag._editing = false
@@ -884,15 +885,6 @@
     } else {
       pruneMsg = 'Erro: ' + await res.text()
     }
-  }
-
-  async function saveTagColor(tag) {
-    await apiFetch(`/api/admin/tags/${tag.id}`, {
-      method: 'PUT',
-      body: JSON.stringify({ name: tag.name, color: tag._editColor }),
-    })
-    await loadTags()
-    syncEditableTags()
   }
 
   // Attachment management
@@ -1222,6 +1214,12 @@
                   title="Cor da tag"
                 />
                 <input
+                  type="color"
+                  class="color-input"
+                  bind:value={tag._editTextColor}
+                  title="Cor da letra"
+                />
+                <input
                   class="tag-name-input"
                   bind:value={tag._editName}
                   onkeydown={e => e.key === 'Enter' && saveTag(tag)}
@@ -1230,12 +1228,8 @@
                 <button class="btn btn-primary btn-sm" onclick={() => saveTag(tag)}>Salvar</button>
                 <button class="btn btn-ghost btn-sm" onclick={() => cancelEdit(tag)}>Cancelar</button>
               {:else}
-                <span
-                  class="tag-color-dot"
-                  style="background:{tag.color || '#6b7280'}"
-                  title={tag.color || 'sem cor'}
-                ></span>
-                <span class="tag-name"># {tag.name}</span>
+                {@const c = tag.color || '#6b7280'}
+                <span class="tag-chip" style="background:{c}; border-color:{c}; color:{tag.text_color || '#fff'}">#{tag.name}</span>
                 <span class="tag-count muted">({tag.count})</span>
                 <button class="btn btn-ghost btn-sm" onclick={() => startEdit(tag)} title="Editar">✏️</button>
                 <button class="btn btn-danger btn-sm" onclick={() => deleteTag(tag)} title="Excluir">🗑</button>
@@ -2183,14 +2177,6 @@
     font-size: .875rem;
   }
 
-  .tag-color-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    border: 1px solid rgba(0,0,0,.15);
-  }
-
   .color-input {
     width: 32px;
     height: 28px;
@@ -2202,7 +2188,6 @@
     background: none;
   }
 
-  .tag-name { flex: 1; font-weight: 500; }
   .tag-count { font-size: .8rem; flex-shrink: 0; }
 
   .tag-name-input {

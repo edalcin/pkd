@@ -97,10 +97,11 @@
           {#each $tags as tag}
             {@const isActive = selectedTags.includes(tag.name)}
             {@const c = tag.color || ''}
+            {@const tc = tag.text_color || ''}
             <button
               class="tag-chip {isActive ? 'active' : ''}"
               style={c && isActive
-                ? `background:${c}; border-color:${c}; color:#fff`
+                ? `background:${c}; border-color:${c}; color:${tc || '#fff'}`
                 : c
                 ? `background:${c}22; border-color:${c}; color:${c}`
                 : ''}

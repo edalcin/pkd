@@ -7,15 +7,17 @@ type Tag struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
 	Color     string    `json:"color"`
+	TextColor string    `json:"text_color"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 // TagWithCount is returned by GET /api/tags.
 type TagWithCount struct {
-	ID    int64  `json:"id"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
-	Count int    `json:"count"`
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Color     string `json:"color"`
+	TextColor string `json:"text_color"`
+	Count     int    `json:"count"`
 }
 
 // TagDocStats is per-tag document counts split by archived status, used by

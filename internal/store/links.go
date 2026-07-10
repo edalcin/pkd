@@ -169,7 +169,7 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 		ph := strings.Repeat("?,", len(tags))
 		ph = ph[:len(ph)-1]
 		q := fmt.Sprintf(`
-			SELECT d.id, d.title, COALESCE(d.icon,'')
+			SELECT d.id, d.title, COALESCE(d.icon,''), (d.parent_id IS NULL)
 			FROM documents d
 			WHERE d.trashed_at IS NULL
 			  AND (SELECT COUNT(DISTINCT t.name)
@@ -184,7 +184,7 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 		nodeRows, err = s.db.Query(q, args...)
 	} else {
 		nodeRows, err = s.db.Query(`
-			SELECT d.id, d.title, COALESCE(d.icon,'')
+			SELECT d.id, d.title, COALESCE(d.icon,''), (d.parent_id IS NULL)
 			FROM documents d
 			WHERE d.trashed_at IS NULL
 			ORDER BY d.title`)
@@ -197,7 +197,7 @@ func (s *LinkStore) GetGraphData(tags []string, includeAll bool) (*model.GraphDa
 	var nodes []model.GraphNode
 	for nodeRows.Next() {
 		var n model.GraphNode
-		if err := nodeRows.Scan(&n.ID, &n.Title, &n.Icon); err != nil {
+		if err := nodeRows.Scan(&n.ID, &n.Title, &n.Icon, &n.Root); err != nil {
 			return nil, fmt.Errorf("links.GetGraphData scan: %w", err)
 		}
 		n.NodeType = "doc"

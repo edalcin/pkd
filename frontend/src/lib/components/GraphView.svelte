@@ -334,8 +334,10 @@
           .attr('stroke-width', 2)
       })
 
+    const nodeRadius = d => d.node_type === 'tag' ? 7 : d.root ? 12 : 6
+
     nodeEls.append('circle')
-      .attr('r', d => d.node_type === 'tag' ? 7 : 6)
+      .attr('r', d => nodeRadius(d))
       .attr('fill', d => d.node_type === 'tag'
         ? '#e879f9'
         : showSemantic
@@ -346,17 +348,17 @@
       .attr('stroke-dasharray', d => d.node_type === 'tag' ? '3,2' : 'none')
 
     nodeEls.append('text')
-      .attr('dy', 14)
+      .attr('dy', d => d.root ? 20 : 14)
       .attr('text-anchor', 'middle')
       .text(d => d.title.length > 20 ? d.title.slice(0, 18) + '…' : d.title)
 
     // Tooltip on hover
     nodeEls
       .on('mouseenter', function(_, d) {
-        select(this).select('circle').attr('r', d.node_type === 'tag' ? 9 : 9)
+        select(this).select('circle').attr('r', nodeRadius(d) + 3)
       })
       .on('mouseleave', function(_, d) {
-        select(this).select('circle').attr('r', d.node_type === 'tag' ? 7 : 6)
+        select(this).select('circle').attr('r', nodeRadius(d))
       })
 
     // Force simulation
