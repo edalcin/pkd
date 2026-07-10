@@ -85,8 +85,8 @@
     "semantic_hash": "3e685c3bad53d08729d8d1a1ff23243e"
   },
   "frontend/src/lib/components/Admin.svelte": {
-    "mtime": 1783684356.081631,
-    "ast_hash": "e779333d4835b320658fbdafa78af68c",
+    "mtime": 1783507047.284141,
+    "ast_hash": "49b371d66749c172fd87e83950bc1f48",
     "semantic_hash": ""
   },
   "frontend/src/lib/components/Calendar.svelte": {
@@ -100,14 +100,14 @@
     "semantic_hash": "84f0f39a8dd91a9d0602a37860249288"
   },
   "frontend/src/lib/components/Editor.svelte": {
-    "mtime": 1783684362.7059264,
-    "ast_hash": "d4185923093bcb855a55027998e44c88",
+    "mtime": 1783501558.2926252,
+    "ast_hash": "de145e822fe4a7064c43044481a41dea",
     "semantic_hash": ""
   },
   "frontend/src/lib/components/GraphView.svelte": {
-    "mtime": 1783685267.4124043,
-    "ast_hash": "13eea5c86c7bff1e8e73e784e901127f",
-    "semantic_hash": ""
+    "mtime": 1782382141.3391728,
+    "ast_hash": "57ea1866d4dbcefe07550e65ce4979ad",
+    "semantic_hash": "57ea1866d4dbcefe07550e65ce4979ad"
   },
   "frontend/src/lib/components/IconPicker.svelte": {
     "mtime": 1776768875.4369519,
@@ -130,9 +130,9 @@
     "semantic_hash": ""
   },
   "frontend/src/lib/components/Sidebar.svelte": {
-    "mtime": 1783685255.661658,
-    "ast_hash": "fb7964f642c1ecb0443f81e7f380377e",
-    "semantic_hash": ""
+    "mtime": 1781689164.242188,
+    "ast_hash": "d9382e72916a2fb06029266a1aa60d2d",
+    "semantic_hash": "d9382e72916a2fb06029266a1aa60d2d"
   },
   "frontend/src/lib/components/TreeNode.svelte": {
     "mtime": 1783446106.1030746,
@@ -250,9 +250,9 @@
     "semantic_hash": ""
   },
   "internal/model/link.go": {
-    "mtime": 1783684280.0059454,
-    "ast_hash": "7df4fa05eb0d965d0a3eb218af04ce15",
-    "semantic_hash": ""
+    "mtime": 1782329716.360405,
+    "ast_hash": "e86a8576a77caa53099a81511a730b64",
+    "semantic_hash": "e86a8576a77caa53099a81511a730b64"
   },
   "internal/model/session.go": {
     "mtime": 1776252594.6101227,
@@ -265,8 +265,8 @@
     "semantic_hash": ""
   },
   "internal/model/tag.go": {
-    "mtime": 1783684296.0752122,
-    "ast_hash": "827dcbed78fee37c7366f8a09d64c721",
+    "mtime": 1783426825.6792884,
+    "ast_hash": "310ebc993a1687df765351006195beb5",
     "semantic_hash": ""
   },
   "internal/model/url.go": {
@@ -305,8 +305,8 @@
     "semantic_hash": "ce4aae0b776a14d3060a8b14da3df8fa"
   },
   "internal/server/handlers_admin.go": {
-    "mtime": 1783684304.9676337,
-    "ast_hash": "1e54a5ad56eee3342ddd8010d4b806de",
+    "mtime": 1783506850.1059837,
+    "ast_hash": "e67e76647a42dec73967ea26fbcd022a",
     "semantic_hash": ""
   },
   "internal/server/handlers_admin_storage.go": {
@@ -470,13 +470,13 @@
     "semantic_hash": ""
   },
   "internal/store/links.go": {
-    "mtime": 1783684280.0069437,
-    "ast_hash": "818b6004c9809c03f7b3ce69bcc6bb89",
-    "semantic_hash": ""
+    "mtime": 1782333767.9631507,
+    "ast_hash": "bd080e187e0d2033d967b98c14bfa1ae",
+    "semantic_hash": "bd080e187e0d2033d967b98c14bfa1ae"
   },
   "internal/store/migrate.go": {
-    "mtime": 1783684296.0752122,
-    "ast_hash": "1d0812f9e0910b4604f74b4dd2543511",
+    "mtime": 1783445471.03382,
+    "ast_hash": "827d3ff13f0afdd0473fb3c0105ecb3d",
     "semantic_hash": ""
   },
   "internal/store/schema.sql": {
@@ -500,8 +500,8 @@
     "semantic_hash": ""
   },
   "internal/store/tags.go": {
-    "mtime": 1783684304.9666343,
-    "ast_hash": "e4c1d3187a93dfe0d260617a90af6c84",
+    "mtime": 1783426825.6792884,
+    "ast_hash": "8b1c3b64bcd86965edec5b03d9b95f56",
     "semantic_hash": ""
   },
   "internal/store/tx.go": {

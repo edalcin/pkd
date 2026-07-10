@@ -1,16 +1,16 @@
-# Graph Report - pkd  (2026-07-10)
+# Graph Report - pkd  (2026-07-07)
 
 ## Corpus Check
-- 213 files · ~287,188 words
+- 210 files · ~283,538 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1599 nodes · 2468 edges · 152 communities (117 shown, 35 thin omitted)
-- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 267 edges (avg confidence: 0.81)
+- 1532 nodes · 2353 edges · 138 communities (106 shown, 32 thin omitted)
+- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 262 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b02973ce`
+- Built from commit: `977ab4f5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -136,46 +136,32 @@
 - [[_COMMUNITY_Community 124|Community 124]]
 - [[_COMMUNITY_Community 125|Community 125]]
 - [[_COMMUNITY_Community 126|Community 126]]
-- [[_COMMUNITY_Community 136|Community 136]]
 - [[_COMMUNITY_Community 137|Community 137]]
 - [[_COMMUNITY_Community 138|Community 138]]
-- [[_COMMUNITY_Community 139|Community 139]]
-- [[_COMMUNITY_Community 140|Community 140]]
-- [[_COMMUNITY_Community 141|Community 141]]
-- [[_COMMUNITY_Community 142|Community 142]]
-- [[_COMMUNITY_Community 144|Community 144]]
-- [[_COMMUNITY_Community 145|Community 145]]
-- [[_COMMUNITY_Community 146|Community 146]]
-- [[_COMMUNITY_Community 147|Community 147]]
-- [[_COMMUNITY_Community 148|Community 148]]
-- [[_COMMUNITY_Community 149|Community 149]]
-- [[_COMMUNITY_Community 151|Community 151]]
-- [[_COMMUNITY_Community 152|Community 152]]
-- [[_COMMUNITY_Community 154|Community 154]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `writeJSON()` - 60 edges
 2. `parseID()` - 43 edges
 3. `Server` - 35 edges
-4. `DocumentStore` - 35 edges
-5. `Server` - 33 edges
-6. `HandlerFunc` - 32 edges
-7. `Document` - 23 edges
+4. `DocumentStore` - 34 edges
+5. `Server` - 28 edges
+6. `HandlerFunc` - 27 edges
+7. `Document` - 22 edges
 8. `PKD no UNRAID — Guia de Instalação` - 19 edges
 9. `Server` - 19 edges
 10. `HandlerFunc` - 19 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `openProtectTestDB()` --calls--> `NewDocumentStore()`  [INFERRED]
-  tests/unit/store_protect_test.go → internal/store/documents.go
-- `TestListEncrypted()` --calls--> `NewDocumentStore()`  [INFERRED]
-  tests/unit/store_protect_test.go → internal/store/documents.go
-- `TestProtectUnprotect_RoundTripAndFTSVisibility()` --calls--> `NewDocumentStore()`  [INFERRED]
-  tests/unit/store_protect_test.go → internal/store/documents.go
-- `openBackupCodeTestDB()` --calls--> `NewBackupCodeStore()`  [INFERRED]
-  tests/unit/store_backup_codes_test.go → internal/store/backup_codes.go
-- `getAdminStats()` --references--> `Client`  [EXTRACTED]
-  tests/integration/admin_stats_test.go → internal/store/semantic.go
+- `TestProtectUnprotect_RoundTripAndFTSVisibility()` --calls--> `NewSearchStore()`  [INFERRED]
+  tests/unit/store_protect_test.go → internal/store/search.go
+- `ThrottleHeader()` --calls--> `itoa()`  [INFERRED]
+  internal/server/middleware_throttle.go → tests/integration/documents_crud_test.go
+- `Share token: 32-byte crypto/rand, SHA-256 hash stored only, constant-time lookup, 404 on revoked` --conceptually_related_to--> `ShareLink.IncludeChildren bool model field added`  [INFERRED]
+  docs/security.md → .superpowers/sdd/task-1-report.md
+- `ShareDialog.svelte frontend component (generate link, copy URL, revoke)` --conceptually_related_to--> `ShareDialog.svelte: includeChildren checkbox (default true) + scope badge post-generation`  [INFERRED]
+  docs/c4/component.md → .superpowers/sdd/task-5-report.md
+- `PKD PWA Frontend Entry (index.html)` --references--> `PKD Full OpenAPI Contract v0.1.0 (auth, documents, tags, search, attachments, admin, share)`  [INFERRED]
+  frontend/index.html → tests/contract/openapi.yaml
 
 ## Import Cycles
 - None detected.
@@ -185,7 +171,7 @@
 - **Semantic Graph Implementation Flow** — semanticgraph_overview, semanticgraph_embedstaledocs, semanticgraph_louvain, frontend_community_js [EXTRACTED 0.95]
 - **PKD Core Tech Stack** — claude_go_backend, claude_svelte_frontend, claude_sqlite_db [EXTRACTED 1.00]
 
-## Communities (152 total, 35 thin omitted)
+## Communities (138 total, 32 thin omitted)
 
 ### Community 0 - "TipTap Editor Extensions"
 Cohesion: 0.19
@@ -193,7 +179,7 @@ Nodes (4): HandlerFunc, Request, Server, parseID()
 
 ### Community 1 - "Document Versioning DB"
 Cohesion: 0.08
-Nodes (26): Ancestor, Document, DocumentVersion, DB, RootDocStats, Row, Rows, checkCircular() (+18 more)
+Nodes (25): Ancestor, DocumentVersion, DB, Document, RootDocStats, Rows, Tx, Row (+17 more)
 
 ### Community 2 - "Admin URL Routing"
 Cohesion: 0.11
@@ -208,8 +194,8 @@ Cohesion: 0.06
 Nodes (43): Data flow: streaming backup S3 (io.Pipe, zip.Writer, multipart upload, presign), Data Model: Phase 1 structs, interfaces, flows for S3 backup, Go struct: BackupJobManager (mutex, activeByBackend map, LRU history cap=50), Go struct: server.Job (ID, Kind, State, Processed, Total, DownloadURL, SkippedEntries), Go struct: backup.Manifest (version, created_at, source_environment, entries[]), Data flow: restore cross-backend (upload ZIP, Range GETs, fan-out Put per stored_filename), Go interface: storage.S3Capable (GetRange, PresignGet, UploadFromReader, ListWithMetadata, DeleteMany), DB index: idx_attachments_content_sha256 on attachments(content_sha256) (+35 more)
 
 ### Community 5 - "Backup Job Management"
-Cohesion: 0.10
-Nodes (19): AttachmentStore, BackupCodeStore, BackupJobManager, BackupStore, challengeStore, Context, DeviceStore, embedder (+11 more)
+Cohesion: 0.05
+Nodes (38): AttachmentStore, Backend, BackupJobManager, BackupStore, challengeStore, Config, Config, Load() (+30 more)
 
 ### Community 6 - "Attachment SHA256 Dedup"
 Cohesion: 0.07
@@ -221,15 +207,15 @@ Nodes (25): HTML, HandlerFunc, Reader, Request, Server, Handler, HandlerFunc, Se
 
 ### Community 8 - "Frontend Components"
 Cohesion: 0.06
-Nodes (4): confirmBackupGen(), pollRestoreJob(), reloadSettings(), startRestore()
+Nodes (12): deleteTag(), fileIcon(), handlePruneTags(), handleRenameTag(), isMarkdown(), loadAdminTags(), pollRestoreJob(), previewType() (+4 more)
 
 ### Community 9 - "Async Storage Operations"
-Cohesion: 0.11
-Nodes (5): HandlerFunc, ResponseWriter, Request, writeJSON(), Server
+Cohesion: 0.13
+Nodes (6): HandlerFunc, Request, Server, ResponseWriter, statSize(), writeJSON()
 
 ### Community 10 - "HTTP Handler Core"
-Cohesion: 0.08
-Nodes (16): DB, DB, TagDocStats, Tx, DB, Tx, ShareLink, ShareWithDoc (+8 more)
+Cohesion: 0.14
+Nodes (8): DB, DB, Tx, ShareLink, ShareWithDoc, NewShareStore(), ShareStore, WithTx()
 
 ### Community 11 - "HTTP Server Middleware"
 Cohesion: 0.06
@@ -241,11 +227,11 @@ Nodes (13): AttachmentWithDoc, Attachment, Backend, Context, DB, Reader, Attachm
 
 ### Community 13 - "Icon Static Handlers"
 Cohesion: 0.11
-Nodes (21): HandlerFunc, Request, Server, Mutex, Request, ResponseWriter, Time, ResponseWriter (+13 more)
+Nodes (21): HandlerFunc, Request, ResponseWriter, Server, Mutex, Request, ResponseWriter, Time (+13 more)
 
 ### Community 14 - "D3 Graph Visualization"
-Cohesion: 0.09
-Nodes (9): ./lib/components/Calendar.svelte, ./lib/components/ShareDialog.svelte, assocPanelWidth, assocResizeAnchor, assocSidebarEl, hasActiveFilters, resizingAssoc, route (+1 more)
+Cohesion: 0.07
+Nodes (12): ./lib/components/Calendar.svelte, ./lib/components/GraphView.svelte, ./lib/components/ShareDialog.svelte, ./lib/components/Sidebar.svelte, ../stores/auth.js, assocPanelWidth, assocResizeAnchor, assocSidebarEl (+4 more)
 
 ### Community 15 - "Restore Summary State"
 Cohesion: 0.13
@@ -260,12 +246,12 @@ Cohesion: 0.22
 Nodes (9): Client, Context, Duration, ReadCloser, Reader, ObjectMeta, NewS3(), sanitizeAWSError() (+1 more)
 
 ### Community 18 - "Editor UI Components"
-Cohesion: 0.09
-Nodes (22): Client, GraphData, GraphEdge, GraphNode, DB, Tx, Context, LinksResponse (+14 more)
+Cohesion: 0.14
+Nodes (12): GraphData, GraphNode, DB, GraphEdge, LinkStore, LinksResponse, Mutex, RelatedLink (+4 more)
 
 ### Community 19 - "Job Backend Handlers"
-Cohesion: 0.11
-Nodes (17): dependencies, boxicons, dompurify, mermaid, @tiptap/core, @tiptap/extension-code-block, @tiptap/extension-highlight, @tiptap/extension-image (+9 more)
+Cohesion: 0.10
+Nodes (18): dependencies, boxicons, dompurify, marked, mermaid, @tiptap/core, @tiptap/extension-code-block, @tiptap/extension-highlight (+10 more)
 
 ### Community 20 - "Graph Data Models"
 Cohesion: 0.16
@@ -283,21 +269,25 @@ Nodes (18): Extract-PlanField(), Format-TechnologyStack(), Get-CommandsForLangua
 Cohesion: 0.14
 Nodes (11): Attachment, AttachmentStore, Backend, Context, HandlerFunc, Job, ReadCloser, S3Capable (+3 more)
 
+### Community 24 - "Agent Context Scripts"
+Cohesion: 0.13
+Nodes (22): Client, GraphEdge, findRootStat(), findTagStat(), getAdminStats(), TestAdminStats(), adminStatsResponse, rootStatDTO (+14 more)
+
 ### Community 25 - "Attachment Store Core"
 Cohesion: 0.14
-Nodes (7): ../api.js, ../graph/community.js, ../stores/documents.js, d3-drag, d3-force, d3-selection, d3-zoom
+Nodes (8): ./lib/components/GraphView.svelte, ../api.js, ../graph/community.js, ../stores/documents.js, d3-drag, d3-force, d3-selection, d3-zoom
 
 ### Community 26 - "Tag Store DB"
 Cohesion: 0.09
-Nodes (19): Duration, Handler, Request, ResponseWriter, DB, RWMutex, Time, Mutex (+11 more)
+Nodes (19): Duration, Handler, Request, ResponseWriter, Time, DB, RWMutex, Time (+11 more)
 
 ### Community 27 - "Sanitize Handlers"
-Cohesion: 0.09
-Nodes (26): findRootStat(), findTagStat(), getAdminStats(), TestAdminStats(), adminStatsResponse, rootStatDTO, TestLexicalFilterStillWorks(), TestSemanticFilterUnavailable() (+18 more)
+Cohesion: 0.24
+Nodes (8): DB, Rows, Tx, ignoreNoSuchRowid(), NewSearchStore(), scanHits(), SearchHit, SearchStore
 
 ### Community 28 - "Community 28"
-Cohesion: 0.27
-Nodes (8): Config, Config, Load(), S3Config, DB, main(), runHealthcheck(), New()
+Cohesion: 0.24
+Nodes (10): DB, SearchHit, NewDocumentStore(), Open(), DocumentStore, T, containsHit(), openProtectTestDB() (+2 more)
 
 ### Community 29 - "DB RWMutex Core"
 Cohesion: 0.21
@@ -348,8 +338,8 @@ Cohesion: 0.47
 Nodes (9): Brain Knowledge Network (PKD Logo), Central Knowledge Hub (glowing book node), Database/Storage Node, Document Node, Folder/File Organization Node, Idea/Insight Node (lightbulb), Knowledge/Book Node, Neural Network Connection Point (+1 more)
 
 ### Community 41 - "FS Static Handlers"
-Cohesion: 0.17
-Nodes (11): name, overrides, linkify-it, markdown-it, private, scripts, build, dev (+3 more)
+Cohesion: 0.22
+Nodes (8): name, private, scripts, build, dev, preview, type, version
 
 ### Community 42 - "Attachment MIME Handlers"
 Cohesion: 0.17
@@ -401,7 +391,7 @@ Nodes (4): DB, copyFile(), NewBackupStore(), BackupStore
 
 ### Community 54 - "PWA Icon 192px"
 Cohesion: 0.16
-Nodes (19): Time, Time, Ancestor, Document, DocumentTreeNode, DocumentVersion, GraphData, GraphEdge (+11 more)
+Nodes (17): Time, Ancestor, Document, DocumentTreeNode, DocumentVersion, GraphData, GraphEdge, GraphNode (+9 more)
 
 ### Community 55 - "PWA Icon 512px Knowledge"
 Cohesion: 0.33
@@ -468,8 +458,8 @@ Cohesion: 0.67
 Nodes (3): TestManifestWebmanifest_Returns200(), TestServiceWorker_Returns200WithNoCacheHeader(), T
 
 ### Community 73 - "Community 73"
-Cohesion: 0.38
-Nodes (3): DB, NewBackupCodeStore(), BackupCodeStore
+Cohesion: 0.17
+Nodes (7): DB, TagDocStats, Tx, NewTagStore(), NormalizeName(), upsertTag(), TagStore
 
 ### Community 74 - "Time URL Admin"
 Cohesion: 0.50
@@ -508,8 +498,8 @@ Cohesion: 0.67
 Nodes (3): CI build-and-push Docker image to GHCR with Trivy scan, CI test job: build Svelte, Go test + vet + govulncheck, Promote edge to stable and semver tag on GHCR
 
 ### Community 86 - "Auto Save Settings"
-Cohesion: 0.12
-Nodes (16): 2FA por e-mail e proteção de documentos, Anexos e visualização, Armazenamento S3, Arquivamento, Backup e restauração de anexos (S3), Como usar, Exportar como Markdown, Histórico de versões (+8 more)
+Cohesion: 0.13
+Nodes (15): Anexos e visualização, Armazenamento S3, Arquivamento, Backup e restauração de anexos (S3), Como usar, Exportar como Markdown, Histórico de versões, Importar imagens externas (+7 more)
 
 ### Community 94 - "Session Time"
 Cohesion: 0.15
@@ -517,7 +507,7 @@ Nodes (11): Arquitetura, CI/CD, Compilar a partir do código-fonte, docker compo
 
 ### Community 97 - "Document Links Schema"
 Cohesion: 0.20
-Nodes (9): TagDocStats, RootDocStats, AdminStats, DiskUsageResponse, ExternalImagesDoc, isValidEmbedModel(), statSize(), ImportResult (+1 more)
+Nodes (8): RootDocStats, AdminStats, DiskUsageResponse, ExternalImagesDoc, isValidEmbedModel(), ImportResult, OrphanInfo, TagDocStats
 
 ### Community 98 - "Document Go Struct"
 Cohesion: 0.22
@@ -525,95 +515,47 @@ Nodes (8): Adicionado, Changelog, Corrigido, Corrigido, Documentação, Document
 
 ### Community 102 - "Svelte Config"
 Cohesion: 0.10
-Nodes (17): ./DuplicateTitleDialog.svelte, ./IconPicker.svelte, ./VersionHistoryDialog.svelte, ../editor/doclink-extension.js, ../editor/mermaid-code-block.js, ../editor/resizable-image-extension.js, ../stores/settings.js, @tiptap/extension-highlight (+9 more)
+Nodes (17): ./DuplicateTitleDialog.svelte, ./IconPicker.svelte, ./VersionHistoryDialog.svelte, ../editor/doclink-extension.js, ../editor/mermaid-code-block.js, ../editor/resizable-image-extension.js, ../stores/settings.js, ../stores/tags.js (+9 more)
 
 ### Community 103 - "Community 103"
 Cohesion: 0.33
 Nodes (3): HandlerFunc, Server, isInlineableMIME()
 
+### Community 104 - "Community 104"
+Cohesion: 0.28
+Nodes (4): HandlerFunc, Server, HandlerFunc, Server
+
 ### Community 110 - "Community 110"
-Cohesion: 0.20
-Nodes (10): Administração, Associações por documento, Conteúdo e edição, Funcionalidades, Integração com Notas, Interface, Organização e visualização, Segurança (+2 more)
+Cohesion: 0.22
+Nodes (9): Administração, Associações por documento, Conteúdo e edição, Funcionalidades, Integração com Notas, Interface, Organização e visualização, Sub-documentos (+1 more)
 
 ### Community 111 - "Community 111"
-Cohesion: 0.18
-Nodes (8): ./TreeNode.svelte, ../stores/tags.js, devDependencies, sharp, svelte, @sveltejs/vite-plugin-svelte, vite, app
+Cohesion: 0.25
+Nodes (6): devDependencies, sharp, svelte, @sveltejs/vite-plugin-svelte, vite, app
 
 ### Community 112 - "Community 112"
 Cohesion: 0.29
 Nodes (5): DocumentTreeNode, Document, HandlerFunc, Server, buildTree()
 
-### Community 115 - "Community 115"
-Cohesion: 0.38
-Nodes (3): DB, NewDeviceStore(), DeviceStore
-
-### Community 136 - "Community 136"
-Cohesion: 0.33
-Nodes (4): FS, Handler, HandlerFunc, serveFile()
-
-### Community 139 - "Community 139"
-Cohesion: 0.40
-Nodes (3): Backend, S3Config, buildS3Backend()
-
-### Community 140 - "Community 140"
-Cohesion: 0.60
-Nodes (4): T, TestNewBackupCode_Format(), TestNewBackupCode_NoDuplicatesAcrossManyCalls(), TestNormalizeBackupCode()
-
-### Community 141 - "Community 141"
-Cohesion: 0.60
-Nodes (4): BackupCodeStore, T, openBackupCodeTestDB(), TestBackupCodeStore_ReplaceConsumeCount()
-
-### Community 142 - "Community 142"
-Cohesion: 0.18
-Nodes (12): importDocExternalImages(), loadAdminURLs(), loadAttachments(), loadDiskUsage(), loadExternalImages(), loadMoreAttachments(), loadOrphans(), loadShares() (+4 more)
-
-### Community 144 - "Community 144"
-Cohesion: 0.33
-Nodes (6): deleteTag(), handlePruneTags(), handleRenameTag(), loadAdminTags(), saveTag(), syncEditableTags()
-
-### Community 145 - "Community 145"
-Cohesion: 0.33
-Nodes (6): backupAttachments(), downloadOrphan(), downloadPreviewAtt(), downloadS3Backup(), handleBackup(), saveBlob()
-
-### Community 146 - "Community 146"
-Cohesion: 0.40
-Nodes (5): cleanupStorageSource(), migrateStorage(), pollStorageOpJob(), reconcileStorage(), startStorageOp()
-
-### Community 147 - "Community 147"
-Cohesion: 0.50
-Nodes (4): confirmUnprotect(), loadProtected(), selectedProtectedIds(), startUnprotect()
-
-### Community 148 - "Community 148"
-Cohesion: 0.50
-Nodes (4): emptyTrash(), loadTrash(), permanentDelete(), restoreFromTrash()
-
-### Community 149 - "Community 149"
-Cohesion: 0.50
-Nodes (4): pollS3BackupJob(), regenerateBackupURL(), startCountdown(), startS3Backup()
-
-### Community 151 - "Community 151"
-Cohesion: 0.67
-Nodes (3): fileIcon(), isMarkdown(), previewType()
-
 ## Knowledge Gaps
-- **403 isolated node(s):** `../editor/resizable-image-extension.js`, `../editor/doclink-extension.js`, `../editor/mermaid-code-block.js`, `./IconPicker.svelte`, `./VersionHistoryDialog.svelte` (+398 more)
+- **399 isolated node(s):** `Adicionado`, `Corrigido`, `Documentação`, `Corrigido`, `Documentação` (+394 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **35 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **32 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `writeJSON()` connect `Async Storage Operations` to `TipTap Editor Extensions`, `Auth Tests Session`, `Admin Svelte UI`, `Community 103`, `Community 104`, `Attachment MIME Handlers`, `Icon Static Handlers`, `Community 112`, `Community 113`, `Community 114`, `Community 50`, `CSRF Contract Tests`, `Agent Context Scripts`?**
-  _High betweenness centrality (0.169) - this node is a cross-community bridge._
-- **Why does `New()` connect `Community 28` to `Document Versioning DB`, `Backup Job Management`, `Community 136`, `Community 73`, `Community 139`, `Community 115`, `Tag Store DB`, `Sanitize Handlers`, `Admin Features Bundle`?**
-  _High betweenness centrality (0.165) - this node is a cross-community bridge._
-- **Why does `NewDocumentStore()` connect `Document Versioning DB` to `Async Storage Operations`, `Sanitize Handlers`, `Community 28`?**
-  _High betweenness centrality (0.110) - this node is a cross-community bridge._
+- **Why does `New()` connect `Backup Job Management` to `Tag Store DB`, `Sanitize Handlers`, `Community 28`, `Admin Features Bundle`?**
+  _High betweenness centrality (0.175) - this node is a cross-community bridge._
+- **Why does `writeJSON()` connect `Async Storage Operations` to `TipTap Editor Extensions`, `Auth Tests Session`, `Admin Svelte UI`, `Community 103`, `Community 104`, `Attachment MIME Handlers`, `Icon Static Handlers`, `Community 112`, `Community 113`, `Community 114`, `Community 50`, `CSRF Contract Tests`?**
+  _High betweenness centrality (0.172) - this node is a cross-community bridge._
+- **Why does `NewDocumentStore()` connect `Community 28` to `Document Versioning DB`, `Backup Job Management`?**
+  _High betweenness centrality (0.117) - this node is a cross-community bridge._
 - **Are the 45 inferred relationships involving `writeJSON()` (e.g. with `.handleAdminCheckURLs()` and `.handleAdminCleanup()`) actually correct?**
   _`writeJSON()` has 45 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 24 inferred relationships involving `parseID()` (e.g. with `.handleAdminDeleteTag()` and `.handleAdminDeleteTrashItem()`) actually correct?**
   _`parseID()` has 24 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `../editor/resizable-image-extension.js`, `../editor/doclink-extension.js`, `../editor/mermaid-code-block.js` to the rest of the system?**
-  _407 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **What connects `Adicionado`, `Corrigido`, `Documentação` to the rest of the system?**
+  _403 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Document Versioning DB` be split into smaller, more focused modules?**
-  _Cohesion score 0.07514124293785311 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08166969147005444 - nodes in this community are weakly interconnected._
