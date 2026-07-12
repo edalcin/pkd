@@ -7,6 +7,8 @@
   import TableRow from '@tiptap/extension-table-row'
   import TableCell from '@tiptap/extension-table-cell'
   import TableHeader from '@tiptap/extension-table-header'
+  import TaskList from '@tiptap/extension-task-list'
+  import TaskItem from '@tiptap/extension-task-item'
   import Highlight from '@tiptap/extension-highlight'
   import TextAlign from '@tiptap/extension-text-align'
   import Link from '@tiptap/extension-link'
@@ -649,6 +651,16 @@
       filter: node => node.nodeName === 'SPAN' && node.hasAttribute('data-doc-link'),
       replacement: (content) => `[[${content}]]`,
     })
+    td.addRule('taskItem', {
+      filter: node => node.nodeName === 'LI' && node.getAttribute('data-type') === 'taskItem',
+      replacement: (content, node) => {
+        const prefix = `- [${node.getAttribute('data-checked') === 'true' ? 'x' : ' '}] `
+        const isParagraph = /\n$/.test(content)
+        content = content.replace(/^\n+/, '').replace(/\n+$/, '') + (isParagraph ? '\n' : '')
+        content = content.replace(/\n/gm, '\n' + ' '.repeat(prefix.length))
+        return prefix + content + (node.nextSibling ? '\n' : '')
+      },
+    })
     const md = td.turndown(editorInstance.getHTML())
     const filename = (doc.title || 'documento').replace(/[/\\?%*:|"<>]/g, '-') + '.md'
     if ('showSaveFilePicker' in window) {
@@ -947,6 +959,27 @@
     return text.replace(/(\|[^\r\n]*\r?\n)(?:\r?\n)+(\s*\|)/g, '$1$2')
   }
 
+  // marked renders GFM checklists as plain <li><input type=checkbox>…</li> with no
+  // data-type markers, so TipTap's TaskList/TaskItem parseHTML rules (which require
+  // ul[data-type="taskList"] / li[data-type="taskItem"]) never match on paste. Retag
+  // any <ul> whose items are ALL checkboxes so pasted checklists become real, checkable
+  // taskList nodes instead of losing their checkbox state. Mixed lists are left alone.
+  function normalizeMarkdownTaskLists(container) {
+    container.querySelectorAll('ul').forEach(ul => {
+      const items = Array.from(ul.children).filter(c => c.tagName === 'LI')
+      if (!items.length) return
+      const checkboxItems = items.filter(li => li.firstElementChild?.matches('input[type="checkbox"]'))
+      if (checkboxItems.length !== items.length) return
+      ul.setAttribute('data-type', 'taskList')
+      items.forEach(li => {
+        const checkbox = li.firstElementChild
+        li.setAttribute('data-type', 'taskItem')
+        li.setAttribute('data-checked', checkbox.checked ? 'true' : 'false')
+        checkbox.remove()
+      })
+    })
+  }
+
   // Combined paste handler: images → upload & insert; Markdown → convert & insert; else → default.
   function handlePaste(view, event) {
     // Image branch (unchanged behavior)
@@ -981,6 +1014,7 @@
       // own clipboard paste pipeline works internally.
       const tempEl = document.createElement('div')
       tempEl.innerHTML = rendered
+      normalizeMarkdownTaskLists(tempEl)
       const slice = PMParser.fromSchema(view.state.schema).parseSlice(tempEl)
       view.dispatch(view.state.tr.replaceSelection(slice))
       return true
@@ -1013,6 +1047,8 @@
         StarterKit.configure({ codeBlock: false }),
         MermaidCodeBlock,
         ResizableImage.configure({ inline: true, allowBase64: true }),
+        TaskList,
+        TaskItem.configure({ nested: true }),
         Table.configure({ resizable: false }),
         TableRow,
         TableCell,
@@ -1244,6 +1280,8 @@
           onmousedown={e => { e.preventDefault(); fmt(c => c.toggleBulletList()) }} title="Lista" aria-pressed={isActive('bulletList')}>☰</button>
         <button class="tb-btn {isActive('orderedList') ? 'active' : ''}"
           onmousedown={e => { e.preventDefault(); fmt(c => c.toggleOrderedList()) }} title="Lista numerada" aria-pressed={isActive('orderedList')}>1.</button>
+        <button class="tb-btn {isActive('taskList') ? 'active' : ''}"
+          onmousedown={e => { e.preventDefault(); fmt(c => c.toggleTaskList()) }} title="Checklist" aria-pressed={isActive('taskList')}>☑</button>
         <button class="tb-btn {isActive('blockquote') ? 'active' : ''}"
           onmousedown={e => { e.preventDefault(); fmt(c => c.toggleBlockquote()) }} title="Citação" aria-pressed={isActive('blockquote')}>"</button>
         <button class="tb-btn {isActive('codeBlock') ? 'active' : ''}"
