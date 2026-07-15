@@ -233,13 +233,18 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 			}
 		}
 
+		// Rewrite attachment src to the token-scoped public route so images
+		// load without requiring a session (the authenticated /api/attachments/
+		// route 401s for anonymous visitors).
+		publicBodyHTML := strings.ReplaceAll(doc.BodyHTML, `src="/api/attachments/`, `src="/public/`+token+`/attachments/`)
+
 		data := sharePageData{
 			Title:        doc.Title,
 			Icon:         icon,
 			IconIsBoxicon: isBoxicon(icon),
 			Tags:         doc.Tags,
 			Date:         date,
-			Body:         template.HTML(security.SanitizePublicHTML(doc.BodyHTML)),
+			Body:         template.HTML(security.SanitizePublicHTML(publicBodyHTML)),
 			Children:     childData,
 			ParentTitle:  parentTitle,
 			ParentURL:    parentURL,
@@ -247,6 +252,43 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_ = sharePageTmpl.Execute(w, data)
+	}
+}
+
+// handlePublicAttachment serves an attachment referenced by a publicly shared
+// document's body, without requiring an authenticated session. Access is
+// scoped tightly: the attachment must belong to the exact document the share
+// token points at (share bodies never embed a child document's images
+// inline, so no broader check is needed).
+func (s *Server) handlePublicAttachment() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := chi.URLParam(r, "token")
+		shareLink, err := s.shares.LookupByToken(token)
+		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+
+		id, err := parseID(r, "id")
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		att, err := s.attachments.GetByID(id)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if att.DocumentID != shareLink.DocumentID {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+
+		s.serveAttachmentFile(w, r, att)
 	}
 }
 

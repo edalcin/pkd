@@ -205,6 +205,7 @@ func (s *Server) buildRouter() http.Handler {
 
 	// Public share view (unauthenticated but stricter CSP)
 	r.With(PublicShareCSP).Get("/public/{token}", s.handlePublicShare())
+	r.With(PublicShareCSP).Get("/public/{token}/attachments/{id}", s.handlePublicAttachment())
 
 	// Token-authenticated import endpoint for external apps (e.g. notas).
 	// Disabled when PKD_IMPORT_TOKEN is not set.

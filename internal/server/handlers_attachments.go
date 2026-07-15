@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/edalcin/pkd/internal/model"
 	"github.com/edalcin/pkd/internal/storage"
 	"github.com/edalcin/pkd/internal/store"
 )
@@ -148,48 +149,54 @@ func (s *Server) handleGetAttachment() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		s.serveAttachmentFile(w, r, att)
+	}
+}
 
-		w.Header().Set("Content-Type", att.MimeType)
-		inline := isInlineableMIME(att.MimeType)
-		disposition := "attachment"
-		if inline {
-			disposition = "inline"
+// serveAttachmentFile writes headers and streams att's bytes from its storage
+// backend. Shared by the authenticated attachment endpoint and the public
+// share attachment endpoint — both validate access before calling this.
+func (s *Server) serveAttachmentFile(w http.ResponseWriter, r *http.Request, att *model.Attachment) {
+	w.Header().Set("Content-Type", att.MimeType)
+	inline := isInlineableMIME(att.MimeType)
+	disposition := "attachment"
+	if inline {
+		disposition = "inline"
+	}
+	safeName := strings.NewReplacer(`"`, `'`, `\`, `-`).Replace(att.OriginalName)
+	w.Header().Set("Content-Disposition", disposition+`; filename="`+safeName+`"`)
+
+	// Override global security headers for inline-displayable attachments.
+	if inline {
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+		w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
+	}
+
+	// Route to the correct backend based on storage_location.
+	// Local backend: supports HTTP range requests via ServeContent.
+	// S3 backend: streams without range support (v1).
+	backend := s.attachments.BackendForLocation(att.StorageLocation)
+
+	if seeker, ok := backend.(storage.Seeker); ok {
+		// Local: full range request support
+		f, err := seeker.OpenSeek(r.Context(), att.StoredFilename)
+		if err != nil {
+			http.Error(w, "file not found", http.StatusNotFound)
+			return
 		}
-		safeName := strings.NewReplacer(`"`, `'`, `\`, `-`).Replace(att.OriginalName)
-		w.Header().Set("Content-Disposition", disposition+`; filename="`+safeName+`"`)
-
-		// Override global security headers for inline-displayable attachments.
-		if inline {
-			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-			w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
+		defer f.Close()
+		http.ServeContent(w, r, att.OriginalName, att.CreatedAt, f)
+	} else {
+		// S3: stream without range
+		rc, size, err := backend.Get(r.Context(), att.StoredFilename)
+		if err != nil {
+			http.Error(w, "file not found", http.StatusNotFound)
+			return
 		}
-
-		// Route to the correct backend based on storage_location.
-		// Local backend: supports HTTP range requests via ServeContent.
-		// S3 backend: streams without range support (v1).
-		backend := s.attachments.BackendForLocation(att.StorageLocation)
-
-		if seeker, ok := backend.(storage.Seeker); ok {
-			// Local: full range request support
-			f, err := seeker.OpenSeek(r.Context(), att.StoredFilename)
-			if err != nil {
-				http.Error(w, "file not found", http.StatusNotFound)
-				return
-			}
-			defer f.Close()
-			http.ServeContent(w, r, att.OriginalName, att.CreatedAt, f)
-		} else {
-			// S3: stream without range
-			rc, size, err := backend.Get(r.Context(), att.StoredFilename)
-			if err != nil {
-				http.Error(w, "file not found", http.StatusNotFound)
-				return
-			}
-			defer rc.Close()
-			w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
-			w.WriteHeader(http.StatusOK)
-			io.Copy(w, rc) //nolint:errcheck
-		}
+		defer rc.Close()
+		w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+		w.WriteHeader(http.StatusOK)
+		io.Copy(w, rc) //nolint:errcheck
 	}
 }
 
