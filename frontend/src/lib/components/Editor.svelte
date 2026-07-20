@@ -15,7 +15,7 @@
   import { DocLink } from '../editor/doclink-extension.js'
   import { MermaidCodeBlock } from '../editor/mermaid-code-block.js'
   import TurndownService from 'turndown'
-  import { saveDoc, loadDoc, linksRefreshSignal, docBodyRefreshedSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc, restoreVersion, protectDoc, unprotectDoc, requestDocCode, unlockDoc } from '../stores/documents.js'
+  import { saveDoc, loadDoc, linksRefreshSignal, docBodyRefreshedSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc, restoreVersion, protectDoc, unprotectDoc, requestDocCode, unlockDoc, trashDoc } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
@@ -529,6 +529,12 @@
   async function handleToggleArchive() {
     const updated = doc.archived ? await unarchiveDoc(doc.id) : await archiveDoc(doc.id)
     doc = updated
+  }
+
+  async function handleDeleteDoc() {
+    if (!confirm(`Mover "${doc.title || 'Sem título'}" para a lixeira?`)) return
+    await trashDoc(doc.id)
+    window.location.hash = '/'
   }
 
   async function handleToggleProtect() {
@@ -1168,6 +1174,12 @@
           title={doc.archived ? 'Desarquivar documento' : 'Arquivar documento'}
           aria-label={doc.archived ? 'Desarquivar' : 'Arquivar'}
         ><i class="bx bx-archive"></i></button>
+        <button
+          class="delete-btn"
+          onclick={handleDeleteDoc}
+          title="Mover para a lixeira"
+          aria-label="Mover para a lixeira"
+        ><i class="bx bx-trash"></i></button>
         <button
           class="hist-btn"
           onclick={() => historyOpen = true}
@@ -2196,6 +2208,23 @@
   .archive-btn:hover:not(:disabled) { background: var(--bg-hover); }
   .archive-btn.is-archived { color: var(--accent); }
   .archive-btn:disabled { opacity: .4; cursor: default; }
+
+  .delete-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text);
+    transition: color .15s, background .15s;
+  }
+  .delete-btn:hover { background: var(--danger); color: #fff; }
 
   .hist-btn {
     flex-shrink: 0;
