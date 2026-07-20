@@ -66,7 +66,7 @@
 
   async function handleNewChild(e) {
     e.stopPropagation()
-    const doc = await createDoc(node.id)
+    const doc = await createDoc(node.id, `${node.title} - `)
     onNavigate(doc.id)
   }
 

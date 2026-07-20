@@ -447,7 +447,15 @@
         loading = false
         if (get(focusTitleForDocId) === targetId) {
           focusTitleForDocId.set(null)
-          setTimeout(() => { titleInputEl?.focus(); titleInputEl?.select() }, 50)
+          setTimeout(() => {
+            titleInputEl?.focus()
+            if (titleValue.endsWith(' - ')) {
+              const len = titleValue.length
+              titleInputEl?.setSelectionRange(len, len)
+            } else {
+              titleInputEl?.select()
+            }
+          }, 50)
         }
       }
     }
@@ -592,7 +600,7 @@
   }
 
   async function handleCreateSubDoc() {
-    const sub = await createDoc(doc.id, 'Untitled')
+    const sub = await createDoc(doc.id, `${doc.title} - `)
     window.location.hash = `/doc/${sub.id}`
   }
 
