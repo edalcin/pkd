@@ -31,7 +31,7 @@
 | 🔒 **Títulos únicos** | Títulos funcionam como identificadores de documentos — duplicatas são bloqueadas com diálogo informativo e botão para navegar ao documento existente |
 | 📍 **Breadcrumb de hierarquia** | Ancestrais clicáveis exibidos abaixo do título no editor — navegue para qualquer nível da hierarquia com um clique |
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
-| 🔍 **Busca FTS5** | Busca em título, corpo e tags com SQLite Full-Text Search, suporte a snippets |
+| 🔍 **Busca híbrida (RRF)** | Campo de busca da árvore lateral funde ranking léxico (FTS5 + LIKE) e semântico (embeddings Gemini) por Reciprocal Rank Fusion; sem `GEMINI_API_KEY` degrada automaticamente para busca léxica, sem erro |
 | 📅 **Calendário** | Navegue pelos documentos pela data de criação |
 | 🕰️ **Histórico de versões** | Snapshot automático a cada save com dedup SHA-256 (saves idênticos não geram versão). Visualize, compare e restaure qualquer versão anterior via botão `⏱` na barra do documento. Retenção configurável (padrão 50 versões/documento) |
 | ⭐ **Favoritar da barra** | Botão ⭐ na barra de ações do documento — alterna favorito sem precisar ir à sidebar |
@@ -190,7 +190,7 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 | `PKD_S3_PREFIX` | não | *(vazio)* | Prefixo de caminho dentro do bucket (ex: `pkd/attachments/`) |
 | `PKD_S3_ACCESS_KEY_ID` | não | *(credenciais da instância)* | Access Key ID; se vazio, usa credenciais padrão da instância/IAM role |
 | `PKD_S3_SECRET_ACCESS_KEY` | não | *(credenciais da instância)* | Secret Access Key correspondente |
-| `GEMINI_API_KEY` | não | *(desativado)* | Chave de API Google Gemini para embeddings semânticos. Sem ela o toggle **Semântico** no Graph View fica indisponível e o worker de embedding não roda |
+| `GEMINI_API_KEY` | não | *(desativado)* | Chave de API Google Gemini para embeddings semânticos. Sem ela o toggle **Semântico** no Graph View fica indisponível, o worker de embedding não roda, e a busca da árvore lateral opera só com o léxico (RRF degrada automaticamente, nunca erro) |
 | `PKD_EMBED_MODEL` | não | `models/gemini-embedding-001` | Modelo Gemini para geração de embeddings. Alterar o modelo invalida todos os embeddings em cache (re-embed automático na próxima varredura) |
 | `PKD_EMBED_SWEEP_MINUTES` | não | `15` | Cadência do worker de embedding em background (minutos). O worker também dispara imediatamente ao criar/editar documentos |
 | `SES_USERNAME` | não | *(desativado)* | Usuário SMTP do Amazon SES. Junto com `SES_PASSWORD`, `EMAIL_SENDER` e `EMAIL_2FA`, habilita o 2FA por e-mail no login (vinculado ao dispositivo) e a criptografia de documentos protegidos |
@@ -205,6 +205,15 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 ---
 
 ## Como usar
+
+### Busca híbrida (léxica + semântica)
+
+O campo de busca da árvore lateral (topbar) sempre executa busca **híbrida**: o termo digitado é buscado tanto pelo motor léxico (FTS5 + `LIKE`, cobrindo título, corpo, tags e títulos de links externos) quanto pelo motor semântico (similaridade de cosseno sobre embeddings Gemini), e os dois rankings são fundidos por **Reciprocal Rank Fusion** (RRF, k=60) numa única lista plana ordenada por relevância.
+
+- **Sem `GEMINI_API_KEY`**, ou antes do primeiro embed de um documento, a perna semântica fica vazia e o RRF degrada automaticamente para a ordem léxica — a busca nunca falha e nunca retorna erro.
+- Documentos que também aparecem na perna semântica exibem um badge de **similaridade de cosseno** (não o score do RRF) ao lado do título, com cor por faixa (verde ≥ 0.80, âmbar 0.65–0.79, laranja abaixo disso).
+- A busca abrange automaticamente ativos **e** arquivados enquanto o campo estiver preenchido; a view anterior (Ativos/Arquivados/Todos) é restaurada ao limpar a busca.
+- Não há mais seletor "Léxica | Semântica" — a fusão é sempre automática.
 
 ### Notas relacionadas
 
@@ -486,6 +495,17 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-07-28
+
+**Busca híbrida por fusão RRF — fim do seletor de modo**
+
+- `GET /api/tree?q=…` passa a rodar sempre os dois recuperadores (léxico via FTS5+LIKE, semântico via embeddings Gemini) e funde os resultados por **Reciprocal Rank Fusion** (`k=60`); sem `GEMINI_API_KEY` a perna semântica fica vazia e a fusão degrada exatamente para a ordem léxica — sem `503`, sem seletor de modo
+- Removido o `<select>` "Léxica | Semântica" da topbar e os stores `searchMode`/`semanticAvailable` — busca sempre única e automática
+- Piso semântico reduzido de 0.45 para 0.30 e top-k de 50 para 100 (o RRF já pondera por posição de rank, não por corte rígido de similaridade)
+- Ver [ADR-002](docs/adr/002-hybrid-search-rrf-fusion.md) para a decisão completa
+
+---
 
 ### 2026-06-10
 

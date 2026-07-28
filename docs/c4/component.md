@@ -1,6 +1,6 @@
 # C4 Level 3 — Component: PKD
 
-> **Versão**: v2.3 · **Data**: 2026-05-29
+> **Versão**: v2.4 · **Data**: 2026-07-28
 
 ## Descrição
 
@@ -26,16 +26,17 @@ C4Component
         Component(backup_sweep, "BackupTempSweep", "backup_sweep.go", "Goroutine não-bloqueante no startup. Lista _backup-tmp/ via S3Capable.ListWithMetadata, deleta objetos > 24h via DeleteMany.")
         Component(graph_handler, "Graph Handler", "handlers_graph.go", "GET /api/graph. Retorna nodes + edges para D3.js. Suporta filtro por tag e toggle all-docs.")
         Component(capture_handler, "Capture Handler", "handlers_capture.go", "POST /api/capture. Aceita JSON e form-encoded (PWA share_target). Extrai Open Graph de URLs.")
+        Component(tree_handler, "Tree Handler", "handlers_tree.go", "GET /api/tree. Sem q: árvore hierárquica (ListTree). Com q: busca híbrida — funde LexicalDocIDs (FTS5+LIKE) e SemanticSearchDocIDs (cosseno) via Reciprocal Rank Fusion (store.FuseRRF, k=60); lista plana ordenada pelo rank fundido, Score = cosseno quando presente na perna semântica.")
         Component(other_handlers, "Other Handlers", "handlers_*.go (8 arquivos)", "Tags, busca FTS5, calendário, share links, auth, health, PWA.")
         Component(assets, "Static Assets", "assets.go + web/dist/", "Serve SPA Svelte embutida via //go:embed. index.html com Cache-Control: no-cache para forçar reload após deploys.")
     }
 
     Container_Boundary(store_pkg, "internal/store") {
-        Component(doc_store, "DocumentStore", "documents.go", "Create, GetByID, Update, UpdateAndSync (aceita syncFn(*sql.Tx)), SoftDelete, Restore, Move, ListTree, ListChildren (filhos diretos para cards), PermanentDelete (remove filhos órfãos antes de deletar), EmptyTrash (detach children + delete trashed). SnapshotIfChanged (SHA-256 dedup), ListVersions, GetVersion, RestoreVersion, DeleteVersion.")
+        Component(doc_store, "DocumentStore", "documents.go", "Create, GetByID, Update, UpdateAndSync (aceita syncFn(*sql.Tx)), SoftDelete, Restore, Move, ListTree, ListByIDsFiltered (docs por IDs com filtros view/tags/favorito — usado pela busca híbrida), ListChildren (filhos diretos para cards), PermanentDelete (remove filhos órfãos antes de deletar), EmptyTrash (detach children + delete trashed). SnapshotIfChanged (SHA-256 dedup), ListVersions, GetVersion, RestoreVersion, DeleteVersion.")
         Component(link_store, "LinkStore", "links.go", "CreateLink, DeleteLink, GetLinksForDocument, GetGraphData, SyncLinksFromHTML (tokeniza HTML, diff, insert/delete no mesmo tx).")
         Component(tag_store, "TagStore", "tags.go", "ListWithCounts (INNER JOIN, exclui tags de docs na lixeira), ListAllWithCounts (LEFT JOIN, inclui todas — para admin), SetDocumentTags, RenameOrMerge, Update (nome+cor), Delete, PruneUnused.")
         Component(att_store, "AttachmentStore", "attachments.go", "CreateFile (valida prefixo reservado _backup-tmp/), GetByID, ListByDocument, ListAllWithDocument (join com título do doc), Delete, DeleteByDocument (limpa disco+DB para um doc), ListOrphans, FullPath. EnumerateForBackup, BackfillSHA256, LookupBySHA256 (backup/restore). MigrateToBackend/ReconcileStorageLocations/CleanupSource com callback onProgress(processed,total) e CleanupSource retorna CleanupResult (Total/Deleted/Skipped/Errors) com verificação target.Get antes de apagar.")
-        Component(search_store, "SearchStore", "search.go", "FTS5 full-text search com snippets. Índice contentless mantido pela app.")
+        Component(search_store, "SearchStore", "search.go", "Search/ftsSearch/likeSearch para /api/search (autocomplete, fallback condicional). LexicalDocIDs (FTS5 + LIKE sempre concatenados) e FuseRRF (Reciprocal Rank Fusion, k=60) alimentam a busca híbrida de /api/tree. Índice FTS5 contentless mantido pela app.")
         Component(share_store, "ShareStore", "shares.go", "Geração de token SHA-256, lookup constant-time, revogação por revoked_at.")
         Component(backup_store, "BackupStore", "backup.go", "VACUUM INTO para backup do DB, restauração atômica.")
         Component(migrate, "Schema Migration", "migrate.go + schema.sql", "DDL idempotente a cada inicialização. Inclui migração de coluna color na tabela tags, content_sha256 nullable e idx_attachments_content_sha256.")
@@ -84,6 +85,10 @@ C4Component
     Rel(sweep, s3_backend, "ListWithMetadata + DeleteMany")
     Rel(router, graph_handler, "Roteia /api/graph")
     Rel(router, capture_handler, "Roteia /api/capture")
+    Rel(router, tree_handler, "Roteia /api/tree")
+    Rel(tree_handler, doc_store, "ListTree / ListByIDsFiltered")
+    Rel(tree_handler, search_store, "LexicalDocIDs")
+    Rel(tree_handler, link_store, "SemanticSearchDocIDs")
     Rel(router, other_handlers, "Roteia demais endpoints")
     Rel(doc_handlers, doc_store, "CRUD de documentos + ListChildren")
     Rel(doc_handlers, link_store, "SyncLinksFromHTML via UpdateAndSync")
@@ -161,7 +166,7 @@ C4Component
 
 | Componente | Arquivo(s) | Funções chave |
 |---|---|---|
-| DocumentStore | `store/documents.go` | Create, GetByID, Update, **UpdateAndSync**, SoftDelete, Restore, Move, ListTree, **ListChildren**, PermanentDelete (FK-safe), EmptyTrash (FK-safe) |
+| DocumentStore | `store/documents.go` | Create, GetByID, Update, **UpdateAndSync**, SoftDelete, Restore, Move, ListTree, **ListByIDsFiltered** (busca híbrida), **ListChildren**, PermanentDelete (FK-safe), EmptyTrash (FK-safe) |
 | LinkStore | `store/links.go` | CreateLink, DeleteLink, GetLinksForDocument, **GetGraphData**, **SyncLinksFromHTML** |
 | TagStore | `store/tags.go` | ListWithCounts (INNER JOIN), **ListAllWithCounts** (LEFT JOIN), SetDocumentTags, **Update** (nome+cor), **Delete**, **PruneUnused** |
 | AttachmentStore | `store/attachments.go` | CreateFile (rejeita prefixo `_backup-tmp/`), GetByID, ListByDocument, **ListAllWithDocument**, Delete, **DeleteByDocument**, ListOrphans, **EnumerateForBackup**, **BackfillSHA256**, **LookupBySHA256** |
@@ -176,3 +181,5 @@ C4Component
 | handlers_links | `server/handlers_links.go` | GET/POST/DELETE `/api/documents/{id}/links` |
 | handlers_graph | `server/handlers_graph.go` | GET `/api/graph?tag=&all=` |
 | handlers_capture | `server/handlers_capture.go` | POST `/api/capture` + Open Graph extraction |
+| handlers_tree | `server/handlers_tree.go` | GET `/api/tree` — árvore hierárquica (sem `q`) ou busca híbrida RRF (com `q`): funde `SearchStore.LexicalDocIDs` (léxico) e `LinkStore.SemanticSearchDocIDs` (semântico) via `store.FuseRRF` |
+| SearchStore | `store/search.go` | `LexicalDocIDs` (FTS5 + LIKE sempre concatenados, até 100 candidatos) e `FuseRRF` (Reciprocal Rank Fusion, k=60) para a busca híbrida de `/api/tree`; `Search`/`ftsSearch`/`likeSearch` (fallback condicional) para `/api/search` |

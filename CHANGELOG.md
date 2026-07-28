@@ -8,6 +8,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Adicionado
 
+- **Busca híbrida por fusão RRF** — `GET /api/tree?q=…` deixa de alternar entre modo léxico e semântico e passa a rodar sempre os dois recuperadores, fundindo o resultado por **Reciprocal Rank Fusion** (`k=60`, `internal/store/search.go:FuseRRF`):
+  - `SearchStore.LexicalDocIDs` — FTS5 (até 100 candidatos) sempre seguido de `LIKE` (cobre `document_urls.title`, que o FTS5 não indexa), deduplicado e concatenado.
+  - `LinkStore.SemanticSearchDocIDs` — cosseno sobre embeddings Gemini; piso reduzido de `0.45` para `0.30` e top-k elevado de `50` para `100` (o RRF já pondera por posição de rank, não por corte rígido de similaridade). Retorna lista vazia (não erro) quando `GEMINI_API_KEY` está ausente — antes retornava `503` via `handleTree`.
+  - `DocumentStore.ListByIDsFiltered` substitui `ListByIDs`: reaplica os filtros de view/tags/favorito da árvore sobre os IDs já fundidos pelo RRF.
+  - Resultado: lista plana ordenada pelo rank fundido; `Score` no JSON continua sendo a similaridade de cosseno (não o score RRF) quando o documento também veio da perna semântica.
+  - Frontend: removido o `<select>` "Léxica | Semântica" da topbar e os stores `searchMode`/`semanticAvailable`; `loadTree` perde o fallback de 503.
+  - Ver `docs/adr/002-hybrid-search-rrf-fusion.md`.
+
 - **Administração: desproteger documentos em lote** — nova aba "🛡️ Protegidos" lista todos os documentos criptografados em repouso (`GET /api/admin/protected`). O usuário seleciona um, vários, ou todos via checkbox e dispara uma única solicitação de código 2FA por e-mail (`POST /api/admin/unprotect/request`) que autoriza desproteger o lote inteiro de uma vez (`POST /api/admin/unprotect`) — mesmo padrão de geração de códigos de backup (solicita código → e-mail → confirma → executa). Antes, desproteção só era possível documento-a-documento, cada uma exigindo desbloquear o documento na sessão com um código próprio. Falha de decifração por documento (ex.: `PKD_PASSWORD` trocada após a proteção) não aborta o lote — o id entra em `failed` na resposta.
 
 - **2FA por e-mail (login vinculado ao dispositivo) + criptografia de documentos** — dois recursos opt-in habilitados quando as quatro variáveis `SES_USERNAME`, `SES_PASSWORD`, `EMAIL_SENDER` e `EMAIL_2FA` estão definidas:

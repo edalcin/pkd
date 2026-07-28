@@ -4,6 +4,8 @@
 
 O PKD gera automaticamente embeddings de texto para todos os documentos ativos usando a API Gemini, armazena os vetores como BLOBs float32 no SQLite e usa similaridade de cosseno para construir arestas semânticas no Graph View. O processo é **proativo**: os vetores ficam sempre frescos antes de o usuário abrir o grafo.
 
+Os mesmos vetores também alimentam a **busca híbrida de texto** (`GET /api/tree?q=…`): `SemanticSearchDocIDs` (`semantic.go`, mesmo pacote) fornece a perna semântica, fundida com o recuperador léxico via Reciprocal Rank Fusion. Ver `docs/adr/002-hybrid-search-rrf-fusion.md`. `semanticQueryFloor`/`semanticQueryTopK` controlam só essa busca; `semanticSimThreshold`/`semanticMaxNeighbors` abaixo controlam só as arestas do grafo — constantes independentes no mesmo arquivo.
+
 ## Arquitetura
 
 ```
@@ -130,7 +132,6 @@ Complexidade: O(n²·d) onde n = docs ativos, d = dimensões do vetor. Para uso 
 
 ## Limitações deliberadas (ponytail)
 
-- **Sem busca semântica de texto**: vetores existem; busca é futura — não implementado agora.
 - **Sem chat/RAG**: vetores existem para uso futuro.
 - **Threshold e max-neighbors fixos**: `semanticSimThreshold = 0.60`, `semanticMaxNeighbors = 8` — constantes no código. Configurar via env var quando houver evidência de necessidade.
 - **Batch size fixo**: `semanticBatchSize = 100` — limite prático da API Gemini; não exposto.

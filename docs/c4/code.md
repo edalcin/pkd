@@ -1,6 +1,6 @@
 # C4 Level 4 — Code: PKD
 
-> **Versão**: v2.3 · **Data**: 2026-05-29
+> **Versão**: v2.4 · **Data**: 2026-07-28
 
 ## Modelo de dados — Structs Go (`internal/model/`)
 
@@ -312,6 +312,12 @@ O servidor Go serve apenas `/` → `index.html` (com `Cache-Control: no-cache` p
 | POST | `/api/documents/{id}/move` | `handleMoveDocument` | Body: `{new_parent_id}` |
 | POST | `/api/documents/{id}/restore` | `handleRestoreDocument` | Restaura da lixeira |
 | GET | `/api/documents/{id}/children` | `handleListChildren` | Filhos diretos não-lixados para cards de sub-docs |
+
+### Árvore e busca híbrida
+
+| Método | Caminho | Handler | Descrição |
+|---|---|---|---|
+| GET | `/api/tree` | `handleTree` | Sem `q`: árvore hierárquica via `ListTree` (query `?view=&tag=&favorite=`). Com `q`: busca híbrida — `respondHybridSearch` funde `SearchStore.LexicalDocIDs` (FTS5+LIKE) e `LinkStore.SemanticSearchDocIDs` (cosseno) por Reciprocal Rank Fusion (`store.FuseRRF`, k=60) e reaplica os filtros de view/tag/favorite via `ListByIDsFiltered`. Retorna lista plana (`[]DocumentTreeNode`, nunca `null`) ordenada pelo rank fundido; `score` (cosseno, omitempty) presente só nos itens também encontrados pela perna semântica. Sem `GEMINI_API_KEY` a perna semântica é vazia e o resultado degrada para a ordem léxica — nunca `503`. Um `?mode=semantic` remanescente de cliente antigo é ignorado. Ver `docs/adr/002-hybrid-search-rrf-fusion.md`. |
 
 ### Links bidirecionais
 

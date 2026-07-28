@@ -1,7 +1,9 @@
 # ADR-001: Exibição de Score na Busca Semântica
 
-**Status:** Aceito  
+**Status:** Superseded por [ADR-002](002-hybrid-search-rrf-fusion.md)  
 **Data:** 2026-06-28
+
+> **Nota (2026-07-28):** A busca por texto deixou de ter um `mode=semantic` dedicado — ver ADR-002 para a fusão RRF que substitui a arquitetura de busca semântica isolada descrita abaixo. As decisões D2 (piso e faixas de cor), D3 (reuso de `TreeNode.svelte`) e D4 (campo `Score` com `omitempty`) permanecem válidas; D1 (flat list) passa a valer para toda busca híbrida, não só o modo semântico.
 
 ## Contexto
 
