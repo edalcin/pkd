@@ -1,78 +1,103 @@
 package server
 
 import (
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/edalcin/pkd/internal/model"
+	"github.com/edalcin/pkd/internal/store"
 )
+
+// hybridResultLimit caps the number of RRF-fused results returned by a
+// text search. Each leg (lexical, semantic) is separately capped upstream.
+const hybridResultLimit = 100
 
 func (s *Server) handleTree() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		view := r.URL.Query().Get("view") // "active" | "archived" | "all" — empty defaults to "active"
 		tagFilter := r.URL.Query()["tag"]
 		favoriteOnly := r.URL.Query().Get("favorite") == "1"
-		q := r.URL.Query().Get("q")
-		mode := r.URL.Query().Get("mode")
+		q := strings.TrimSpace(r.URL.Query().Get("q"))
 
-		var docs []*model.Document
-		var err error
-		if mode == "semantic" && q != "" {
-			if s.cfg.GeminiAPIKey == "" {
-				http.Error(w, `{"error":"GEMINI_API_KEY not configured"}`, http.StatusServiceUnavailable)
-				return
-			}
-			hits, e := s.links.SemanticSearchDocIDs(r.Context(), s.cfg.GeminiAPIKey, q)
-			if e != nil {
-				http.Error(w, "internal error", http.StatusInternalServerError)
-				return
-			}
-			ids := make([]int64, len(hits))
-			for i, h := range hits {
-				ids[i] = h.DocID
-			}
-			docsByID := make(map[int64]*model.Document, len(hits))
-			if fetched, fe := s.docs.ListByIDs(ids); fe != nil {
-				http.Error(w, "internal error", http.StatusInternalServerError)
-				return
-			} else {
-				for _, d := range fetched {
-					docsByID[d.ID] = d
-				}
-			}
-			// Build flat list preserving score order.
-			flat := make([]*model.DocumentTreeNode, 0, len(hits))
-			for _, h := range hits {
-				d, ok := docsByID[h.DocID]
-				if !ok {
-					continue
-				}
-				flat = append(flat, &model.DocumentTreeNode{
-					ID:         d.ID,
-					ParentID:   d.ParentID,
-					Title:      d.Title,
-					Icon:       d.Icon,
-					Position:   d.Position,
-					Version:    d.Version,
-					IsFavorite: d.IsFavorite,
-				Locked:     d.Locked,
-				Encrypted:  d.Encrypted,
-					Archived:   d.Archived,
-					ArchivedAt: d.ArchivedAt,
-					Tags:       d.Tags,
-					Children:   []*model.DocumentTreeNode{},
-					Score:      float64(h.Score),
-				})
-			}
-			writeJSON(w, http.StatusOK, flat)
+		if q != "" {
+			s.respondHybridSearch(w, r, q, view, tagFilter, favoriteOnly)
 			return
 		}
-		docs, err = s.docs.ListTree(view, tagFilter, favoriteOnly, q)
+		docs, err := s.docs.ListTree(view, tagFilter, favoriteOnly)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		writeJSON(w, http.StatusOK, buildTree(docs))
 	}
+}
+
+// respondHybridSearch runs the lexical and semantic retrievers for q, fuses
+// their rankings by Reciprocal Rank Fusion, and writes a flat (non-tree)
+// list of matching documents ordered by fused rank. The semantic leg
+// degrades to empty — never an error response — when GEMINI_API_KEY is
+// unset or the Gemini call fails, so the result always falls back to the
+// lexical ranking.
+func (s *Server) respondHybridSearch(w http.ResponseWriter, r *http.Request, q, view string, tagFilter []string, favoriteOnly bool) {
+	lex, err := s.search.LexicalDocIDs(q)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	hits, err := s.links.SemanticSearchDocIDs(r.Context(), s.cfg.GeminiAPIKey, q)
+	if err != nil {
+		log.Printf("hybrid search: semantic leg failed: %v", err)
+		hits = nil
+	}
+	semIDs := make([]int64, len(hits))
+	scoreByID := make(map[int64]float32, len(hits))
+	for i, h := range hits {
+		semIDs[i] = h.DocID
+		scoreByID[h.DocID] = h.Score
+	}
+
+	fused := store.FuseRRF(lex, semIDs, hybridResultLimit)
+	if len(fused) == 0 {
+		writeJSON(w, http.StatusOK, []*model.DocumentTreeNode{})
+		return
+	}
+
+	docs, err := s.docs.ListByIDsFiltered(fused, view, tagFilter, favoriteOnly)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	docsByID := make(map[int64]*model.Document, len(docs))
+	for _, d := range docs {
+		docsByID[d.ID] = d
+	}
+
+	flat := make([]*model.DocumentTreeNode, 0, len(fused))
+	for _, id := range fused {
+		d, ok := docsByID[id]
+		if !ok {
+			continue
+		}
+		flat = append(flat, &model.DocumentTreeNode{
+			ID:         d.ID,
+			ParentID:   d.ParentID,
+			Title:      d.Title,
+			Icon:       d.Icon,
+			Position:   d.Position,
+			Version:    d.Version,
+			IsFavorite: d.IsFavorite,
+			Locked:     d.Locked,
+			Encrypted:  d.Encrypted,
+			Archived:   d.Archived,
+			ArchivedAt: d.ArchivedAt,
+			Tags:       d.Tags,
+			Children:   []*model.DocumentTreeNode{},
+			Score:      float64(scoreByID[d.ID]),
+		})
+	}
+	writeJSON(w, http.StatusOK, flat)
 }
 
 // buildTree converts a flat list of documents into a nested tree.

@@ -24,11 +24,13 @@ const (
 	semanticBatchSize    = 100
 	semanticMaxNeighbors = 8
 	semanticSimThreshold = 0.60
-	semanticQueryTopK    = 50
-	// ponytail: floor + topK são knobs de tuning; topK é o controle principal
-	// (cosseno sempre retorna algo). floor 0.45 fica abaixo do threshold doc-doc
-	// (0.60) p/ não zerar resultados de query curta.
-	semanticQueryFloor = 0.45
+	semanticQueryTopK    = 100
+	// ponytail: piso baixo de propósito — quem decide o peso final de cada
+	// resultado é a fusão RRF por posição de rank, não um corte rígido de
+	// similaridade. Um candidato semântico fraco entra na lista mas já é
+	// penalizado pela posição ruim. Mesmos valores de newPdfDing
+	// (refatoracao/04-busca-hibrida.md, "Piso semântico e top-k").
+	semanticQueryFloor = 0.30
 )
 
 // semCandidate is a scored edge candidate used during similarity computation.
@@ -364,11 +366,14 @@ func dot(a, b []float32) float32 {
 	return s
 }
 
-// SemanticSearchDocIDs embeds q and returns active-document hits ranked by cosine
-// similarity to q (descending), keeping those >= semanticQueryFloor, capped at
-// semanticQueryTopK. Returns empty (not error) when q embeds to a zero vector or
-// there are no document embeddings. apiKey must be non-empty (caller gates on it).
+// SemanticSearchDocIDs embeds q and returns non-trashed document hits ranked by
+// cosine similarity to q (descending), keeping those >= semanticQueryFloor,
+// capped at semanticQueryTopK. Returns empty (not error) when apiKey is empty,
+// q embeds to a zero vector, or there are no document embeddings.
 func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) ([]SemanticHit, error) {
+	if apiKey == "" {
+		return []SemanticHit{}, nil
+	}
 	client := &http.Client{Timeout: 30 * time.Second}
 	vecs, err := embedBatch(ctx, client, apiKey, []string{q}, s.embedModel)
 	if err != nil {
@@ -382,7 +387,7 @@ func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) 
 		SELECT e.document_id, e.embedding
 		FROM document_embeddings e
 		JOIN documents d ON d.id = e.document_id
-		WHERE d.trashed_at IS NULL AND d.archived_at IS NULL`)
+		WHERE d.trashed_at IS NULL`)
 	if err != nil {
 		return nil, fmt.Errorf("semantic search: load vectors: %w", err)
 	}

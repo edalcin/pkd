@@ -712,12 +712,8 @@ func (s *DocumentStore) Move(id int64, newParentID *int64) error {
 // view: "active" (default) = exclude archived; "archived" = only archived; "all" = no archived filter.
 // If tagFilter is non-empty, only documents carrying ALL specified tags are included.
 // If favoriteOnly is true, only is_favorite=1 documents are returned.
-// If q is non-empty, only documents matching the text are returned.
 // The returned slice is a flat list; callers build the tree structure.
-func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly bool, q string) ([]*model.Document, error) {
-	if q != "" {
-		return s.listByQuery(view, tagFilter, favoriteOnly, q)
-	}
+func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly bool) ([]*model.Document, error) {
 	if len(tagFilter) > 0 {
 		return s.listByTags(view, tagFilter, favoriteOnly)
 	}
@@ -776,52 +772,6 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 			WHERE id IN (SELECT id FROM active_ids)` + favExtra + `
 			ORDER BY position ASC, id ASC`)
 	}
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return scanDocRows(rows)
-}
-
-// listByQuery returns documents matching q across title, body_text, and external
-// link titles. Optional view, tagFilter and favoriteOnly further narrow the results.
-func (s *DocumentStore) listByQuery(view string, tagFilter []string, favoriteOnly bool, q string) ([]*model.Document, error) {
-	pattern := "%" + q + "%"
-	cond := `d.trashed_at IS NULL AND (d.title LIKE ? OR d.body_text LIKE ? OR EXISTS (
-		SELECT 1 FROM document_urls u WHERE u.document_id = d.id AND u.title LIKE ?
-	))`
-	args := []interface{}{pattern, pattern, pattern}
-	switch view {
-	case "archived":
-		cond += " AND d.archived_at IS NOT NULL"
-	case "all":
-		// no archived_at filter
-	default: // "active"
-		cond += " AND d.archived_at IS NULL"
-	}
-	if favoriteOnly {
-		cond += " AND d.is_favorite = 1"
-	}
-	if len(tagFilter) > 0 {
-		ph := ""
-		for i, t := range tagFilter {
-			if i > 0 {
-				ph += ","
-			}
-			ph += "?"
-			args = append(args, t)
-		}
-		cond += fmt.Sprintf(` AND d.id IN (
-			SELECT dt.document_id FROM document_tags dt JOIN tags t ON t.id = dt.tag_id
-			WHERE t.name IN (%s) GROUP BY dt.document_id HAVING COUNT(DISTINCT t.id) = %d
-		)`, ph, len(tagFilter))
-	}
-	rows, err := s.db.Query(`
-		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.encrypted, d.archived_at,
-		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
-		FROM documents d
-		WHERE `+cond+`
-		ORDER BY d.position ASC, d.id ASC`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1362,9 +1312,10 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 	return docs, rows.Err()
 }
 
-// ListByIDs returns non-trashed documents for the given IDs, ordered by
-// position then id. Empty ids -> empty slice. Used by semantic tree filtering.
-func (s *DocumentStore) ListByIDs(ids []int64) ([]*model.Document, error) {
+// ListByIDsFiltered returns non-trashed documents among ids that also satisfy
+// the tree filters (view / tags / favorites). The returned order is arbitrary:
+// callers reorder by their own ranking. Empty ids -> empty slice.
+func (s *DocumentStore) ListByIDsFiltered(ids []int64, view string, tagFilter []string, favoriteOnly bool) ([]*model.Document, error) {
 	if len(ids) == 0 {
 		return []*model.Document{}, nil
 	}
@@ -1377,12 +1328,37 @@ func (s *DocumentStore) ListByIDs(ids []int64) ([]*model.Document, error) {
 		ph += "?"
 		args[i] = id
 	}
+	cond := `d.id IN (` + ph + `) AND d.trashed_at IS NULL`
+	switch view {
+	case "archived":
+		cond += " AND d.archived_at IS NOT NULL"
+	case "all":
+		// no archived_at filter
+	default: // "active"
+		cond += " AND d.archived_at IS NULL"
+	}
+	if favoriteOnly {
+		cond += " AND d.is_favorite = 1"
+	}
+	if len(tagFilter) > 0 {
+		ph2 := ""
+		for i, t := range tagFilter {
+			if i > 0 {
+				ph2 += ","
+			}
+			ph2 += "?"
+			args = append(args, t)
+		}
+		cond += fmt.Sprintf(` AND d.id IN (
+			SELECT dt.document_id FROM document_tags dt JOIN tags t ON t.id = dt.tag_id
+			WHERE t.name IN (%s) GROUP BY dt.document_id HAVING COUNT(DISTINCT t.id) = %d
+		)`, ph2, len(tagFilter))
+	}
 	rows, err := s.db.Query(`
-		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, encrypted, archived_at,
-		       created_at, updated_at, assoc_year, assoc_month, assoc_day
-		FROM documents
-		WHERE id IN (`+ph+`) AND trashed_at IS NULL
-		ORDER BY position ASC, id ASC`, args...)
+		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.encrypted, d.archived_at,
+		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
+		FROM documents d
+		WHERE `+cond, args...)
 	if err != nil {
 		return nil, err
 	}

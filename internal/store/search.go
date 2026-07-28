@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -155,4 +156,109 @@ func ignoreNoSuchRowid(err error) error {
 		return nil
 	}
 	return err
+}
+
+// lexicalCandidateLimit caps the number of document IDs LexicalDocIDs returns,
+// feeding the RRF fusion in respondHybridSearch.
+const lexicalCandidateLimit = 100
+
+// LexicalDocIDs returns up to lexicalCandidateLimit non-trashed document IDs
+// matching q, best match first. Runs FTS5 first (best-effort: syntax errors
+// degrade to an empty FTS leg rather than propagating, same as Search's
+// fallback), then always runs LIKE (covering document_urls.title, which FTS5
+// doesn't index) and appends any IDs not already present. Empty/blank q
+// returns (nil, nil).
+func (s *SearchStore) LexicalDocIDs(q string) ([]int64, error) {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return nil, nil
+	}
+
+	seen := make(map[int64]struct{}, lexicalCandidateLimit)
+	ids := make([]int64, 0, lexicalCandidateLimit)
+
+	safe := `"` + strings.ReplaceAll(q, `"`, `""`) + `"`
+	if rows, err := s.db.Query(`
+		SELECT d.id
+		FROM documents_fts
+		JOIN documents d ON d.id = documents_fts.rowid
+		WHERE documents_fts MATCH ?
+		  AND d.trashed_at IS NULL
+		ORDER BY documents_fts.rank
+		LIMIT ?`, safe, lexicalCandidateLimit); err == nil {
+		func() {
+			defer rows.Close()
+			for rows.Next() {
+				var id int64
+				if rows.Scan(&id) == nil {
+					if _, dup := seen[id]; !dup {
+						seen[id] = struct{}{}
+						ids = append(ids, id)
+					}
+				}
+			}
+		}()
+	}
+
+	pattern := "%" + q + "%"
+	rows, err := s.db.Query(`
+		SELECT d.id
+		FROM documents d
+		WHERE d.trashed_at IS NULL
+		  AND (d.title LIKE ? OR d.body_text LIKE ? OR EXISTS (
+		        SELECT 1 FROM document_urls u WHERE u.document_id = d.id AND u.title LIKE ?))
+		ORDER BY d.updated_at DESC
+		LIMIT ?`, pattern, pattern, pattern, lexicalCandidateLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		if _, dup := seen[id]; !dup {
+			seen[id] = struct{}{}
+			ids = append(ids, id)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(ids) > lexicalCandidateLimit {
+		ids = ids[:lexicalCandidateLimit]
+	}
+	return ids, nil
+}
+
+// rrfK is the Reciprocal Rank Fusion smoothing constant.
+const rrfK = 60.0
+
+// FuseRRF merges lexical and semantic ID rankings by Reciprocal Rank Fusion
+// (k=60), returning at most limit IDs ordered by descending fused score,
+// ties broken by ascending ID for determinism. limit <= 0 means unlimited.
+func FuseRRF(lexical, semantic []int64, limit int) []int64 {
+	score := make(map[int64]float64, len(lexical)+len(semantic))
+	for rank, id := range lexical {
+		score[id] += 1.0 / (rrfK + float64(rank+1))
+	}
+	for rank, id := range semantic {
+		score[id] += 1.0 / (rrfK + float64(rank+1))
+	}
+	ids := make([]int64, 0, len(score))
+	for id := range score {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool {
+		if score[ids[i]] != score[ids[j]] {
+			return score[ids[i]] > score[ids[j]]
+		}
+		return ids[i] < ids[j]
+	})
+	if limit > 0 && len(ids) > limit {
+		ids = ids[:limit]
+	}
+	return ids
 }
