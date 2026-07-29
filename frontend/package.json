@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.1.1",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "svelte": "^5.55.7",
     "vite": "^6.4.3"
   },
@@ -34,7 +34,7 @@
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
-    "dompurify": "^3.4.11",
+    "dompurify": "^3.4.12",
     "marked": "^18.0.5",
     "mermaid": "^11.15.0",
     "turndown": "^7.2.4"
