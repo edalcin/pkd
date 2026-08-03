@@ -3006,6 +3006,11 @@
     .mobile-pane-hidden { display: none !important; }
     .mobile-toolbar-hidden { display: none !important; }
 
+    /* Título em linha própria: os 10 botões da title-row são flex-shrink:0 e
+       comprimiam o input a 0px em telas de 375px, tornando-o intocável. */
+    .title-row { flex-wrap: wrap; }
+    .doc-title { flex: 1 1 100%; order: -1; }
+
     .mobile-tab-bar {
       display: flex;
       position: fixed;
