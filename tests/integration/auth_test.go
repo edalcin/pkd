@@ -33,6 +33,7 @@ func TestMain(m *testing.M) {
 		SessionIdleMinutes: 60,
 		MaxImageMB:         10,
 		MaxAttachmentMB:    100,
+		ImportToken:        "test-import-token",
 	}
 	sess := sessions.New(60)
 	srv = server.New(cfg, db, sess)
