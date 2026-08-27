@@ -130,7 +130,9 @@ aqui, porque `normalize()` já roda em todo vetor na leitura.
 
 ### D5 — Default compilado permanece `models/gemini-embedding-001`
 
-`config.go` não muda. `SettingsStore.EmbedModel()` devolve `""` quando não há
+`config.DefaultEmbedModel` (nova constante exportada, consumida por `config.go` e
+pelo fallback de D7) segue em `models/gemini-embedding-001`.
+`SettingsStore.EmbedModel()` devolve `""` quando não há
 registro e `server.go` só sobrepõe quando não vazio, portanto toda instalação que
 nunca tocou o dropdown herda o default compilado. Flipar o default faria essas
 instalações re-embedar todo o corpus **no primeiro boot após o upgrade** —
@@ -161,6 +163,40 @@ Ajustar no máximo um dos dois pisos, nunca os dois juntos.
 observabilidade permanente. É a feature de ADR-001 que já saiu da interface uma
 vez; construir instrumentação permanente para uma medição única não se paga.
 
+### D7 — Validar o modelo efetivo no boot, com fallback
+
+`isValidEmbedModel` guardava apenas `PUT /api/admin/settings`. Os outros dois
+caminhos que definem o modelo não eram checados:
+
+- `config.go` aceita `PKD_EMBED_MODEL` sem validação — um template de container
+  fixado em `models/text-embedding-004` sobe o app com um modelo desligado.
+- `server.go` carrega o valor persistido no DB, que pode ter sido gravado por um
+  build anterior, quando a whitelist ainda tinha os dois modelos hoje removidos.
+
+Nos dois casos o efeito é o pior modo de falha possível: `EmbedStaleDocs` falha
+contra a API a cada sweep, o embedder apenas loga, `embed.count` fica em zero e a
+busca opera só com o léxico **para sempre**, sem nada visível na interface. Pior
+ainda no segundo caso, `Admin.svelte` faz `bind:value` do valor persistido num
+`<select>` que não tem mais aquela `<option>` — o dropdown aparece em branco.
+
+`NewServer` passa a validar `s.cfg.EmbedModel` **depois** de aplicar o valor do
+DB — o único ponto onde os dois caminhos convergem — e cai para
+`config.DefaultEmbedModel` com uma linha de log quando o modelo não é suportado.
+Como `handleAdminGetSettings` reporta `s.cfg.EmbedModel` e não o valor bruto do
+DB, o dropdown passa a refletir o modelo efetivo, o que também fecha o caso do
+`<select>` em branco.
+
+O valor inválido **não** é apagado do DB: o fallback é idempotente, e reescrever
+a configuração do administrador em silêncio é pior que ignorá-la com log.
+
+**Alternativa descartada:** validar dentro de `internal/config`. A whitelist vive
+no pacote `server` junto do handler que a usa, e movê-la para `config` só para
+validar mais cedo não cobriria o caminho do DB, que é o mais provável dos dois.
+
+**Alternativa descartada:** abortar o boot com erro. Um modelo de embedding
+inválido degrada uma feature secundária; derrubar a aplicação inteira por causa
+dele transforma um problema de busca num problema de disponibilidade.
+
 ## Consequências
 
 - `internal/store/semantic.go`: `isEmbed2`, `embedDocText`, `embedQueryText`
@@ -178,7 +214,12 @@ vez; construir instrumentação permanente para uma medição única não se pag
   frontend lia `score`, era peso morto no wire e uma pista falsa de que havia
   observabilidade de similaridade. `store.SemanticHit.Score` permanece (a fusão
   consome só a ordem dos hits), documentado no glossário como write-only.
-- `PKD_EMBED_MODEL` aceita apenas os dois modelos vivos.
+- `internal/config/config.go`: constante exportada `DefaultEmbedModel`, consumida
+  pelo default de `NewConfig` e pelo fallback de `NewServer` — uma fonte só.
+- `internal/server/server.go`: valida `s.cfg.EmbedModel` depois de aplicar o
+  valor do DB e cai para `config.DefaultEmbedModel` com log quando inválido.
+- `PKD_EMBED_MODEL` aceita apenas os dois modelos vivos; um valor fora da lista
+  não impede o boot, é ignorado com log.
 - **Não** foi criado `CONTEXT.md`: `docs/adr/glossary.md` já cumpre esse papel
   neste repo, e um segundo arquivo de vocabulário seria convenção paralela.
 

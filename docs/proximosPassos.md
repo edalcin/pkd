@@ -69,6 +69,34 @@ era peso morto no wire e pista falsa de que havia observabilidade de similaridad
 
 **Não** foi criado `CONTEXT.md`: `docs/adr/glossary.md` já cumpre esse papel.
 
+### Fase 5 — Validação do modelo efetivo no boot ✅
+
+Descoberta ao revisar o deploy: `isValidEmbedModel` guardava **só** a API admin.
+`PKD_EMBED_MODEL` (`config.go`) e o valor persistido no DB (`server.go`) entravam
+sem checagem — um modelo desligado fazia todo sweep falhar em silêncio, com
+`embed.count` em zero e busca só léxica para sempre. E o valor persistido fora da
+whitelist deixava o `<select>` do admin **em branco**.
+
+- `internal/config/config.go` — constante exportada `DefaultEmbedModel`, fonte
+  única para o default de `NewConfig` e para o fallback
+- `internal/server/server.go` — valida `s.cfg.EmbedModel` depois de aplicar o
+  valor do DB (único ponto onde os dois caminhos convergem); cai para o default
+  com log. Não apaga o valor inválido do DB: fallback é idempotente, e reescrever
+  a config do administrador em silêncio é pior
+
+Registrado como ADR-004 D7.
+
+Smoke test executado com o binário real:
+
+```
+PKD_EMBED_MODEL=models/text-embedding-004
+  → embed: model "models/text-embedding-004" is not supported,
+    falling back to models/gemini-embedding-001
+  → listening on :18099
+PKD_EMBED_MODEL=models/gemini-embedding-2
+  → listening on :18098   (sem fallback)
+```
+
 ## Verificação executada
 
 ```
@@ -83,6 +111,10 @@ Teste novo: `internal/store/semantic_format_test.go` — `TestEmbedTextFormat`,
 que não é o `2` mantém `{título}\n{corpo}` byte-idêntico ao comportamento
 anterior). É white-box porque os helpers são unexported — primeiro teste
 in-package do repo; os demais vivem em `tests/{unit,contract,integration}`.
+
+Smoke test do fallback de boot executado com o binário real (Fase 5), com os dois
+caminhos confirmados no log — modelo desligado cai para o default, modelo novo
+sobe sem fallback.
 
 ## Ação do usuário (não é código)
 

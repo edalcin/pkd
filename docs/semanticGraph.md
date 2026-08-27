@@ -96,7 +96,7 @@ Vetores de 3072 dimensões = 12 288 bytes/doc. Para 300 documentos ≈ 3,6 MB no
 | Variável | Padrão | Efeito |
 |---|---|---|
 | `GEMINI_API_KEY` | *(desativado)* | Sem ela o worker não roda e `GET /api/graph/semantic` retorna 503 |
-| `PKD_EMBED_MODEL` | `models/gemini-embedding-001` | Modelo Gemini padrão; sobreposto pelo valor salvo no DB via admin |
+| `PKD_EMBED_MODEL` | `models/gemini-embedding-001` | Modelo Gemini padrão; sobreposto pelo valor salvo no DB via admin. O modelo efetivo (env ou DB) é validado no boot: valor fora da whitelist cai para o default com log, em vez de fazer todo sweep falhar em silêncio (ADR-004 D7) |
 | `PKD_EMBED_SWEEP_MINUTES` | `15` | Cadência do sweep de segurança; saves de documentos disparam sweep imediato adicional |
 
 ### Configuração via Admin

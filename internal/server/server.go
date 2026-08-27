@@ -126,6 +126,16 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 		s.cfg.EmbedModel = v
 		s.links.SetEmbedModel(v)
 	}
+	// Neither PKD_EMBED_MODEL nor a value persisted by an older build is checked
+	// at its source, so a decommissioned model (text-embedding-004, embedding-001)
+	// can reach here and make every sweep fail against the API — silently, since
+	// the embedder only logs. Fall back instead of operating on a dead model.
+	if !isValidEmbedModel(s.cfg.EmbedModel) {
+		log.Printf("embed: model %q is not supported, falling back to %s",
+			s.cfg.EmbedModel, config.DefaultEmbedModel)
+		s.cfg.EmbedModel = config.DefaultEmbedModel
+		s.links.SetEmbedModel(config.DefaultEmbedModel)
+	}
 	s.embedder = newEmbedder(s.links, cfg.GeminiAPIKey, time.Duration(cfg.EmbedSweepMinutes)*time.Minute)
 
 	// Restore active backend from DB settings.

@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+// DefaultEmbedModel is the embedding model used when PKD_EMBED_MODEL is unset
+// and no model was persisted through the admin UI. Kept on gemini-embedding-001
+// on purpose: flipping it would re-embed the whole corpus of every existing
+// install on the first boot after an upgrade, unasked. See ADR-004 D5.
+const DefaultEmbedModel = "models/gemini-embedding-001"
+
 // S3Config holds optional Amazon S3 storage configuration.
 // When Bucket and Region are set, the S3 backend is available.
 // Credentials are picked up automatically: env vars (dev) or EC2 Instance Profile (prod).
@@ -47,7 +53,7 @@ type Config struct {
 	GeminiAPIKey string
 
 	// EmbedModel is the Gemini model for embeddings (PKD_EMBED_MODEL).
-	// Default: models/gemini-embedding-001
+	// Validated against the supported list at boot; see DefaultEmbedModel.
 	EmbedModel string
 
 	// EmbedSweepMinutes is the background sweep cadence in minutes (PKD_EMBED_SWEEP_MINUTES).
@@ -101,7 +107,7 @@ func Load() (*Config, error) {
 		SessionIdleMinutes: 43200,
 		MaxImageMB:      10,
 		MaxAttachmentMB:   100,
-		EmbedModel:        "models/gemini-embedding-001",
+		EmbedModel:        DefaultEmbedModel,
 		EmbedSweepMinutes: 15,
 		SESHost:           "email-smtp.us-east-1.amazonaws.com",
 		SESPort:           "587",
