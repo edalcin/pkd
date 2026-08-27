@@ -63,10 +63,10 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 		text string
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, title, SUBSTR(body_text, 1, 800) AS body
+		SELECT id, title, SUBSTR(body_text, 1, ?) AS body
 		FROM documents
 		WHERE trashed_at IS NULL AND archived_at IS NULL AND encrypted = 0
-		ORDER BY id`)
+		ORDER BY id`, semanticBodyChars)
 	if err != nil {
 		return 0, fmt.Errorf("embed: load docs: %w", err)
 	}
@@ -78,7 +78,7 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 			rows.Close()
 			return 0, fmt.Errorf("embed: scan doc: %w", err)
 		}
-		docs = append(docs, doc{id: id, text: title + "\n" + body})
+		docs = append(docs, doc{id: id, text: embedDocText(s.embedModel, title, body)})
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -264,6 +264,36 @@ func insertTopK(s []semCandidate, c semCandidate, maxK int) []semCandidate {
 	return s
 }
 
+// isEmbed2 reports whether model is a Gemini Embeddings 2 model. Those take the
+// task instruction as a text prefix; the taskType parameter is deprecated for
+// them. Older models keep the plain format they were embedded with before, so
+// selecting gemini-embedding-001 restores byte-identical vectors.
+// https://ai.google.dev/gemini-api/docs/embeddings
+func isEmbed2(model string) bool {
+	return strings.Contains(model, "gemini-embedding-2")
+}
+
+// embedDocText formats a document for storage using the asymmetric retrieval
+// document structure. Pairs with embedQueryText — ADR-004.
+func embedDocText(model, title, body string) string {
+	if !isEmbed2(model) {
+		return title + "\n" + body
+	}
+	if title == "" {
+		title = "none"
+	}
+	return "title: " + title + " | text: " + body
+}
+
+// embedQueryText formats a search query as the asymmetric counterpart of
+// embedDocText. Must stay consistent with it or similarity degrades — ADR-004.
+func embedQueryText(model, q string) string {
+	if !isEmbed2(model) {
+		return q
+	}
+	return "task: search result | query: " + q
+}
+
 // embedBatch calls the Gemini batchEmbedContents API and returns one vector per text.
 func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts []string, model string) ([][]float32, error) {
 	type embPart struct {
@@ -375,7 +405,8 @@ func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) 
 		return []SemanticHit{}, nil
 	}
 	client := &http.Client{Timeout: 30 * time.Second}
-	vecs, err := embedBatch(ctx, client, apiKey, []string{q}, s.embedModel)
+	model := s.embedModel
+	vecs, err := embedBatch(ctx, client, apiKey, []string{embedQueryText(model, q)}, model)
 	if err != nil {
 		return nil, fmt.Errorf("semantic search: embed query: %w", err)
 	}

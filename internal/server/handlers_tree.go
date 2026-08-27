@@ -52,10 +52,8 @@ func (s *Server) respondHybridSearch(w http.ResponseWriter, r *http.Request, q, 
 		hits = nil
 	}
 	semIDs := make([]int64, len(hits))
-	scoreByID := make(map[int64]float32, len(hits))
 	for i, h := range hits {
 		semIDs[i] = h.DocID
-		scoreByID[h.DocID] = h.Score
 	}
 
 	fused := store.FuseRRF(lex, semIDs, hybridResultLimit)
@@ -94,7 +92,6 @@ func (s *Server) respondHybridSearch(w http.ResponseWriter, r *http.Request, q, 
 			ArchivedAt: d.ArchivedAt,
 			Tags:       d.Tags,
 			Children:   []*model.DocumentTreeNode{},
-			Score:      float64(scoreByID[d.ID]),
 		})
 	}
 	writeJSON(w, http.StatusOK, flat)

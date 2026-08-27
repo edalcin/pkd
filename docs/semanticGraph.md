@@ -48,7 +48,8 @@ GET /api/graph/semantic
 **`EmbedStaleDocs(ctx, apiKey string) (int, error)`**
 - Carrega docs ativos (`trashed_at IS NULL AND archived_at IS NULL`)
 - **Prune**: DELETE de embeddings cujo `document_id` não é mais um doc ativo (trashed/archived) — ocorre antes da verificação de stales, a cada sweep
-- Hash: `sha256(embedModel + "\x00" + title + "\n" + body[:800])` — inclui nome do modelo; troca de modelo invalida todos os hashes, forçando re-embed de 100% dos docs
+- Texto embedado: `embedDocText(model, title, body[:semanticBodyChars])` — para `gemini-embedding-2` é `title: {t} | text: {b}`; para os demais é `{t}\n{b}`, o formato histórico (ADR-004)
+- Hash: `sha256(embedModel + "\x00" + texto)` — inclui nome do modelo; troca de modelo invalida todos os hashes, forçando re-embed de 100% dos docs
 - Lê hashes cached de `document_embeddings`; calcula stale set
 - Chama `embedBatch` em lotes de 100 (limite da API Gemini)
 - Upsert em `document_embeddings` via `ON CONFLICT(document_id) DO UPDATE`
@@ -86,7 +87,7 @@ CREATE TABLE IF NOT EXISTS document_embeddings (
 );
 ```
 
-Vetores de 3072 dimensões (modelo `gemini-embedding-001`) = 12 288 bytes/doc. Para 300 documentos ≈ 3,6 MB no SQLite.
+Vetores de 3072 dimensões = 12 288 bytes/doc. Para 300 documentos ≈ 3,6 MB no SQLite. Ambos os modelos suportados devolvem 3072 dimensões por padrão; o PKD não envia `output_dimensionality`.
 
 ## Configuração
 
@@ -102,14 +103,15 @@ Vetores de 3072 dimensões (modelo `gemini-embedding-001`) = 12 288 bytes/doc. P
 
 **Administração → Preferências → Embeddings semânticos** expõe:
 - Status da chave Gemini e contagem de documentos embedados (somente leitura)
-- **Dropdown de modelo** com os três modelos Gemini válidos para embedding; ao salvar, o novo modelo é persistido no DB (sobrepõe `PKD_EMBED_MODEL`), aplicado ao vivo e um sweep completo é disparado — todos os docs são re-embedados com o novo modelo
+- **Dropdown de modelo** com os modelos Gemini de embedding em atividade; ao salvar, o novo modelo é persistido no DB (sobrepõe `PKD_EMBED_MODEL`), aplicado ao vivo, `document_embeddings` é esvaziada e um sweep completo é disparado — todos os docs são re-embedados com o novo modelo. Enquanto o sweep não termina a perna semântica fica vazia e o RRF degrada para a ordem léxica (ADR-002 D1), em vez de comparar query nova contra vetores do modelo antigo (ADR-004)
 
 Modelos disponíveis:
-| Modelo | Dimensões | Notas |
-|---|---|---|
-| `models/gemini-embedding-001` | 3072 | Recomendado |
-| `models/text-embedding-004` | 768 | Estável |
-| `models/embedding-001` | 768 | Legado |
+| Modelo | Dimensões | Formato do texto | Notas |
+|---|---|---|---|
+| `models/gemini-embedding-2` | 3072 | Prefixo de task (assimétrico) | Recomendado. Limite de entrada 8192 tokens |
+| `models/gemini-embedding-001` | 3072 | `title\ntext` puro | Legado, text-only. Limite de entrada 2048 tokens. Rollback |
+
+`models/text-embedding-004` e `models/embedding-001` foram removidos: a Google desligou os dois.
 
 ## Armazenamento de vetores
 

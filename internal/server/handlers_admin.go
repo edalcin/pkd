@@ -853,6 +853,16 @@ func (s *Server) handleAdminSetSettings() http.HandlerFunc {
 			}
 			s.cfg.EmbedModel = req.Value
 			s.links.SetEmbedModel(req.Value)
+			// Drop every vector of the outgoing model instead of letting the
+			// staleness hash retire them batch by batch: the two models do not
+			// share a latent space, so a mixed table scores fresh queries
+			// against stale documents. An empty semantic leg makes the RRF
+			// fusion degrade exactly to lexical order (ADR-002 D1) — correct
+			// results while the sweep repopulates. ADR-004.
+			if _, err := s.db.ExecContext(r.Context(), `DELETE FROM document_embeddings`); err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
 			s.embedder.notify() // trigger re-embed with new model
 		default:
 			http.Error(w, "unknown setting key", http.StatusBadRequest)
@@ -865,9 +875,8 @@ func (s *Server) handleAdminSetSettings() http.HandlerFunc {
 // validEmbedModels is the whitelist of Gemini models supported for embeddings.
 // ponytail: hardcoded — model list changes rarely; no DB/API lookup needed.
 var validEmbedModels = []string{
+	"models/gemini-embedding-2",
 	"models/gemini-embedding-001",
-	"models/text-embedding-004",
-	"models/embedding-001",
 }
 
 func isValidEmbedModel(model string) bool {

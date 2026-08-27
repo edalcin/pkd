@@ -15,9 +15,8 @@
   ]
 
   const EMBED_MODELS = [
-    { value: 'models/gemini-embedding-001', label: 'gemini-embedding-001 — recomendado (3072 dims)' },
-    { value: 'models/text-embedding-004',   label: 'text-embedding-004 (768 dims)' },
-    { value: 'models/embedding-001',        label: 'embedding-001 — legado (768 dims)' },
+    { value: 'models/gemini-embedding-2',   label: 'gemini-embedding-2 — recomendado (3072 dims)' },
+    { value: 'models/gemini-embedding-001', label: 'gemini-embedding-001 — legado, text-only (3072 dims)' },
   ]
 
   let trash = $state([])

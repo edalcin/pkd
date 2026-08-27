@@ -7,17 +7,35 @@ Valor numérico float entre 0 e 1 que representa o grau de similaridade semânti
 - `semanticSimThreshold = 0.60` — arestas semânticas no Graph View (documento ↔ documento).
 - `semanticQueryFloor = 0.30` — perna semântica da busca híbrida (query ↔ documento). Baixo de propósito: quem decide o peso final de cada resultado é a fusão RRF por posição de rank, não este corte.
 
-Faixas de cor do badge exibido em `TreeNode.svelte` (independentes do floor de corte):
-
-| Faixa | Cor |
-|-------|-----|
-| ≥ 0.80 | Verde |
-| 0.65 – 0.79 | Âmbar |
-| < 0.65 | Laranja |
+O score não é exibido na interface. `TreeNode.svelte` nunca renderizou o badge de
+faixas de cor previsto em ADR-001, e o campo `score` da resposta de
+`GET /api/tree` foi removido por ser peso morto no wire. Para observar a
+grandeza que `semanticSimThreshold` controla, use a densidade de arestas do
+Graph View.
 
 ## Embedding
 
-Representação vetorial de um texto gerada por um modelo de linguagem (Gemini `text-embedding-004`). Documentos são re-embutidos quando seu conteúdo muda (`EmbedStaleDocs`). Armazenados na tabela `document_embeddings` como bytes little-endian de float32.
+Representação vetorial de um texto gerada por um modelo Gemini de embedding.
+Documentos são re-embutidos quando seu conteúdo **ou o modelo** muda
+(`EmbedStaleDocs`, cujo hash cobre os dois). Armazenados na tabela
+`document_embeddings` como bytes little-endian de float32, 3072 dimensões.
+Vetores de modelos diferentes vivem em espaços latentes distintos e não são
+comparáveis entre si — trocar o modelo exige re-embedar todo o corpus.
+
+## Prefixo de Task (Task Prefix)
+
+Instrução de tarefa embutida no próprio texto enviado ao `gemini-embedding-2`,
+que substitui o parâmetro `taskType` (deprecado nesse modelo). Duas famílias:
+
+- **Assimétrica** — query e documento recebem formatos *diferentes*: a query vira
+  `task: search result | query: {q}`, o documento vira `title: {t} | text: {b}`.
+  É o caso da **Busca Híbrida**.
+- **Simétrica** — os dois lados recebem o *mesmo* formato. É o caso natural das
+  arestas do **Graph View** (documento ↔ documento).
+
+O PKD guarda **um** vetor por documento, formatado para o caso assimétrico; o
+Graph View reusa esse vetor. Ver ADR-004. Para `gemini-embedding-001` nenhum
+prefixo é aplicado, preservando o formato histórico `{título}\n{corpo}`.
 
 ## Busca Híbrida (Hybrid Search)
 
@@ -45,4 +63,4 @@ Medida de similaridade entre dois vetores não-nulos. Calculada como o produto e
 
 ## SemanticHit
 
-Tipo interno Go (`store.SemanticHit`) que associa um `DocID int64` ao seu `Score float32` (cosseno). Retornado por `SemanticSearchDocIDs` — é a entrada da perna semântica na fusão RRF, não o resultado final da busca.
+Tipo interno Go (`store.SemanticHit`) que associa um `DocID int64` ao seu `Score float32` (cosseno). Retornado por `SemanticSearchDocIDs` — é a entrada da perna semântica na fusão RRF, não o resultado final da busca. A fusão consome apenas a *ordem* dos hits, então `Score` hoje é escrito e nunca lido; permanece como ponto de extensão caso a exibição de score volte.

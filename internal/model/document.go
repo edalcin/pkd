@@ -44,8 +44,6 @@ type DocumentTreeNode struct {
 	ArchivedAt *time.Time          `json:"archived_at"`
 	Tags       []string            `json:"tags,omitempty"`
 	Children   []*DocumentTreeNode `json:"children"`
-	// Score is non-zero only in semantic search responses (omitted otherwise).
-	Score float64 `json:"score,omitempty"`
 }
 
 // VersionConflict is returned as the body of a 409 response when a document
