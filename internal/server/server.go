@@ -48,9 +48,9 @@ type Server struct {
 	challenges   *challengeStore
 	backupCodes  *store.BackupCodeStore
 
-	localBackend storage.Backend // always non-nil
-	s3Backend    storage.Backend // nil when S3 not configured
-	activeMu     sync.RWMutex
+	localBackend  storage.Backend // always non-nil
+	s3Backend     storage.Backend // nil when S3 not configured
+	activeMu      sync.RWMutex
 	activeBackend storage.Backend // points to localBackend or s3Backend
 }
 
@@ -91,7 +91,9 @@ func (s *Server) setActiveStorage(name string) error {
 
 type errS3NotConfigured struct{}
 
-func (e *errS3NotConfigured) Error() string { return "S3 not configured (missing PKD_S3_BUCKET or PKD_S3_REGION)" }
+func (e *errS3NotConfigured) Error() string {
+	return "S3 not configured (missing PKD_S3_BUCKET or PKD_S3_REGION)"
+}
 
 // New builds the chi router with all middleware and routes wired up.
 func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
@@ -103,39 +105,24 @@ func New(cfg *config.Config, db *sql.DB, sess *sessions.Store) *Server {
 	}
 
 	s := &Server{
-		cfg:          cfg,
-		db:           db,
-		sessions:     sess,
-		docs:         store.NewDocumentStore(db),
-		tags:         store.NewTagStore(db),
-		search:       store.NewSearchStore(db),
-		shares:       store.NewShareStore(db),
-		backup:       store.NewBackupStore(db, cfg.DBPath),
-		links:        store.NewLinkStore(db, cfg.EmbedModel),
-		urls:         store.NewURLStore(db),
-		settings:     store.NewSettingsStore(db),
-		throttle:     NewThrottle(cfg.TrustProxyHeaders),
-		jobs:         NewBackupJobManager(),
-		localBackend: local,
-		s3Backend:    s3b,
+		cfg:           cfg,
+		db:            db,
+		sessions:      sess,
+		docs:          store.NewDocumentStore(db),
+		tags:          store.NewTagStore(db),
+		search:        store.NewSearchStore(db),
+		shares:        store.NewShareStore(db),
+		backup:        store.NewBackupStore(db, cfg.DBPath),
+		links:         store.NewLinkStore(db),
+		urls:          store.NewURLStore(db),
+		settings:      store.NewSettingsStore(db),
+		throttle:      NewThrottle(cfg.TrustProxyHeaders),
+		jobs:          NewBackupJobManager(),
+		localBackend:  local,
+		s3Backend:     s3b,
 		activeBackend: local, // default; overridden below from DB
 	}
 	s.attachments = store.NewAttachmentStore(db, local, s3b)
-	// Load persisted embed model from DB (overrides env var default).
-	if v, _ := s.settings.EmbedModel(); v != "" {
-		s.cfg.EmbedModel = v
-		s.links.SetEmbedModel(v)
-	}
-	// Neither PKD_EMBED_MODEL nor a value persisted by an older build is checked
-	// at its source, so a decommissioned model (text-embedding-004, embedding-001)
-	// can reach here and make every sweep fail against the API — silently, since
-	// the embedder only logs. Fall back instead of operating on a dead model.
-	if !isValidEmbedModel(s.cfg.EmbedModel) {
-		log.Printf("embed: model %q is not supported, falling back to %s",
-			s.cfg.EmbedModel, config.DefaultEmbedModel)
-		s.cfg.EmbedModel = config.DefaultEmbedModel
-		s.links.SetEmbedModel(config.DefaultEmbedModel)
-	}
 	s.embedder = newEmbedder(s.links, cfg.GeminiAPIKey, time.Duration(cfg.EmbedSweepMinutes)*time.Minute)
 
 	// Restore active backend from DB settings.
@@ -261,35 +248,35 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/documents/{id}/unlock/request", s.handleRequestDocCode())
 		r.Post("/api/documents/{id}/unlock", s.handleUnlockDocument())
 		r.Patch("/api/documents/{id}/associated-date", s.handleUpdateAssocDate())
-			r.Get("/api/documents/{id}/children", s.handleListChildren())
-			r.Get("/api/documents/{id}/ancestors", s.handleListAncestors())
+		r.Get("/api/documents/{id}/children", s.handleListChildren())
+		r.Get("/api/documents/{id}/ancestors", s.handleListAncestors())
 
 		// Tree
-			r.Get("/api/tree", s.handleTree())
-			r.Post("/api/tree/sort", s.handleSortTree())
+		r.Get("/api/tree", s.handleTree())
+		r.Post("/api/tree/sort", s.handleSortTree())
 
-			// Bidirectional links (NEW — 003-pkm-refactor)
-			r.Get("/api/documents/{id}/links", s.handleListLinks())
-			r.Post("/api/documents/{id}/links", s.handleCreateLink())
-			r.Delete("/api/documents/{id}/links/{linkId}", s.handleDeleteLink())
+		// Bidirectional links (NEW — 003-pkm-refactor)
+		r.Get("/api/documents/{id}/links", s.handleListLinks())
+		r.Post("/api/documents/{id}/links", s.handleCreateLink())
+		r.Delete("/api/documents/{id}/links/{linkId}", s.handleDeleteLink())
 
-			// External URLs
-			r.Get("/api/documents/{id}/urls", s.handleListURLs())
-			r.Post("/api/documents/{id}/urls", s.handleCreateURL())
-			r.Put("/api/documents/{id}/urls/{urlId}", s.handleUpdateURL())
-			r.Delete("/api/documents/{id}/urls/{urlId}", s.handleDeleteURL())
+		// External URLs
+		r.Get("/api/documents/{id}/urls", s.handleListURLs())
+		r.Post("/api/documents/{id}/urls", s.handleCreateURL())
+		r.Put("/api/documents/{id}/urls/{urlId}", s.handleUpdateURL())
+		r.Delete("/api/documents/{id}/urls/{urlId}", s.handleDeleteURL())
 
-			// Graph view (NEW — 003-pkm-refactor)
-			r.Get("/api/graph", s.handleGraph())
-			r.Get("/api/graph/semantic", s.handleSemanticGraph())
-			r.Post("/api/community/name", s.handleCommunityName())
+		// Graph view (NEW — 003-pkm-refactor)
+		r.Get("/api/graph", s.handleGraph())
+		r.Get("/api/graph/semantic", s.handleSemanticGraph())
+		r.Post("/api/community/name", s.handleCommunityName())
 
-			// External content capture (NEW — 003-pkm-refactor)
-			r.Post("/api/capture", s.handleCapture())
+		// External content capture (NEW — 003-pkm-refactor)
+		r.Post("/api/capture", s.handleCapture())
 
-			// Tags
-			r.Get("/api/tags", s.handleListTags())
-			r.Put("/api/documents/{id}/tags", s.handleSetDocumentTags())
+		// Tags
+		r.Get("/api/tags", s.handleListTags())
+		r.Put("/api/documents/{id}/tags", s.handleSetDocumentTags())
 
 		// Search
 		r.Get("/api/search", s.handleSearch())

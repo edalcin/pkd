@@ -8,12 +8,6 @@ import (
 	"strings"
 )
 
-// DefaultEmbedModel is the embedding model used when PKD_EMBED_MODEL is unset
-// and no model was persisted through the admin UI. Kept on gemini-embedding-001
-// on purpose: flipping it would re-embed the whole corpus of every existing
-// install on the first boot after an upgrade, unasked. See ADR-004 D5.
-const DefaultEmbedModel = "models/gemini-embedding-001"
-
 // S3Config holds optional Amazon S3 storage configuration.
 // When Bucket and Region are set, the S3 backend is available.
 // Credentials are picked up automatically: env vars (dev) or EC2 Instance Profile (prod).
@@ -51,10 +45,6 @@ type Config struct {
 	// GeminiAPIKey is the API key for the Gemini embedding API (GEMINI_API_KEY env var).
 	// If empty, the semantic graph endpoint is disabled (returns 503).
 	GeminiAPIKey string
-
-	// EmbedModel is the Gemini model for embeddings (PKD_EMBED_MODEL).
-	// Validated against the supported list at boot; see DefaultEmbedModel.
-	EmbedModel string
 
 	// EmbedSweepMinutes is the background sweep cadence in minutes (PKD_EMBED_SWEEP_MINUTES).
 	// Default: 15
@@ -100,17 +90,16 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		Password:        password,
-		DBPath:          dbPath,
-		AttachmentsPath: attachmentsPath,
-		ListenAddr:      ":8080",
+		Password:           password,
+		DBPath:             dbPath,
+		AttachmentsPath:    attachmentsPath,
+		ListenAddr:         ":8080",
 		SessionIdleMinutes: 43200,
-		MaxImageMB:      10,
-		MaxAttachmentMB:   100,
-		EmbedModel:        DefaultEmbedModel,
-		EmbedSweepMinutes: 15,
-		SESHost:           "email-smtp.us-east-1.amazonaws.com",
-		SESPort:           "587",
+		MaxImageMB:         10,
+		MaxAttachmentMB:    100,
+		EmbedSweepMinutes:  15,
+		SESHost:            "email-smtp.us-east-1.amazonaws.com",
+		SESPort:            "587",
 	}
 
 	if v := os.Getenv("PKD_LISTEN_ADDR"); v != "" {
@@ -156,10 +145,6 @@ func Load() (*Config, error) {
 
 	if v := os.Getenv("GEMINI_API_KEY"); v != "" {
 		cfg.GeminiAPIKey = v
-	}
-
-	if v := os.Getenv("PKD_EMBED_MODEL"); v != "" {
-		cfg.EmbedModel = v
 	}
 
 	if v := os.Getenv("PKD_EMBED_SWEEP_MINUTES"); v != "" {

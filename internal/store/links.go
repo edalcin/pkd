@@ -18,22 +18,13 @@ var ErrConflict = fmt.Errorf("link already exists")
 
 // LinkStore provides CRUD for document_links and graph query operations.
 type LinkStore struct {
-	db         *sql.DB
-	embedMu    sync.Mutex // serializes EmbedStaleDocs passes
-	embedModel string     // Gemini model name from config
+	db      *sql.DB
+	embedMu sync.Mutex // serializes EmbedStaleDocs passes
 }
 
-// NewLinkStore wraps db. embedModel is the Gemini model (e.g. "models/gemini-embedding-001").
-func NewLinkStore(db *sql.DB, embedModel string) *LinkStore {
-	return &LinkStore{db: db, embedModel: embedModel}
-}
-
-// SetEmbedModel updates the embedding model at runtime (admin settings change).
-// Acquires embedMu so it never races with an in-progress EmbedStaleDocs call.
-func (s *LinkStore) SetEmbedModel(model string) {
-	s.embedMu.Lock()
-	s.embedModel = model
-	s.embedMu.Unlock()
+// NewLinkStore wraps db. The embedding model is fixed — see EmbedModelName.
+func NewLinkStore(db *sql.DB) *LinkStore {
+	return &LinkStore{db: db}
 }
 
 // GetLinksForDocument returns all documents related to docID, regardless of

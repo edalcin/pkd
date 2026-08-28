@@ -14,11 +14,6 @@
     { value: 0,     label: 'Desligado' },
   ]
 
-  const EMBED_MODELS = [
-    { value: 'models/gemini-embedding-2',   label: 'gemini-embedding-2 — recomendado (3072 dims)' },
-    { value: 'models/gemini-embedding-001', label: 'gemini-embedding-001 — legado, text-only (3072 dims)' },
-  ]
-
   let trash = $state([])
   let renameOld = $state('')
   let renameNew = $state('')
@@ -56,11 +51,8 @@
   let versionsSettingMsg = $state('')
   let versionsSettingSaving = $state(false)
 
-  // Embedding settings
+  // Embedding settings (model is fixed server-side; read-only here)
   let embedSettings = $state(null)
-  let embedModel = $state('')
-  let embedModelSaving = $state(false)
-  let embedModelMsg = $state('')
 
   // Security tab — trusted devices
   let forgettingDevices = $state(false)
@@ -148,7 +140,6 @@
     loadDiskUsage()
     apiGet('/api/admin/settings').then(data => {
       if (data?.['versions.max_per_doc']) versionsMaxPerDoc = data['versions.max_per_doc']
-      if (data?.['embed.model']) embedModel = data['embed.model']
       if (data) embedSettings = data
     })
   })
@@ -175,21 +166,6 @@
       versionsSettingSaving = false
     }
   }
-
-  async function saveEmbedModel() {
-    embedModelSaving = true
-    embedModelMsg = ''
-    try {
-      await apiPut('/api/admin/settings', { key: 'embed.model', value: embedModel })
-      embedModelMsg = 'Salvo! Re-embedding iniciado.'
-      setTimeout(() => { embedModelMsg = '' }, 3000)
-    } catch {
-      embedModelMsg = 'Erro ao salvar.'
-    } finally {
-      embedModelSaving = false
-    }
-  }
-
 
   async function loadAttachments() {
     allAttachments = []
@@ -1052,6 +1028,16 @@
             <span class="disk-usage-label">Documentos</span>
             <span class="disk-usage-value">{stats.doc_count}</span>
             <span class="disk-usage-sub">{stats.doc_count_active} ativos · {stats.doc_count_archived} arquivados</span>
+          </div>
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Protegidos</span>
+            <span class="disk-usage-value">{stats.doc_count_encrypted}</span>
+            <span class="disk-usage-sub">criptografados</span>
+          </div>
+          <div class="disk-usage-card">
+            <span class="disk-usage-label">Embedados</span>
+            <span class="disk-usage-value">{stats.doc_count_embedded}</span>
+            <span class="disk-usage-sub">na busca semântica</span>
           </div>
           <div class="disk-usage-card">
             <span class="disk-usage-label">Arquivos</span>
@@ -1930,17 +1916,7 @@
         <span class="muted">Documentos embedados</span>
         <span>{embedSettings['embed.count']}</span>
         <span class="muted">Modelo</span>
-        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-          <select bind:value={embedModel} style="padding:.35rem .5rem;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:.9rem">
-            {#each EMBED_MODELS as m}
-              <option value={m.value}>{m.label}</option>
-            {/each}
-          </select>
-          <button class="btn btn-primary" onclick={saveEmbedModel} disabled={embedModelSaving || embedSettings['embed.key_configured'] !== 'true'}>
-            {embedModelSaving ? 'Salvando…' : 'Salvar modelo'}
-          </button>
-          {#if embedModelMsg}<span class="versions-setting-msg">{embedModelMsg}</span>{/if}
-        </div>
+        <span>{embedSettings['embed.model']}</span>
       </div>
       {:else}
       <p class="muted">Carregando…</p>

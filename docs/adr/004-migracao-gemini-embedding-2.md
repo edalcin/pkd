@@ -1,6 +1,12 @@
 # ADR-004: Migração para `gemini-embedding-2` e Prefixo de Task Assimétrico
 
-**Status:** Aceito
+**Status:** Aceito; D3/D4/D5/D7 superados em 2026-08-28 — o modelo passou a ser
+a constante `store.EmbedModelName` (`models/gemini-embedding-2`). Sem dropdown,
+sem `PKD_EMBED_MODEL`, sem chave `embed.model`, sem whitelist e sem fallback:
+com um único modelo não há troca a validar nem rollback a oferecer. D1/D2 (o
+formato assimétrico do texto) seguem valendo e são hoje o único caminho.
+Documentos arquivados passaram a ser embedados na mesma mudança — ver
+`embeddableWhere` em `internal/store/semantic.go`.
 **Data:** 2026-08-27
 **Relacionado:** [ADR-002](002-hybrid-search-rrf-fusion.md) (a degradação de D1 é pré-requisito de D3 aqui)
 

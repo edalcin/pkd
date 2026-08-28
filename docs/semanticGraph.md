@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-O PKD gera automaticamente embeddings de texto para todos os documentos ativos usando a API Gemini, armazena os vetores como BLOBs float32 no SQLite e usa similaridade de cosseno para construir arestas semânticas no Graph View. O processo é **proativo**: os vetores ficam sempre frescos antes de o usuário abrir o grafo.
+O PKD gera automaticamente embeddings de texto para todos os documentos não trasheados e não protegidos — **arquivados incluídos** — usando a API Gemini, armazena os vetores como BLOBs float32 no SQLite e usa similaridade de cosseno para construir arestas semânticas no Graph View. O processo é **proativo**: os vetores ficam sempre frescos antes de o usuário abrir o grafo. O grafo continua exibindo só docs ativos; o arquivado é embedado para permanecer alcançável pela busca.
 
 Os mesmos vetores também alimentam a **busca híbrida de texto** (`GET /api/tree?q=…`): `SemanticSearchDocIDs` (`semantic.go`, mesmo pacote) fornece a perna semântica, fundida com o recuperador léxico via Reciprocal Rank Fusion. Ver `docs/adr/002-hybrid-search-rrf-fusion.md`. `semanticQueryFloor`/`semanticQueryTopK` controlam só essa busca; `semanticSimThreshold`/`semanticMaxNeighbors` abaixo controlam só as arestas do grafo — constantes independentes no mesmo arquivo.
 
@@ -46,10 +46,10 @@ GET /api/graph/semantic
 ### `internal/store/semantic.go`
 
 **`EmbedStaleDocs(ctx, apiKey string) (int, error)`**
-- Carrega docs ativos (`trashed_at IS NULL AND archived_at IS NULL`)
-- **Prune**: DELETE de embeddings cujo `document_id` não é mais um doc ativo (trashed/archived) — ocorre antes da verificação de stales, a cada sweep
-- Texto embedado: `embedDocText(model, title, body[:semanticBodyChars])` — para `gemini-embedding-2` é `title: {t} | text: {b}`; para os demais é `{t}\n{b}`, o formato histórico (ADR-004)
-- Hash: `sha256(embedModel + "\x00" + texto)` — inclui nome do modelo; troca de modelo invalida todos os hashes, forçando re-embed de 100% dos docs
+- Carrega docs embedáveis (`embeddableWhere` = `trashed_at IS NULL AND encrypted = 0`) — arquivados incluídos, protegidos fora (corpo é ciphertext)
+- **Prune**: DELETE de embeddings cujo `document_id` não é mais embedável (trashed/protegido) — usa a mesma constante `embeddableWhere`, ocorre antes da verificação de stales, a cada sweep
+- Texto embedado: `embedDocText(title, body[:semanticBodyChars])` = `title: {t} | text: {b}` (formato assimétrico do `gemini-embedding-2`, ADR-004)
+- Hash: `sha256(EmbedModelName + "\x00" + texto)` — inclui nome do modelo; troca de modelo invalidaria todos os hashes (o modelo hoje é fixo)
 - Lê hashes cached de `document_embeddings`; calcula stale set
 - Chama `embedBatch` em lotes de 100 (limite da API Gemini)
 - Upsert em `document_embeddings` via `ON CONFLICT(document_id) DO UPDATE`
@@ -96,22 +96,22 @@ Vetores de 3072 dimensões = 12 288 bytes/doc. Para 300 documentos ≈ 3,6 MB no
 | Variável | Padrão | Efeito |
 |---|---|---|
 | `GEMINI_API_KEY` | *(desativado)* | Sem ela o worker não roda e `GET /api/graph/semantic` retorna 503 |
-| `PKD_EMBED_MODEL` | `models/gemini-embedding-001` | Modelo Gemini padrão; sobreposto pelo valor salvo no DB via admin. O modelo efetivo (env ou DB) é validado no boot: valor fora da whitelist cai para o default com log, em vez de fazer todo sweep falhar em silêncio (ADR-004 D7) |
+| ~~`PKD_EMBED_MODEL`~~ | — | **Removida.** O modelo é fixo em `store.EmbedModelName` (`models/gemini-embedding-2`) |
 | `PKD_EMBED_SWEEP_MINUTES` | `15` | Cadência do sweep de segurança; saves de documentos disparam sweep imediato adicional |
 
 ### Configuração via Admin
 
-**Administração → Preferências → Embeddings semânticos** expõe:
-- Status da chave Gemini e contagem de documentos embedados (somente leitura)
-- **Dropdown de modelo** com os modelos Gemini de embedding em atividade; ao salvar, o novo modelo é persistido no DB (sobrepõe `PKD_EMBED_MODEL`), aplicado ao vivo, `document_embeddings` é esvaziada e um sweep completo é disparado — todos os docs são re-embedados com o novo modelo. Enquanto o sweep não termina a perna semântica fica vazia e o RRF degrada para a ordem léxica (ADR-002 D1), em vez de comparar query nova contra vetores do modelo antigo (ADR-004)
+**Administração → Preferências → Embeddings semânticos** expõe, tudo somente leitura:
+- Status da chave Gemini
+- Contagem de documentos embedados
+- Modelo em uso (`models/gemini-embedding-2`, fixo — não há troca pela UI nem por env var)
 
-Modelos disponíveis:
+Modelo:
 | Modelo | Dimensões | Formato do texto | Notas |
 |---|---|---|---|
-| `models/gemini-embedding-2` | 3072 | Prefixo de task (assimétrico) | Recomendado. Limite de entrada 8192 tokens |
-| `models/gemini-embedding-001` | 3072 | `title\ntext` puro | Legado, text-only. Limite de entrada 2048 tokens. Rollback |
+| `models/gemini-embedding-2` | 3072 | Prefixo de task (assimétrico) | Único modelo. Limite de entrada 8192 tokens |
 
-`models/text-embedding-004` e `models/embedding-001` foram removidos: a Google desligou os dois.
+`models/gemini-embedding-001`, `models/text-embedding-004` e `models/embedding-001` foram removidos: os dois últimos a Google desligou, e o primeiro só existia como rollback de um dropdown que não existe mais.
 
 ## Armazenamento de vetores
 
@@ -125,8 +125,8 @@ Complexidade: O(n²·d) onde n = docs ativos, d = dimensões do vetor. Para uso 
 
 ## Fluxo de segurança e consistência
 
-- **Troca de modelo**: hash inclui o nome do modelo → todos os docs ficam stale → re-embed no próximo sweep. Custo único.
-- **Doc trasheado/arquivado**: não entra no JOIN do grafo; embedding é **apagado no próximo sweep** pelo DELETE de prune (`NOT IN (SELECT id FROM documents WHERE trashed_at IS NULL...)`). Delete físico do doc é coberto por `ON DELETE CASCADE`.
+- **Modelo**: fixo em `store.EmbedModelName`. O nome segue dentro do hash de staleness, então uma futura troca da constante ainda invalida 100% dos vetores num único sweep.
+- **Doc trasheado/protegido**: embedding é **apagado no próximo sweep** pelo DELETE de prune (`NOT IN (SELECT id FROM documents WHERE trashed_at IS NULL AND encrypted = 0)`). Delete físico do doc é coberto por `ON DELETE CASCADE`. Doc **arquivado** mantém o embedding — sai do JOIN do grafo, mas continua na busca semântica.
 - **Vetor de norma zero**: pulado silenciosamente (`normalize` retorna nil).
 - **Erro de rede/API no worker**: logado com `log.Printf("embedder: %v", err)`, sweep abortado; próximo ticker/notify tenta novamente.
 - **Concorrência worker + fetch do grafo**: `embedMu` serializa — fetch espera o sweep terminar e então lê do DB (sem chamada duplicada à API).

@@ -166,7 +166,7 @@ func (s *Server) handleAdminRestore() http.HandlerFunc {
 		s.search = store.NewSearchStore(newDB)
 		s.shares = store.NewShareStore(newDB)
 		s.backup = store.NewBackupStore(newDB, s.cfg.DBPath)
-		s.links = store.NewLinkStore(newDB, s.cfg.EmbedModel)
+		s.links = store.NewLinkStore(newDB)
 		s.urls = store.NewURLStore(newDB)
 
 		// Invalidate all sessions (user must log in again after restore)
@@ -648,7 +648,7 @@ func (s *Server) handleAdminGetSettings() http.HandlerFunc {
 		backupRemaining, _ := s.backupCodes.Count()
 		writeJSON(w, http.StatusOK, map[string]string{
 			"versions.max_per_doc":   maxPerDoc,
-			"embed.model":            s.cfg.EmbedModel,
+			"embed.model":            store.EmbedModelName,
 			"embed.sweep_minutes":    strconv.Itoa(s.cfg.EmbedSweepMinutes),
 			"embed.key_configured":   keyConfigured,
 			"embed.count":            strconv.Itoa(embedCount),
@@ -842,50 +842,12 @@ func (s *Server) handleAdminSetSettings() http.HandlerFunc {
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
-		case "embed.model":
-			if !isValidEmbedModel(req.Value) {
-				http.Error(w, "invalid embed model", http.StatusBadRequest)
-				return
-			}
-			if err := s.settings.SetEmbedModel(req.Value); err != nil {
-				http.Error(w, "internal error", http.StatusInternalServerError)
-				return
-			}
-			s.cfg.EmbedModel = req.Value
-			s.links.SetEmbedModel(req.Value)
-			// Drop every vector of the outgoing model instead of letting the
-			// staleness hash retire them batch by batch: the two models do not
-			// share a latent space, so a mixed table scores fresh queries
-			// against stale documents. An empty semantic leg makes the RRF
-			// fusion degrade exactly to lexical order (ADR-002 D1) — correct
-			// results while the sweep repopulates. ADR-004.
-			if _, err := s.db.ExecContext(r.Context(), `DELETE FROM document_embeddings`); err != nil {
-				http.Error(w, "internal error", http.StatusInternalServerError)
-				return
-			}
-			s.embedder.notify() // trigger re-embed with new model
 		default:
 			http.Error(w, "unknown setting key", http.StatusBadRequest)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
-}
-
-// validEmbedModels is the whitelist of Gemini models supported for embeddings.
-// ponytail: hardcoded — model list changes rarely; no DB/API lookup needed.
-var validEmbedModels = []string{
-	"models/gemini-embedding-2",
-	"models/gemini-embedding-001",
-}
-
-func isValidEmbedModel(model string) bool {
-	for _, m := range validEmbedModels {
-		if m == model {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Server) handleAdminRenameTag() http.HandlerFunc {
@@ -978,14 +940,16 @@ func (s *Server) handleAdminImportExternalImages() http.HandlerFunc {
 }
 
 type AdminStats struct {
-	DocCount         int64                 `json:"doc_count"`
-	DocCountActive   int64                 `json:"doc_count_active"`
-	DocCountArchived int64                 `json:"doc_count_archived"`
-	FileCount        int64                 `json:"file_count"`
-	LinkCount        int64                 `json:"link_count"`
-	TagCount         int64                 `json:"tag_count"`
-	TagStats         []*model.TagDocStats  `json:"tag_stats"`
-	RootStats        []*model.RootDocStats `json:"root_stats"`
+	DocCount          int64                 `json:"doc_count"`
+	DocCountActive    int64                 `json:"doc_count_active"`
+	DocCountArchived  int64                 `json:"doc_count_archived"`
+	DocCountEncrypted int64                 `json:"doc_count_encrypted"`
+	DocCountEmbedded  int64                 `json:"doc_count_embedded"`
+	FileCount         int64                 `json:"file_count"`
+	LinkCount         int64                 `json:"link_count"`
+	TagCount          int64                 `json:"tag_count"`
+	TagStats          []*model.TagDocStats  `json:"tag_stats"`
+	RootStats         []*model.RootDocStats `json:"root_stats"`
 }
 
 // handleAdminStats returns KB counts: documents (active/archived split),
@@ -1000,6 +964,8 @@ func (s *Server) handleAdminStats() http.HandlerFunc {
 		}{
 			{&st.DocCountActive, `SELECT COUNT(*) FROM documents WHERE trashed_at IS NULL AND archived_at IS NULL`},
 			{&st.DocCountArchived, `SELECT COUNT(*) FROM documents WHERE trashed_at IS NULL AND archived_at IS NOT NULL`},
+			{&st.DocCountEncrypted, `SELECT COUNT(*) FROM documents WHERE trashed_at IS NULL AND encrypted = 1`},
+			{&st.DocCountEmbedded, `SELECT COUNT(*) FROM document_embeddings`},
 			{&st.FileCount, `SELECT COUNT(*) FROM attachments`},
 			{&st.LinkCount, `SELECT COUNT(*) FROM document_links`},
 			{&st.TagCount, `SELECT COUNT(*) FROM tags`},

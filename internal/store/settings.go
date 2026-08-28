@@ -60,17 +60,3 @@ func (s *SettingsStore) VersionsMaxPerDoc() (string, error) {
 func (s *SettingsStore) SetVersionsMaxPerDoc(value string) error {
 	return s.Set("versions.max_per_doc", value)
 }
-
-// EmbedModel returns the persisted Gemini embedding model, or "" if not set.
-func (s *SettingsStore) EmbedModel() (string, error) {
-	v, err := s.Get("embed.model")
-	if errors.Is(err, ErrNotFound) {
-		return "", nil
-	}
-	return v, err
-}
-
-// SetEmbedModel persists the Gemini embedding model.
-func (s *SettingsStore) SetEmbedModel(model string) error {
-	return s.Set("embed.model", model)
-}

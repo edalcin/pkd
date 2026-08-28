@@ -20,6 +20,11 @@ import (
 )
 
 const (
+	// EmbedModelName is the Gemini embedding model. Fixed on purpose: the two
+	// models never shared a latent space, so making it configurable only ever
+	// bought a way to invalidate the whole corpus. See ADR-004.
+	EmbedModelName = "models/gemini-embedding-2"
+
 	semanticBodyChars    = 800
 	semanticBatchSize    = 100
 	semanticMaxNeighbors = 8
@@ -39,14 +44,23 @@ type semCandidate struct {
 	sim  float32
 }
 
+// embeddableWhere is the single definition of what "embeddable" means: every
+// document that is not in the trash and not encrypted (a ciphertext body embeds
+// to noise). Archived documents ARE embeddable — they stay reachable through
+// semantic search, which excludes only trashed docs.
+// Shared by the load query and the prune DELETE so the two can never disagree.
+const embeddableWhere = `trashed_at IS NULL AND encrypted = 0`
+
 // SemanticHit pairs a document ID with its cosine similarity score.
 type SemanticHit struct {
 	DocID int64
 	Score float32
 }
 
-// EmbedStaleDocs (re)embeds every active document whose stored embedding is
-// absent or stale (content or model changed) and upserts into document_embeddings.
+// EmbedStaleDocs (re)embeds every non-trashed, unencrypted document whose stored
+// embedding is absent or stale and upserts into document_embeddings. Archived
+// docs are included: they stay searchable (SemanticSearchDocIDs excludes only
+// trashed). Encrypted docs are skipped — the body is ciphertext.
 // Returns count of (re)embedded docs. No-op (0, nil) when apiKey == "".
 // Serialized by s.embedMu to avoid concurrent worker+graph-fetch API calls.
 // ponytail: O(n) per sweep; batch of 100 to API. Fine for personal KB.
@@ -57,7 +71,7 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 	s.embedMu.Lock()
 	defer s.embedMu.Unlock()
 
-	// 1. Load active docs.
+	// 1. Load embeddable docs (archived included, encrypted excluded).
 	type doc struct {
 		id   int64
 		text string
@@ -65,7 +79,7 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, title, SUBSTR(body_text, 1, ?) AS body
 		FROM documents
-		WHERE trashed_at IS NULL AND archived_at IS NULL AND encrypted = 0
+		WHERE `+embeddableWhere+`
 		ORDER BY id`, semanticBodyChars)
 	if err != nil {
 		return 0, fmt.Errorf("embed: load docs: %w", err)
@@ -78,7 +92,7 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 			rows.Close()
 			return 0, fmt.Errorf("embed: scan doc: %w", err)
 		}
-		docs = append(docs, doc{id: id, text: embedDocText(s.embedModel, title, body)})
+		docs = append(docs, doc{id: id, text: embedDocText(title, body)})
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -88,12 +102,12 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 		return 0, nil
 	}
 
-	// 2. Hash includes model name: model change invalidates all, forces re-embed.
+	// 2. Hash includes model name: a model change invalidates all, forces re-embed.
 	// ponytail: fold model into hash (1 line) instead of new column — avoids
 	// mixed-dimension vectors if model changes in future.
 	hashes := make([]string, len(docs))
 	for i, d := range docs {
-		sum := sha256.Sum256([]byte(s.embedModel + "\x00" + d.text))
+		sum := sha256.Sum256([]byte(EmbedModelName + "\x00" + d.text))
 		hashes[i] = hex.EncodeToString(sum[:])
 	}
 
@@ -128,12 +142,12 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 			stales = append(stales, stale{idx: i, text: d.text})
 		}
 	}
-	// Prune embeddings for trashed/archived docs — excluded from graph, wasted space.
+	// Prune embeddings for trashed/encrypted docs — never embeddable, wasted space.
 	// ponytail: single DELETE per sweep; always runs, non-fatal.
 	_, _ = s.db.ExecContext(ctx, `
 		DELETE FROM document_embeddings
 		WHERE document_id NOT IN (
-			SELECT id FROM documents WHERE trashed_at IS NULL AND archived_at IS NULL AND encrypted = 0
+			SELECT id FROM documents WHERE `+embeddableWhere+`
 		)`)
 	if len(stales) == 0 {
 		return 0, nil
@@ -151,7 +165,7 @@ func (s *LinkStore) EmbedStaleDocs(ctx context.Context, apiKey string) (int, err
 		for i, st := range batch {
 			texts[i] = st.text
 		}
-		vecs, err := embedBatch(ctx, client, apiKey, texts, s.embedModel)
+		vecs, err := embedBatch(ctx, client, apiKey, texts)
 		if err != nil {
 			return 0, fmt.Errorf("embed: embedBatch: %w", err)
 		}
@@ -264,21 +278,9 @@ func insertTopK(s []semCandidate, c semCandidate, maxK int) []semCandidate {
 	return s
 }
 
-// isEmbed2 reports whether model is a Gemini Embeddings 2 model. Those take the
-// task instruction as a text prefix; the taskType parameter is deprecated for
-// them. Older models keep the plain format they were embedded with before, so
-// selecting gemini-embedding-001 restores byte-identical vectors.
-// https://ai.google.dev/gemini-api/docs/embeddings
-func isEmbed2(model string) bool {
-	return strings.Contains(model, "gemini-embedding-2")
-}
-
 // embedDocText formats a document for storage using the asymmetric retrieval
 // document structure. Pairs with embedQueryText — ADR-004.
-func embedDocText(model, title, body string) string {
-	if !isEmbed2(model) {
-		return title + "\n" + body
-	}
+func embedDocText(title, body string) string {
 	if title == "" {
 		title = "none"
 	}
@@ -287,15 +289,12 @@ func embedDocText(model, title, body string) string {
 
 // embedQueryText formats a search query as the asymmetric counterpart of
 // embedDocText. Must stay consistent with it or similarity degrades — ADR-004.
-func embedQueryText(model, q string) string {
-	if !isEmbed2(model) {
-		return q
-	}
+func embedQueryText(q string) string {
 	return "task: search result | query: " + q
 }
 
 // embedBatch calls the Gemini batchEmbedContents API and returns one vector per text.
-func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts []string, model string) ([][]float32, error) {
+func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts []string) ([][]float32, error) {
 	type embPart struct {
 		Text string `json:"text"`
 	}
@@ -312,7 +311,7 @@ func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts [
 	reqs := make([]embReq, len(texts))
 	for i, t := range texts {
 		reqs[i] = embReq{
-			Model:   model,
+			Model:   EmbedModelName,
 			Content: embContent{Parts: []embPart{{Text: t}}},
 		}
 	}
@@ -321,7 +320,7 @@ func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts [
 		return nil, err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://generativelanguage.googleapis.com/v1beta/"+model+":batchEmbedContents?key="+url.QueryEscape(apiKey),
+		"https://generativelanguage.googleapis.com/v1beta/"+EmbedModelName+":batchEmbedContents?key="+url.QueryEscape(apiKey),
 		bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -405,8 +404,7 @@ func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) 
 		return []SemanticHit{}, nil
 	}
 	client := &http.Client{Timeout: 30 * time.Second}
-	model := s.embedModel
-	vecs, err := embedBatch(ctx, client, apiKey, []string{embedQueryText(model, q)}, model)
+	vecs, err := embedBatch(ctx, client, apiKey, []string{embedQueryText(q)})
 	if err != nil {
 		return nil, fmt.Errorf("semantic search: embed query: %w", err)
 	}
