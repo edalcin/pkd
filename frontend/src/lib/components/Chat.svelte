@@ -1,6 +1,8 @@
 <script>
   import { apiFetch } from '../api.js'
   import { createDoc, saveDoc } from '../stores/documents.js'
+  import { marked } from 'marked'
+  import DOMPurify from 'dompurify'
 
   // Conversa efêmera: vive aqui e morre ao trocar de rota ou recarregar
   // (ADR-006 D8). O que sobrevive é o que o usuário salvar como documento —
@@ -119,7 +121,10 @@
         ? '<p><em>Documentos consultados: ' +
           m.sources.map(s => escapeHtml(s.title)).join(', ') + '</em></p>'
         : ''
-      return `<h3>${who}</h3><p>${escapeHtml(m.text).replace(/\n/g, '<br>')}</p>${sources}`
+      const body = m.role === 'model'
+        ? DOMPurify.sanitize(marked.parse(m.text))
+        : `<p>${escapeHtml(m.text).replace(/\n/g, '<br>')}</p>`
+      return `<h3>${who}</h3>${body}${sources}`
     }).join('')
     const text = messages.map(m => m.text).join('\n\n')
     try {
@@ -163,7 +168,11 @@
 
     {#each messages as m, i (i)}
       <div class="msg msg-{m.role}">
-        <div class="msg-text">{m.text}{#if streaming && i === messages.length - 1 && m.role === 'model'}<span class="cursor">▍</span>{/if}</div>
+        {#if m.role === 'model'}
+          <div class="msg-text">{@html DOMPurify.sanitize(marked.parse(m.text))}{#if streaming && i === messages.length - 1}<span class="cursor">▍</span>{/if}</div>
+        {:else}
+          <div class="msg-text">{m.text}</div>
+        {/if}
         {#if m.role === 'model' && m.sources?.length}
           <div class="sources">
             <span class="sources-label">Documentos consultados:</span>
@@ -245,9 +254,35 @@
     align-self: flex-start;
     background: var(--bg-subtle, rgba(127, 127, 127, 0.1));
   }
-  .msg-text {
+  .msg-user .msg-text {
     white-space: pre-wrap;
     word-break: break-word;
+  }
+  .msg-model .msg-text {
+    word-break: break-word;
+  }
+  .msg-model .msg-text :global(p) {
+    margin: 0 0 0.6em;
+  }
+  .msg-model .msg-text :global(p:last-child) {
+    margin-bottom: 0;
+  }
+  .msg-model .msg-text :global(ul),
+  .msg-model .msg-text :global(ol) {
+    margin: 0 0 0.6em;
+    padding-left: 1.4em;
+  }
+  .msg-model .msg-text :global(code) {
+    background: var(--bg-subtle, rgba(127, 127, 127, 0.15));
+    padding: 0.1em 0.3em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+  .msg-model .msg-text :global(pre) {
+    background: var(--bg-subtle, rgba(127, 127, 127, 0.15));
+    padding: 0.6em;
+    border-radius: 0.4rem;
+    overflow-x: auto;
   }
   .cursor {
     opacity: 0.6;
