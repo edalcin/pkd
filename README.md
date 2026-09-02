@@ -32,6 +32,7 @@
 | 📍 **Breadcrumb de hierarquia** | Ancestrais clicáveis exibidos abaixo do título no editor — navegue para qualquer nível da hierarquia com um clique |
 | 📡 **Captura externa** | Envie links de outros apps via PWA share target; Open Graph extraído automaticamente |
 | 🔍 **Busca híbrida (RRF)** | Campo de busca da árvore lateral funde ranking léxico (FTS5 + LIKE) e semântico (embeddings Gemini) por Reciprocal Rank Fusion; sem `GEMINI_API_KEY` degrada automaticamente para busca léxica, sem erro |
+| 💬 **Chat com os documentos** | Ícone 💬 na topbar (rota `#/chat`) abre uma conversa fundamentada **apenas** no conteúdo do seu PKD: recupera os documentos pela mesma busca híbrida, envia os corpos completos ao Gemini e responde em streaming. Lista os **documentos consultados** servida pelo backend (não pelo modelo, portanto não alucinável), e quando nada relevante é encontrado diz isso em vez de inventar. Botão para salvar a conversa como documento. Requer `GEMINI_API_KEY`; sem ela o ícone fica desabilitado com tooltip |
 | 📅 **Calendário** | Navegue pelos documentos pela data de criação |
 | 🕰️ **Histórico de versões** | Snapshot automático a cada save com dedup SHA-256 (saves idênticos não geram versão). Visualize, compare e restaure qualquer versão anterior via botão `⏱` na barra do documento. Retenção configurável (padrão 50 versões/documento) |
 | ⭐ **Favoritar da barra** | Botão ⭐ na barra de ações do documento — alterna favorito sem precisar ir à sidebar |
@@ -190,7 +191,7 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 | `PKD_S3_PREFIX` | não | *(vazio)* | Prefixo de caminho dentro do bucket (ex: `pkd/attachments/`) |
 | `PKD_S3_ACCESS_KEY_ID` | não | *(credenciais da instância)* | Access Key ID; se vazio, usa credenciais padrão da instância/IAM role |
 | `PKD_S3_SECRET_ACCESS_KEY` | não | *(credenciais da instância)* | Secret Access Key correspondente |
-| `GEMINI_API_KEY` | não | *(desativado)* | Chave de API Google Gemini para embeddings semânticos. Sem ela o toggle **Semântico** no Graph View fica indisponível, o worker de embedding não roda, e a busca da árvore lateral opera só com o léxico (RRF degrada automaticamente, nunca erro) |
+| `GEMINI_API_KEY` | não | *(desativado)* | Chave de API Google Gemini, usada por três recursos: embeddings semânticos, **Chat com os documentos** e sugestão de nome de comunidade no Graph View. Sem ela o toggle **Semântico** no Graph View fica indisponível, o worker de embedding não roda, o ícone 💬 do Chat fica desabilitado (`POST /api/chat` → 503), e a busca da árvore lateral opera só com o léxico (RRF degrada automaticamente, nunca erro) |
 | `PKD_EMBED_SWEEP_MINUTES` | não | `15` | Cadência do worker de embedding em background (minutos). O worker também dispara imediatamente ao criar/editar documentos |
 | `SES_USERNAME` | não | *(desativado)* | Usuário SMTP do Amazon SES. Junto com `SES_PASSWORD`, `EMAIL_SENDER` e `EMAIL_2FA`, habilita o 2FA por e-mail no login (vinculado ao dispositivo) e a criptografia de documentos protegidos |
 | `SES_PASSWORD` | não | *(desativado)* | Senha SMTP do Amazon SES |
@@ -210,9 +211,43 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 O campo de busca da árvore lateral (topbar) sempre executa busca **híbrida**: o termo digitado é buscado tanto pelo motor léxico (FTS5 + `LIKE`, cobrindo título, corpo, tags e títulos de links externos) quanto pelo motor semântico (similaridade de cosseno sobre embeddings Gemini), e os dois rankings são fundidos por **Reciprocal Rank Fusion** (RRF, k=60) numa única lista plana ordenada por relevância.
 
 - **Sem `GEMINI_API_KEY`**, ou antes do primeiro embed de um documento, a perna semântica fica vazia e o RRF degrada automaticamente para a ordem léxica — a busca nunca falha e nunca retorna erro.
-- Documentos que também aparecem na perna semântica exibem um badge de **similaridade de cosseno** (não o score do RRF) ao lado do título, com cor por faixa (verde ≥ 0.80, âmbar 0.65–0.79, laranja abaixo disso).
+- O score de similaridade **não é exibido** na interface: a fusão RRF consome apenas a *ordem* dos hits. Para observar a grandeza dos pisos de similaridade, use a densidade de arestas do Graph View.
 - A busca abrange automaticamente ativos **e** arquivados enquanto o campo estiver preenchido; a view anterior (Ativos/Arquivados/Todos) é restaurada ao limpar a busca.
 - Não há mais seletor "Léxica | Semântica" — a fusão é sempre automática.
+
+### Chat com os documentos
+
+O ícone 💬 na topbar abre a rota `#/chat`, uma conversa fundamentada **apenas**
+no conteúdo do PKD. O caminho de uma pergunta:
+
+1. **Recuperação** — a pergunta (concatenada com as últimas mensagens do
+   usuário, para que "e sobre a fase escura?" ainda encontre o assunto do turno
+   anterior) entra na **mesma busca híbrida** descrita acima.
+2. **Piso de relevância** — se o melhor candidato semântico não atingir
+   `chatRelevanceFloor` (~0,50), o servidor responde "não encontrei nada
+   relevante" **sem chamar o modelo**. Isso existe porque a busca híbrida nunca
+   retorna vazio: sem o piso, uma pergunta fora do acervo produziria uma
+   resposta de conhecimento geral sob uma lista de fontes que não a sustenta.
+3. **Contexto** — até 8 documentos, com o **corpo completo** (não trechos), sob
+   um teto de tokens. Documento que não cabe é omitido, nunca truncado.
+   Documentos protegidos por senha e na lixeira ficam fora.
+4. **Resposta** — streaming SSE via `POST /api/chat`, com prompt de sistema
+   estrito ("responda apenas com base nos documentos"). Fechar a aba cancela a
+   geração.
+5. **Atribuição** — a lista de **documentos consultados** vem do servidor, não
+   do modelo, e por isso não pode ser alucinada. Cada item é um link que abre o
+   documento em nova aba.
+
+A conversa é **efêmera**: trocar de rota ou recarregar a página a descarta. O
+botão **"Salvar como documento"** transforma a conversa num documento PKD
+normal — indexado, versionado e linkável como qualquer outro.
+
+O **Modelo de Chat** é escolhido em **Administração → Preferências → Chat com
+os documentos** (chave `chat.model`). Não confundir com o modelo de
+*embedding*, que é fixo: trocar o de Chat afeta apenas a próxima resposta,
+enquanto trocar o de embedding exigiria reprocessar todo o acervo.
+
+Decisões completas em [ADR-006](docs/adr/006-chat-rag-sobre-documentos.md).
 
 ### Notas relacionadas
 
@@ -474,7 +509,7 @@ graph TD
 | `documents_fts` | Tabela virtual FTS5 (contentless) para busca full-text |
 | `share_links` | Links públicos com hash de token e campo `revoked_at` |
 | `document_embeddings` | Cache de vetores semânticos: `embedding` BLOB float32 LE (3072 dims em ambos os modelos suportados), `content_hash` SHA-256 sobre nome do modelo + texto formatado, para invalidação. Gerenciado pelo worker proativo; limpeza automática de docs trashed/archived a cada sweep |
-| `settings` | Configurações persistidas em chave-valor (modelo de embedding, retenção de versões, backend de armazenamento) |
+| `settings` | Configurações persistidas em chave-valor (`chat.model`, retenção de versões, backend de armazenamento). O modelo de *embedding* **não** vive aqui: é constante compilada |
 | `document_versions` | Snapshots de conteúdo com dedup SHA-256 e retenção configurável |
 
 ---

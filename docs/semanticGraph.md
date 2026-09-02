@@ -48,10 +48,10 @@ GET /api/graph/semantic
 **`EmbedStaleDocs(ctx, apiKey string) (int, error)`**
 - Carrega docs embedáveis (`embeddableWhere` = `trashed_at IS NULL AND encrypted = 0`) — arquivados incluídos, protegidos fora (corpo é ciphertext)
 - **Prune**: DELETE de embeddings cujo `document_id` não é mais embedável (trashed/protegido) — usa a mesma constante `embeddableWhere`, ocorre antes da verificação de stales, a cada sweep
-- Texto embedado: `embedDocText(title, body[:semanticBodyChars])` = `title: {t} | text: {b}` (formato assimétrico do `gemini-embedding-2`, ADR-004)
+- Texto embedado: `embedDocText(title, body[:semanticBodyChars])` = `title: {t} | text: {b}` (formato assimétrico do `gemini-embedding-2`, ADR-004). `semanticBodyChars` = **20.000 caracteres** (~5k tokens, contra o limite de 8.192 do modelo); era 800 até ADR-006 D2, que elevou o valor e disparou um re-embed completo do acervo
 - Hash: `sha256(EmbedModelName + "\x00" + texto)` — inclui nome do modelo; troca de modelo invalidaria todos os hashes (o modelo hoje é fixo)
 - Lê hashes cached de `document_embeddings`; calcula stale set
-- Chama `embedBatch` em lotes de 100 (limite da API Gemini)
+- Chama `embedBatch` em lotes de 100 (limite da API Gemini); autenticação por header `x-goog-api-key`, não `?key=` na URL (ADR-006 D10)
 - Upsert em `document_embeddings` via `ON CONFLICT(document_id) DO UPDATE`
 - Serializado por `embedMu sync.Mutex` — worker em background e fetch do grafo nunca chamam a API em duplicidade
 
@@ -95,7 +95,7 @@ Vetores de 3072 dimensões = 12 288 bytes/doc. Para 300 documentos ≈ 3,6 MB no
 
 | Variável | Padrão | Efeito |
 |---|---|---|
-| `GEMINI_API_KEY` | *(desativado)* | Sem ela o worker não roda e `GET /api/graph/semantic` retorna 503 |
+| `GEMINI_API_KEY` | *(desativado)* | Sem ela o worker não roda, `GET /api/graph/semantic` retorna 503, e `POST /api/chat` retorna 503 com o ícone de chat desabilitado na topbar |
 | ~~`PKD_EMBED_MODEL`~~ | — | **Removida.** O modelo é fixo em `store.EmbedModelName` (`models/gemini-embedding-2`) |
 | `PKD_EMBED_SWEEP_MINUTES` | `15` | Cadência do sweep de segurança; saves de documentos disparam sweep imediato adicional |
 
@@ -105,6 +105,11 @@ Vetores de 3072 dimensões = 12 288 bytes/doc. Para 300 documentos ≈ 3,6 MB no
 - Status da chave Gemini
 - Contagem de documentos embedados
 - Modelo em uso (`models/gemini-embedding-2`, fixo — não há troca pela UI nem por env var)
+
+**Administração → Preferências → Chat com os documentos** expõe o único modelo
+configurável do PKD: o **Modelo de Chat** (chave `chat.model`, whitelist
+compilada em `internal/store/chat.go`). Não confundir com o Modelo de
+Embedding acima — trocar o de Chat não invalida vetor nenhum. Ver ADR-006 D9.
 
 Modelo:
 | Modelo | Dimensões | Formato do texto | Notas |

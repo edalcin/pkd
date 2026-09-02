@@ -60,3 +60,27 @@ func (s *SettingsStore) VersionsMaxPerDoc() (string, error) {
 func (s *SettingsStore) SetVersionsMaxPerDoc(value string) error {
 	return s.Set("versions.max_per_doc", value)
 }
+
+// ChatModel returns the configured Chat model, falling back to the compiled
+// default when unset. A persisted value outside the whitelist is ignored with
+// the same fallback: rewriting the administrator's setting silently is worse
+// than ignoring it (ADR-004 D7 established this).
+func (s *SettingsStore) ChatModel() (string, error) {
+	v, err := s.Get("chat.model")
+	if errors.Is(err, ErrNotFound) {
+		return DefaultChatModel, nil
+	}
+	if err != nil {
+		return DefaultChatModel, err
+	}
+	if !IsValidChatModel(v) {
+		return DefaultChatModel, nil
+	}
+	return v, nil
+}
+
+// SetChatModel persists the Chat model. Unlike the embedding model, changing
+// it invalidates nothing — it only affects the next generated answer.
+func (s *SettingsStore) SetChatModel(value string) error {
+	return s.Set("chat.model", value)
+}

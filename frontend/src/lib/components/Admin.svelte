@@ -54,6 +54,17 @@
   // Embedding settings (model is fixed server-side; read-only here)
   let embedSettings = $state(null)
 
+  // Modelo de Chat — espelha a whitelist compilada em internal/store/chat.go.
+  // O preview é rotulado: ADR-006 D9 aceita oferecê-lo porque a falha é
+  // visível no chat, mas o rótulo é o que torna o risco informado.
+  const CHAT_MODELS = [
+    { id: 'models/gemini-3.7-flash', label: 'Flash — rápido e barato (padrão)' },
+    { id: 'models/gemini-3.1-pro', label: 'Pro — raciocínio mais forte (preview)' },
+  ]
+  let chatModel = $state('')
+  let chatModelSaving = $state(false)
+  let chatModelMsg = $state('')
+
   // Security tab — trusted devices
   let forgettingDevices = $state(false)
   let forgetDevicesMsg = $state('')
@@ -141,6 +152,10 @@
     apiGet('/api/admin/settings').then(data => {
       if (data?.['versions.max_per_doc']) versionsMaxPerDoc = data['versions.max_per_doc']
       if (data) embedSettings = data
+      // O servidor reporta o modelo EFETIVO (cai para o default quando o
+      // valor persistido saiu da whitelist), então o <select> nunca aparece
+      // em branco — o defeito que ADR-004 D7 documenta.
+      if (data?.['chat.model']) chatModel = data['chat.model']
     })
   })
 
@@ -164,6 +179,20 @@
       versionsSettingMsg = 'Erro ao salvar.'
     } finally {
       versionsSettingSaving = false
+    }
+  }
+
+  async function saveChatModel() {
+    chatModelSaving = true
+    chatModelMsg = ''
+    try {
+      await apiPut('/api/admin/settings', { key: 'chat.model', value: chatModel })
+      chatModelMsg = 'Salvo!'
+      setTimeout(() => { chatModelMsg = '' }, 2000)
+    } catch {
+      chatModelMsg = 'Erro ao salvar.'
+    } finally {
+      chatModelSaving = false
     }
   }
 
@@ -1920,6 +1949,39 @@
       </div>
       {:else}
       <p class="muted">Carregando…</p>
+      {/if}
+    </div>
+
+    <div class="admin-section">
+      <h3>Chat com os documentos</h3>
+      {#if embedSettings}
+        {#if embedSettings['embed.key_configured'] !== 'true'}
+          <p class="muted" style="margin-bottom:1rem">
+            O Chat exige a variável de ambiente <code>GEMINI_API_KEY</code> no servidor.
+            Sem ela o ícone de chat fica desabilitado.
+          </p>
+        {/if}
+        <div class="versions-setting-row">
+          <select bind:value={chatModel} aria-label="Modelo de IA do Chat">
+            {#each CHAT_MODELS as m (m.id)}
+              <option value={m.id}>{m.label}</option>
+            {/each}
+          </select>
+          <span class="muted" style="font-size:.85rem">modelo que gera as respostas</span>
+          <button class="btn btn-primary" onclick={saveChatModel} disabled={chatModelSaving || !chatModel}>
+            {chatModelSaving ? 'Salvando…' : 'Salvar'}
+          </button>
+          {#if chatModelMsg}
+            <span class="versions-setting-msg">{chatModelMsg}</span>
+          {/if}
+        </div>
+        <p class="muted" style="font-size:.85rem;margin-top:.75rem">
+          Trocar o modelo não invalida nada: afeta apenas a próxima resposta.
+          Diferente do modelo de embedding, que é fixo porque trocá-lo exigiria
+          reprocessar todo o acervo.
+        </p>
+      {:else}
+        <p class="muted">Carregando…</p>
       {/if}
     </div>
 

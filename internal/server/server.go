@@ -255,6 +255,10 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/api/tree", s.handleTree())
 		r.Post("/api/tree/sort", s.handleSortTree())
 
+		// Chat RAG sobre os documentos (ADR-006). POST, não GET+EventSource:
+		// o CSRF é middleware global e EventSource não manda headers.
+		r.Post("/api/chat", s.handleChat())
+
 		// Bidirectional links (NEW — 003-pkm-refactor)
 		r.Get("/api/documents/{id}/links", s.handleListLinks())
 		r.Post("/api/documents/{id}/links", s.handleCreateLink())

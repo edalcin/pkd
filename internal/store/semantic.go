@@ -11,7 +11,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -25,7 +24,12 @@ const (
 	// bought a way to invalidate the whole corpus. See ADR-004.
 	EmbedModelName = "models/gemini-embedding-2"
 
-	semanticBodyChars    = 800
+	// semanticBodyChars: 20.000 caracteres (~5k tokens) contra o limite de
+	// 8.192 tokens do gemini-embedding-2. Era 800 — a maior perda de qualidade
+	// semântica do sistema, dívida que ADR-004 deixou explícita e ADR-006 D2
+	// paga. Subir isso dispara um re-embed completo do corpus (o hash de
+	// staleness cobre o texto embedado), o que é intencional.
+	semanticBodyChars    = 20000
 	semanticBatchSize    = 100
 	semanticMaxNeighbors = 8
 	semanticSimThreshold = 0.60
@@ -320,12 +324,13 @@ func embedBatch(ctx context.Context, client *http.Client, apiKey string, texts [
 		return nil, err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://generativelanguage.googleapis.com/v1beta/"+EmbedModelName+":batchEmbedContents?key="+url.QueryEscape(apiKey),
+		"https://generativelanguage.googleapis.com/v1beta/"+EmbedModelName+":batchEmbedContents",
 		bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	setGeminiAuth(req, apiKey)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -453,7 +458,7 @@ func (s *LinkStore) SemanticSearchDocIDs(ctx context.Context, apiKey, q string) 
 // SuggestCommunityName calls Gemini generateContent to suggest a concise name
 // for a community cluster given its member document titles.
 // ponytail: one call per click; names stored in browser localStorage, no DB.
-func (s *LinkStore) SuggestCommunityName(ctx context.Context, apiKey string, titles []string) (string, error) {
+func (s *LinkStore) SuggestCommunityName(ctx context.Context, apiKey, chatModel string, titles []string) (string, error) {
 	if apiKey == "" || len(titles) == 0 {
 		return "", fmt.Errorf("suggest: missing apiKey or titles")
 	}
@@ -471,13 +476,17 @@ func (s *LinkStore) SuggestCommunityName(ctx context.Context, apiKey string, tit
 		Contents []content `json:"contents"`
 	}
 	body, _ := json.Marshal(reqBody{Contents: []content{{Parts: []part{{Text: prompt}}}}})
+	if chatModel == "" {
+		chatModel = DefaultChatModel
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key="+url.QueryEscape(apiKey),
+		geminiURL(chatModel, "generateContent", false),
 		bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	setGeminiAuth(req, apiKey)
 	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
 	if err != nil {
 		return "", err

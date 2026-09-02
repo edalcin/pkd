@@ -646,12 +646,18 @@ func (s *Server) handleAdminGetSettings() http.HandlerFunc {
 			keyConfigured = "true"
 		}
 		backupRemaining, _ := s.backupCodes.Count()
+		chatModel, err := s.settings.ChatModel()
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]string{
 			"versions.max_per_doc":   maxPerDoc,
 			"embed.model":            store.EmbedModelName,
 			"embed.sweep_minutes":    strconv.Itoa(s.cfg.EmbedSweepMinutes),
 			"embed.key_configured":   keyConfigured,
 			"embed.count":            strconv.Itoa(embedCount),
+			"chat.model":             chatModel,
 			"email_2fa_enabled":      strconv.FormatBool(s.emailEnabled),
 			"backup_codes_remaining": strconv.Itoa(backupRemaining),
 		})
@@ -839,6 +845,15 @@ func (s *Server) handleAdminSetSettings() http.HandlerFunc {
 				return
 			}
 			if err := s.settings.SetVersionsMaxPerDoc(req.Value); err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+		case "chat.model":
+			if !store.IsValidChatModel(req.Value) {
+				http.Error(w, "chat.model is not a supported model", http.StatusBadRequest)
+				return
+			}
+			if err := s.settings.SetChatModel(req.Value); err != nil {
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}

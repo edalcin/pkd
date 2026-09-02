@@ -160,6 +160,9 @@ input:focus, textarea:focus, select:focus {
 .icon-btn:hover { background: var(--bg-hover); color: var(--text); }
 .icon-btn:active { background: var(--bg-active); }
 .icon-btn:disabled { opacity: .3; pointer-events: none; }
+/* Ícone desabilitado como <span> (não <button>): mantém o tooltip acessível,
+   porque pointer-events:none suprimiria o title. */
+.icon-btn-disabled { opacity: .35; cursor: not-allowed; }
 
 /* ─── Tree items ─────────────────────────────────────────────────────────── */
 .tree-item {

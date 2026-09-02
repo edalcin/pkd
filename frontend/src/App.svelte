@@ -9,7 +9,9 @@
   import GraphView from './lib/components/GraphView.svelte'
   import Calendar from './lib/components/Calendar.svelte'
   import Admin from './lib/components/Admin.svelte'
+  import Chat from './lib/components/Chat.svelte'
   import ShareDialog from './lib/components/ShareDialog.svelte'
+  import { apiGet } from './lib/api.js'
 
   // ─── Routing ─────────────────────────────────────────────
   let hash = $state(window.location.hash.slice(1) || '/')
@@ -90,6 +92,7 @@
     if (hash === '/graph') return { view: 'graph' }
     if (hash === '/calendar') return { view: 'calendar' }
     if (hash === '/admin') return { view: 'admin' }
+    if (hash === '/chat') return { view: 'chat' }
     return { view: 'home' }
   }
 
@@ -221,10 +224,19 @@
   })
 
   // When auth state changes to true, load data
+  // chatAvailable espelha embed.key_configured: sem GEMINI_API_KEY o ícone do
+  // chat aparece DESABILITADO com tooltip, nunca escondido — esconder impede a
+  // descoberta de quem só precisa colar uma chave, e falhar em silêncio é o
+  // modo de falha que ADR-004 D7 eliminou.
+  let chatAvailable = $state(false)
+
   $effect(() => {
     if ($authenticated) {
       restoreLastRoute()
       Promise.all([loadTree(), loadTags()])
+      apiGet('/api/admin/settings')
+        .then(s => { chatAvailable = s?.['embed.key_configured'] === 'true' })
+        .catch(() => { chatAvailable = false })
     }
   })
 
@@ -234,7 +246,8 @@
     route.view === 'doc' ? ($activeDoc?.title || 'Documento') :
     route.view === 'graph' ? 'Grafo' :
     route.view === 'calendar' ? 'Calendário' :
-    route.view === 'admin' ? 'Administração' : ''
+    route.view === 'admin' ? 'Administração' :
+    route.view === 'chat' ? 'Chat' : ''
   )
 </script>
 
@@ -264,6 +277,11 @@
           <div class="topbar-row topbar-row-icons">
             <a href="#/" class="app-logo">PKD</a>
             <span class="topbar-spacer"></span>
+            {#if chatAvailable}
+              <a href="#/chat" class="icon-btn" title="Chat com os documentos">💬</a>
+            {:else}
+              <span class="icon-btn icon-btn-disabled" title="Chat indisponível: GEMINI_API_KEY não configurada no servidor" aria-disabled="true">💬</span>
+            {/if}
             <a href="#/graph" class="icon-btn" title="Grafo">🕸️</a>
             <a href="#/calendar" class="icon-btn" title="Calendário">📅</a>
             <a href="#/admin" class="icon-btn" title="Administração">⚙️</a>
@@ -314,6 +332,11 @@
           <button class="topbar-reset-btn" onclick={resetFilters} title="Limpar todos os filtros" aria-label="Limpar todos os filtros">×</button>
         {/if}
 
+        {#if chatAvailable}
+          <a href="#/chat" class="icon-btn" title="Chat com os documentos">💬</a>
+        {:else}
+          <span class="icon-btn icon-btn-disabled" title="Chat indisponível: GEMINI_API_KEY não configurada no servidor" aria-disabled="true">💬</span>
+        {/if}
         <a href="#/graph" class="icon-btn" title="Grafo">🕸️</a>
         <a href="#/calendar" class="icon-btn" title="Calendário">📅</a>
         <a href="#/admin" class="icon-btn" title="Administração">⚙️</a>
@@ -368,6 +391,8 @@
           <Calendar />
         {:else if route.view === 'admin'}
           <Admin />
+        {:else if route.view === 'chat'}
+          <Chat />
         {:else}
           <!-- Home / empty state -->
           <div class="empty-state" style="flex:1">

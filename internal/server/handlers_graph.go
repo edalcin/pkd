@@ -58,7 +58,8 @@ func (s *Server) handleCommunityName() http.HandlerFunc {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		name, err := s.links.SuggestCommunityName(r.Context(), s.cfg.GeminiAPIKey, req.Titles)
+		chatModel, _ := s.settings.ChatModel()
+		name, err := s.links.SuggestCommunityName(r.Context(), s.cfg.GeminiAPIKey, chatModel, req.Titles)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return

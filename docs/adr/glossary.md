@@ -64,3 +64,46 @@ Medida de similaridade entre dois vetores não-nulos. Calculada como o produto e
 ## SemanticHit
 
 Tipo interno Go (`store.SemanticHit`) que associa um `DocID int64` ao seu `Score float32` (cosseno). Retornado por `SemanticSearchDocIDs` — é a entrada da perna semântica na fusão RRF, não o resultado final da busca. A fusão consome apenas a *ordem* dos hits, então `Score` hoje é escrito e nunca lido; permanece como ponto de extensão caso a exibição de score volte.
+
+## Modelo de Embedding (Embedding Model)
+
+Modelo Gemini que converte texto em vetor. Fixo na constante
+`store.EmbedModelName` — **não** é configurável pelo administrador (ADR-004).
+Trocá-lo invalida todo o corpus de vetores, porque espaços latentes de modelos
+diferentes não são comparáveis. Não confundir com o **Modelo de Chat**.
+
+## Modelo de Chat (Chat Model)
+
+Modelo Gemini que **gera texto** de resposta no Chat, escolhido pelo
+administrador em Administração → Preferências e persistido na chave
+`chat.model` da tabela `settings`. A lista oferecida é uma whitelist compilada,
+não a listagem viva da API do Gemini. Trocá-lo não invalida nada: afeta apenas
+a próxima resposta gerada. É o único modelo configurável do PKD.
+
+## Chat
+
+Interface de conversa (rota `#/chat`) que responde perguntas **com base nos
+documentos do PKD**, não com o conhecimento geral do modelo. Recupera
+documentos pela **Busca Híbrida** já existente e envia o corpo completo dos
+melhores ao **Modelo de Chat**. A conversa é efêmera: vive no componente e
+morre ao trocar de rota ou recarregar; o que sobrevive é o que o usuário
+salvar como documento. Ver ADR-006.
+
+## Documentos Consultados (Consulted Documents)
+
+Lista de documentos que o backend efetivamente enviou ao prompt de uma
+resposta do **Chat**, devolvida pelo servidor junto da resposta. É a fonte de
+verdade da atribuição: por vir do servidor e não do modelo, não pode ser
+alucinada. Citação inline no texto da resposta é conveniência, nunca a única
+trilha de rastreabilidade.
+
+## Piso de Relevância do Chat (Chat Relevance Floor)
+
+Constante `chatRelevanceFloor` (~0.50): similaridade mínima que o melhor
+candidato semântico precisa atingir para que o **Chat** chame o modelo. Abaixo
+dela o backend responde "nada relevante encontrado" sem gastar uma chamada.
+Existe porque a Busca Híbrida sempre devolve algo — o `LIKE` casa qualquer
+substring e `semanticQueryFloor` é 0.30 — e responder sobre oito documentos
+irrelevantes produz resposta alucinada com fontes decorativas. É deliberadamente
+**separado** de `semanticQueryFloor`: subir o piso da busca para consertar o
+Chat degradaria a busca.
