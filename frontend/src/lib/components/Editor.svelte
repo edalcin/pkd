@@ -1,17 +1,12 @@
 <script>
   import { onDestroy } from 'svelte'
   import { Editor } from '@tiptap/core'
-  import StarterKit from '@tiptap/starter-kit'
+  import { StarterKit } from '@tiptap/starter-kit'
   import { ResizableImage } from '../editor/resizable-image-extension.js'
-  import Table from '@tiptap/extension-table'
-  import TableRow from '@tiptap/extension-table-row'
-  import TableCell from '@tiptap/extension-table-cell'
-  import TableHeader from '@tiptap/extension-table-header'
-  import TaskList from '@tiptap/extension-task-list'
-  import TaskItem from '@tiptap/extension-task-item'
-  import Highlight from '@tiptap/extension-highlight'
-  import TextAlign from '@tiptap/extension-text-align'
-  import Link from '@tiptap/extension-link'
+  import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table'
+  import { TaskList, TaskItem } from '@tiptap/extension-list'
+  import { Highlight } from '@tiptap/extension-highlight'
+  import { TextAlign } from '@tiptap/extension-text-align'
   import { DocLink } from '../editor/doclink-extension.js'
   import { MermaidCodeBlock } from '../editor/mermaid-code-block.js'
   import TurndownService from 'turndown'
@@ -492,7 +487,7 @@
     if (sig === Number(docId) && doc && editorInstance) {
       loadDoc(sig).then(freshDoc => {
         if (!freshDoc || !editorInstance) return
-        editorInstance.commands.setContent(freshDoc.body_html || '', false)
+        editorInstance.commands.setContent(freshDoc.body_html || '', { emitUpdate: false })
         doc = freshDoc
         titleValue = freshDoc.title
         try { apiGet(`/api/documents/${sig}/attachments`).then(a => { attachments = a || [] }) } catch {}
@@ -545,7 +540,7 @@
       } else {
         const updated = await unprotectDoc(doc.id)
         doc = updated
-        editorInstance?.commands.setContent(updated.body_html || '', false)
+        editorInstance?.commands.setContent(updated.body_html || '', { emitUpdate: false })
       }
       saveError = ''
     } catch (e) {
@@ -584,7 +579,7 @@
       // mountEditor() reads doc.body_html at mount time — so the fresh mount
       // already picks up the decrypted content. This covers the (unexpected)
       // case where an editor instance already exists.
-      if (editorInstance) editorInstance.commands.setContent(updated.body_html || '', false)
+      if (editorInstance) editorInstance.commands.setContent(updated.body_html || '', { emitUpdate: false })
     } catch (e) {
       unlockErr = 'Código inválido ou expirado.'
       unlockCode = ''
@@ -598,7 +593,7 @@
       doc = { ...updated, encrypted_locked: false }
       unlockBackupCode = ''
       useBackupUnlock = false
-      if (editorInstance) editorInstance.commands.setContent(updated.body_html || '', false)
+      if (editorInstance) editorInstance.commands.setContent(updated.body_html || '', { emitUpdate: false })
     } catch {
       unlockErr = 'Código de backup inválido.'
       unlockBackupCode = ''
@@ -1058,7 +1053,14 @@
     editorInstance = new Editor({
       element: node,
       extensions: [
-        StarterKit.configure({ codeBlock: false }),
+        StarterKit.configure({
+          codeBlock: false,
+          // v3 ships Link inside StarterKit — configured here instead of a separate extension
+          link: {
+            openOnClick: true,
+            HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
+          },
+        }),
         MermaidCodeBlock,
         ResizableImage.configure({ inline: true, allowBase64: true }),
         TaskList,
@@ -1069,10 +1071,6 @@
         TableHeader,
         Highlight.configure({ multicolor: true }),
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        Link.configure({
-          openOnClick: true,
-          HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
-        }),
         DocLink,
       ],
       content: doc?.body_html || '',
@@ -1823,7 +1821,7 @@
       onClose={() => historyOpen = false}
       onRestored={(updated) => {
         doc = updated
-        editorInstance?.commands.setContent(updated.body_html, false)
+        editorInstance?.commands.setContent(updated.body_html, { emitUpdate: false })
         historyOpen = false
       }}
     />

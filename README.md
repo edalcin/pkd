@@ -21,7 +21,7 @@
 | | |
 |---|---|
 | 📁 **Hierarquia ilimitada** | Documentos dentro de documentos, arrastar e soltar para reorganizar |
-| ✏️ **Editor rico** | TipTap v2 — negrito, itálico, títulos, listas, código, citações, imagens inline |
+| ✏️ **Editor rico** | TipTap v3 — negrito, itálico, títulos, listas, código, citações, imagens inline |
 | 📐 **Barra de ferramentas completa** | Tabelas, imagem por URL, alinhamento de parágrafo, destaque de texto com cor personalizável |
 | 🖼️ **Redimensionamento de imagens** | Passe o mouse sobre uma imagem e arraste a alça (canto inferior direito) para redimensioná-la; largura persiste no documento |
 | ⬇️ **Exportar como Markdown** | Botão `⬇ .md` no toolbar converte o documento para Markdown e baixa o arquivo `.md` no browser |
@@ -488,7 +488,7 @@ graph TD
 
     subgraph Container ["🐳 Docker Container"]
         App["⚙️ Go HTTP Server\n(chi router · handlers · middleware)"]
-        SPA["🌐 Svelte 5 SPA\n(TipTap v2 · D3.js · embutido no binário)"]
+        SPA["🌐 Svelte 5 SPA\n(TipTap v3 · D3.js · embutido no binário)"]
     end
 
     App --- SPA

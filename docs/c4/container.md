@@ -19,7 +19,7 @@ C4Container
     System_Boundary(pkd_system, "PKD Docker Container") {
         Container(go_server, "Go HTTP Server", "Go 1.25, chi router, CGO disabled", "Gerencia autenticação, sessões, CSRF, CSP, rate limiting, todos os endpoints REST, sanitização HTML, extração Open Graph. Expõe porta 8080.")
 
-        Container(svelte_spa, "Svelte 5 SPA", "Svelte 5 + Vite + TipTap v2 + D3.js", "Single-page application compilada em build-time pelo Vite e incorporada ao binário Go via //go:embed. Provê toda a UI: editor com toolbar completa, cards de sub-documentos, grafo, sidebar com tags coloridas, busca, admin, PWA.")
+        Container(svelte_spa, "Svelte 5 SPA", "Svelte 5 + Vite + TipTap v3 + D3.js", "Single-page application compilada em build-time pelo Vite e incorporada ao binário Go via //go:embed. Provê toda a UI: editor com toolbar completa, cards de sub-documentos, grafo, sidebar com tags coloridas, busca, admin, PWA.")
     }
 
     ContainerDb(sqlite_db, "SQLite Database", "SQLite 3.40+, WAL, FTS5", "Armazena todos os dados: documents, document_links, tags, document_tags, attachments (metadados), share_links. Arquivo único fora do container em volume montado.")
@@ -60,7 +60,7 @@ flowchart LR
 | Container | Responsabilidade | Tecnologia |
 |---|---|---|
 | **Go HTTP Server** | Auth, sessões, CSRF, CSP, HSTS, rate limiting, 30+ endpoints REST, sanitização HTML (bluemonday), extração Open Graph (x/net/html), serve SPA embutida com no-cache para index.html | Go 1.25, chi v5, modernc.org/sqlite, bluemonday |
-| **Svelte 5 SPA** | Editor TipTap com `[[link]]` autocomplete, toolbar completa (tabela, imagem, alinhamento, destaque), cards de sub-documentos, chips de tag coloridos, Graph View D3.js, sidebar, busca, calendário, admin com gestão de tags/anexos, PWA | Svelte 5, Vite 6, TipTap v2, D3.js (modular) |
+| **Svelte 5 SPA** | Editor TipTap com `[[link]]` autocomplete, toolbar completa (tabela, imagem, alinhamento, destaque), cards de sub-documentos, chips de tag coloridos, Graph View D3.js, sidebar, busca, calendário, admin com gestão de tags/anexos, PWA | Svelte 5, Vite 6, TipTap v3, D3.js (modular) |
 | **SQLite Database** | Todos os dados persistentes com ACID, FTS5 para busca full-text, WAL para leituras concorrentes durante backup | SQLite 3.40+, FTS5, WAL, foreign_keys ON |
 | **Attachments Volume** | Arquivos binários desacoplados do banco de dados; referenciados por `stored_filename` único na tabela `attachments` | Volume Docker / diretório no host |
 

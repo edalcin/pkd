@@ -1,5 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core'
-import Suggestion from '@tiptap/suggestion'
+import { Suggestion } from '@tiptap/suggestion'
 import { buildLinkSuggestion } from './link-suggestion.js'
 
 /**

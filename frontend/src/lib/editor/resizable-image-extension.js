@@ -1,4 +1,4 @@
-import Image from '@tiptap/extension-image'
+import { Image } from '@tiptap/extension-image'
 
 export const ResizableImage = Image.extend({
   addAttributes() {
@@ -47,9 +47,11 @@ export const ResizableImage = Image.extend({
         const onUp = () => {
           document.removeEventListener('mousemove', onMove)
           document.removeEventListener('mouseup', onUp)
-          if (typeof getPos === 'function') {
+          // v3: getPos() may return undefined when the node view is detached
+          const pos = typeof getPos === 'function' ? getPos() : undefined
+          if (pos !== undefined) {
             editor.view.dispatch(
-              editor.view.state.tr.setNodeMarkup(getPos(), undefined, {
+              editor.view.state.tr.setNodeMarkup(pos, undefined, {
                 ...node.attrs,
                 width: wrapper.offsetWidth,
               })

@@ -19,8 +19,9 @@ function debounce(fn, ms) {
 }
 
 const fetchSuggestions = debounce(async (query) => {
-  // Strip trailing ] so the [Title] typing pattern works naturally
-  const q = query.endsWith(']') ? query.slice(0, -1) : query
+  // The plugin anchors on the first "[" of "[[", so the query arrives wrapped
+  // ("[Foo" while typing, "[Foo]" once closed). Strip both ends.
+  const q = query.replace(/^\[+/, '').replace(/\]+$/, '')
   if (!q) return []
   try {
     const results = await apiGet(`/api/search?q=${encodeURIComponent(q)}&limit=10`)
