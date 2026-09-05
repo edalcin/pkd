@@ -131,10 +131,16 @@
   let importingImgs = $state(false)
   let importImgsResult = $state(null) // {imported, failed} — shown briefly after import
   let uploadImgInputEl = $state(null)
+  let importMdInputEl = $state(null)
 
   function triggerImageUpload(e) {
     e.preventDefault()
     uploadImgInputEl?.click()
+  }
+
+  function triggerMarkdownImport(e) {
+    e.preventDefault() // keeps the editor selection while the file dialog is open
+    importMdInputEl?.click()
   }
 
   $effect(() => {
@@ -989,6 +995,33 @@
     })
   }
 
+  // Markdown text → ProseMirror slice, inserted at the current selection.
+  // PMParser.fromSchema + replaceSelection (instead of insertContent) because
+  // TipTap's parseSlice path can silently drop table nodes.
+  function insertMarkdownIntoView(view, text) {
+    const rendered = DOMPurify.sanitize(marked.parse(normalizeMarkdownTables(text)))
+    const tempEl = document.createElement('div')
+    tempEl.innerHTML = rendered
+    normalizeMarkdownTaskLists(tempEl)
+    const slice = PMParser.fromSchema(view.state.schema).parseSlice(tempEl)
+    view.dispatch(view.state.tr.replaceSelection(slice))
+  }
+
+  async function handleMarkdownImportInline(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-importing the same file
+    if (!file || !editorInstance || doc?.locked) return
+    try {
+      const text = await file.text()
+      if (!text.trim()) return
+      if (!editorInstance.isFocused) editorInstance.commands.focus('end')
+      insertMarkdownIntoView(editorInstance.view, text)
+      saveError = ''
+    } catch {
+      saveError = 'Erro ao importar Markdown'
+    }
+  }
+
   // Combined paste handler: images → upload & insert; Markdown → convert & insert; else → default.
   function handlePaste(view, event) {
     // Image branch (unchanged behavior)
@@ -1016,16 +1049,7 @@
     const text = event.clipboardData?.getData('text/plain') || ''
     const html = event.clipboardData?.getData('text/html') || ''
     if (text && looksLikeMarkdown(text) && !htmlHasRichStructure(html)) {
-      const rendered = DOMPurify.sanitize(marked.parse(normalizeMarkdownTables(text)))
-      // Use ProseMirror's DOMParser directly — TipTap's insertContent uses parseSlice
-      // which can silently drop table nodes after node.check() failures on <thead>/<tbody>
-      // fall-through handling. PMParser.fromSchema + replaceSelection is how TipTap's
-      // own clipboard paste pipeline works internally.
-      const tempEl = document.createElement('div')
-      tempEl.innerHTML = rendered
-      normalizeMarkdownTaskLists(tempEl)
-      const slice = PMParser.fromSchema(view.state.schema).parseSlice(tempEl)
-      view.dispatch(view.state.tr.replaceSelection(slice))
+      insertMarkdownIntoView(view, text)
       return true
     }
 
@@ -1368,7 +1392,8 @@
 
         <div class="tb-spacer"></div>
 
-        <!-- Export Markdown -->
+        <!-- Import / Export Markdown -->
+        <button class="tb-btn" onmousedown={triggerMarkdownImport} disabled={doc.locked} title="Importar Markdown (.md) na posição do cursor">⬆ .md</button>
         <button class="tb-btn" onclick={exportMarkdown} title="Exportar como Markdown (.md)">⬇ .md</button>
 
         <div class="tb-sep" role="separator"></div>
@@ -1385,6 +1410,7 @@
     <!-- File input lives outside {#key editorTick} so it survives editor transactions
          (opening the file dialog causes a blur transaction that would otherwise destroy it) -->
     <input bind:this={uploadImgInputEl} type="file" accept="image/*" class="sr-only" onchange={handleImageUploadInline} disabled={imgUploading} />
+    <input bind:this={importMdInputEl} type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" class="sr-only" onchange={handleMarkdownImportInline} />
 
     <!-- Inline panels that must live outside the overflow:auto toolbar -->
     {#if linkOpen}

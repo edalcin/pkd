@@ -1,5 +1,7 @@
 import { CodeBlock } from '@tiptap/extension-code-block'
 import mermaid from 'mermaid'
+import { Plugin } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 let renderCounter = 0
 
@@ -43,6 +45,25 @@ async function renderMermaid(source, container, theme) {
 }
 
 export const MermaidCodeBlock = CodeBlock.extend({
+  addProseMirrorPlugins() {
+    return [
+      ...(this.parent?.() || []),
+      new Plugin({
+        props: {
+          decorations(state) {
+            const { from, to } = state.selection
+            const decos = []
+            state.doc.nodesBetween(from, to, (node, pos) => {
+              if (node.type.name === 'codeBlock' && isMermaid(node)) {
+                decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'mermaid-caret-inside' }))
+              }
+            })
+            return decos.length ? DecorationSet.create(state.doc, decos) : null
+          },
+        },
+      }),
+    ]
+  },
   addNodeView() {
     return ({ node }) => {
       if (!isMermaid(node)) {
@@ -57,6 +78,15 @@ export const MermaidCodeBlock = CodeBlock.extend({
       const wrapper = document.createElement('div')
       wrapper.className = 'mermaid-block'
 
+      const toggle = document.createElement('button')
+      toggle.type = 'button'
+      toggle.className = 'mermaid-toggle'
+      toggle.contentEditable = 'false'
+      toggle.textContent = '</>'
+      toggle.title = 'Mostrar/ocultar código Mermaid'
+      toggle.setAttribute('aria-pressed', 'false')
+      wrapper.appendChild(toggle)
+
       const pre = document.createElement('pre')
       pre.className = 'mermaid-source'
       const code = document.createElement('code')
@@ -68,6 +98,14 @@ export const MermaidCodeBlock = CodeBlock.extend({
       diagram.className = 'mermaid-diagram'
       diagram.innerHTML = '<span class="mermaid-loading">Renderizando diagrama…</span>'
       wrapper.appendChild(diagram)
+
+      const toggleSource = (e) => {
+        e.preventDefault()
+        const open = wrapper.classList.toggle('mermaid-open')
+        toggle.setAttribute('aria-pressed', open ? 'true' : 'false')
+      }
+      toggle.addEventListener('mousedown', toggleSource)
+      diagram.addEventListener('mousedown', toggleSource)
 
       let lastSource = null
       let lastTheme = null
@@ -102,7 +140,11 @@ export const MermaidCodeBlock = CodeBlock.extend({
         contentDOM: code,
 
         ignoreMutation(mutation) {
-          return diagram.contains(mutation.target) || mutation.target === diagram
+          return !code.contains(mutation.target)
+        },
+
+        stopEvent(event) {
+          return !code.contains(event.target)
         },
 
         update(updatedNode) {
