@@ -24,7 +24,8 @@
 | ✏️ **Editor rico** | TipTap v3 — negrito, itálico, títulos, listas, código, citações, imagens inline |
 | 📐 **Barra de ferramentas completa** | Tabelas, imagem por URL, alinhamento de parágrafo, destaque de texto com cor personalizável |
 | 🖼️ **Redimensionamento de imagens** | Passe o mouse sobre uma imagem e arraste a alça (canto inferior direito) para redimensioná-la; largura persiste no documento |
-| ⬇️ **Exportar como Markdown** | Botão `⬇ .md` no toolbar converte o documento para Markdown e baixa o arquivo `.md` no browser |
+| ⬇️⬆️ **Importar / Exportar Markdown** | Botão `⬇ .md` converte o documento para Markdown e baixa o arquivo; `⬆ .md` faz o caminho inverso — escolha um `.md` e o conteúdo é inserido na posição do cursor |
+| 🧜 **Diagramas Mermaid colapsáveis** | Blocos de código com fences ` ```mermaid ` renderizam o diagrama e escondem o código-fonte por padrão; clique no diagrama ou no chip `</>` para alternar a exibição do código |
 | 🎯 **Modo foco** | Botão de tela cheia abre o editor em uma janela separada, sem distrações; estado de conteúdo sincronizado ao fechar |
 | 🔗 **Notas relacionadas** | Relacione documentos pelo painel "Notas relacionadas"; as relações são **simétricas** — ambos os documentos exibem a mesma lista de relacionados, sem distinção de direção |
 | 🔗 **Links inline no editor** | Digite `[` no editor para abrir autocomplete de documentos internos; selecione para inserir um chip de link clicável diretamente no texto |
@@ -371,9 +372,19 @@ Ao colar conteúdo de outra página (blog, artigo, e-mail), imagens com URL exte
 
 As imagens importadas passam a aparecer na grade de "Arquivos anexados" e ficam disponíveis mesmo se o site externo for removido.
 
-### Exportar como Markdown
+### Importar e exportar Markdown
 
-Clique no botão **⬇ .md** na barra de ferramentas. O browser baixa imediatamente o arquivo `<título>.md` com o conteúdo do documento convertido para Markdown (headings `#`, código em triple-backtick, links `[Documento]` preservados).
+- **Exportar** — clique em **⬇ .md** na barra de ferramentas. O browser baixa imediatamente o arquivo `<título>.md` com o conteúdo do documento convertido para Markdown (headings `#`, código em triple-backtick, links `[Documento]` preservados).
+- **Importar** — clique em **⬆ .md**, escolha um arquivo `.md`/`.markdown`/`.txt` no seletor do sistema. O conteúdo é convertido e inserido na posição atual do cursor (ou no fim do documento, se o editor não estiver focado). Desabilitado em documentos trancados. Suporta headings, listas (incluindo checklist quando **todos** os itens da lista usam `- [ ]`/`- [x]`), tabelas e formatação inline.
+
+### Diagramas Mermaid
+
+Um bloco de código com fence ` ```mermaid ` renderiza o diagrama automaticamente. O código-fonte fica **oculto por padrão** — apenas o diagrama é exibido, com um chip `</>` no canto superior direito do bloco.
+
+- Clique no diagrama **ou** no chip para alternar a exibição do código-fonte.
+- Posicionar o cursor dentro do código (para editá-lo) revela a fonte automaticamente; ela volta a ocultar-se ao mover o cursor para fora do bloco.
+- Funciona em documentos trancados — o chip continua alternando a visualização mesmo sem poder editar.
+- Blocos de código de outras linguagens (` ```js `, ` ```python `, etc.) não são afetados — permanecem sempre com o código visível, sem renderização.
 
 ### Links inline no editor
 

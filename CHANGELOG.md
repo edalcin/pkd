@@ -8,6 +8,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Adicionado
 
+- **Editor: colapso de código Mermaid + Importar Markdown** — `frontend/src/lib/editor/mermaid-code-block.js` e `frontend/src/lib/components/Editor.svelte`:
+  - Blocos de código com fence ` ```mermaid ` (ou conteúdo detectado por padrão de sintaxe) escondem o código-fonte por padrão, mostrando apenas o diagrama renderizado; um chip `</>` no canto do bloco alterna a exibição. Clicar no diagrama tem o mesmo efeito.
+  - O código-fonte também reaparece automaticamente quando o cursor do editor está posicionado dentro do bloco, via `Decoration` de um novo `Plugin` do ProseMirror (`addProseMirrorPlugins`), e volta a ocultar-se ao sair.
+  - Blocos de código de outras linguagens não são afetados.
+  - Novo botão **⬆ .md** na toolbar, ao lado do já existente **⬇ .md**: abre um seletor de arquivo e insere o `.md`/`.markdown`/`.txt` escolhido na posição do cursor (fim do documento se o editor não estiver focado). Reaproveita o pipeline de conversão já usado pelo paste de Markdown (`marked` + `DOMPurify` + `PMParser.replaceSelection`), extraído para a função compartilhada `insertMarkdownIntoView`. Desabilitado em documentos trancados.
+
 - **Busca híbrida por fusão RRF** — `GET /api/tree?q=…` deixa de alternar entre modo léxico e semântico e passa a rodar sempre os dois recuperadores, fundindo o resultado por **Reciprocal Rank Fusion** (`k=60`, `internal/store/search.go:FuseRRF`):
   - `SearchStore.LexicalDocIDs` — FTS5 (até 100 candidatos) sempre seguido de `LIKE` (cobre `document_urls.title`, que o FTS5 não indexa), deduplicado e concatenado.
   - `LinkStore.SemanticSearchDocIDs` — cosseno sobre embeddings Gemini; piso reduzido de `0.45` para `0.30` e top-k elevado de `50` para `100` (o RRF já pondera por posição de rank, não por corte rígido de similaridade). Retorna lista vazia (não erro) quando `GEMINI_API_KEY` está ausente — antes retornava `503` via `handleTree`.

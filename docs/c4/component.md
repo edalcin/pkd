@@ -125,7 +125,7 @@ C4Component
         Container_Boundary(components_fe, "lib/components/") {
             Component(sidebar, "Sidebar.svelte", "Svelte 5", "Filtro de tags com chips coloridos, árvore de documentos delegada a TreeNode.svelte, botão novo documento.")
             Component(tree_node, "TreeNode.svelte", "Svelte 5 (recursivo)", "Nó da árvore: toggle expandir, drag-and-drop, ações contextuais.")
-            Component(editor, "Editor.svelte", "TipTap v3, Svelte 5", "Editor rico com auto-save 2s, conflito de versão 409. Toolbar: formatação, tabela, imagem por URL, alinhamento, destaque com cor. Cards de sub-documentos (filhos diretos) exibidos entre o editor e a área de associações. Chips de tag com cor inline. Upload de anexos, modal de preview, backlinks, links externos. Barra de ações: ⭐ favoritar, ⏱ histórico de versões (VersionHistoryDialog), compartilhar, trancar, arquivar.")
+            Component(editor, "Editor.svelte", "TipTap v3, Svelte 5", "Editor rico com auto-save 2s, conflito de versão 409. Toolbar: formatação, tabela, imagem por URL, alinhamento, destaque com cor, importar/exportar Markdown (⬆/⬇ .md). Cards de sub-documentos (filhos diretos) exibidos entre o editor e a área de associações. Chips de tag com cor inline. Upload de anexos, modal de preview, backlinks, links externos. Barra de ações: ⭐ favoritar, ⏱ histórico de versões (VersionHistoryDialog), compartilhar, trancar, arquivar.")
             Component(graph_view, "GraphView.svelte", "D3.js (d3-force, d3-zoom)", "Simulação force-directed em $effect. Svelte {#each} renderiza SVG circles/lines. Filtro de tags e toggle all-docs.")
             Component(search_comp, "Search.svelte", "Svelte 5", "Input de busca universal com dropdown. Debounce 150ms.")
             Component(calendar, "Calendar.svelte", "Svelte 5", "Grade mensal de dias. Clicar num dia lista documentos criados naquele dia.")
@@ -137,6 +137,7 @@ C4Component
         Container_Boundary(editor_exts, "lib/editor/") {
             Component(doclink_ext, "doclink-extension.js", "TipTap Node", "Nó inline customizado. Atributo data-doc-link='{id}'. Click navega para #/doc/{id}.")
             Component(link_suggestion, "link-suggestion.js", "TipTap Suggestion", "Trigger: [[ — dropdown de autocomplete via /api/search. Debounce 150ms.")
+            Component(mermaid_ext, "mermaid-code-block.js", "TipTap CodeBlock (extend)", "Detecta fence ```mermaid (ou conteúdo compatível) e renderiza via mermaid.js. Código-fonte oculto por padrão (chip </> + decoration de caret-inside via ProseMirror Plugin); reage a tema claro/escuro.")
         }
 
         Component(api_js, "lib/api.js", "Fetch wrapper", "apiFetch(), apiGet(), apiPost(), apiPut(), apiDelete(). Injeta X-CSRF-Token em requisições mutantes.")
@@ -154,6 +155,7 @@ C4Component
     Rel(editor, api_js, "GET /api/documents/{id}/children para cards de sub-docs")
     Rel(editor, doclink_ext, "Extensão TipTap: renders links")
     Rel(editor, link_suggestion, "Extensão TipTap: [[ trigger")
+    Rel(editor, mermaid_ext, "Extensão TipTap: renderiza blocos ```mermaid")
     Rel(graph_view, api_js, "GET /api/graph")
     Rel(link_suggestion, api_js, "GET /api/search?q=...")
     Rel(auth_store, api_js, "POST /api/login, /api/logout")
