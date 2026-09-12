@@ -68,8 +68,17 @@ func (s *Server) handleCreateShare() http.HandlerFunc {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
-		if _, err := s.docs.GetByID(docID); errors.Is(err, store.ErrNotFound) {
+		doc, err := s.docs.GetByID(docID)
+		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if doc.Encrypted {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "documento protegido não pode ser compartilhado"})
 			return
 		}
 
@@ -185,6 +194,10 @@ func (s *Server) handlePublicShare() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		if doc.Encrypted {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
 
 		icon := doc.Icon
 		if icon == "" {
@@ -265,6 +278,11 @@ func (s *Server) handlePublicAttachment() http.HandlerFunc {
 		token := chi.URLParam(r, "token")
 		shareLink, err := s.shares.LookupByToken(token)
 		if err != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		doc, err := s.docs.GetByID(shareLink.DocumentID)
+		if err != nil || doc.Encrypted {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

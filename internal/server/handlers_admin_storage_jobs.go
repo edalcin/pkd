@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/edalcin/pkd/internal/backup"
+	"github.com/edalcin/pkd/internal/security"
 	"github.com/edalcin/pkd/internal/storage"
 	"github.com/edalcin/pkd/internal/store"
 )
@@ -25,6 +27,7 @@ const presignedDownloadTTL = 15 * time.Minute
 type attachmentSource struct {
 	local storage.Backend
 	s3    storage.Backend
+	key   []byte
 }
 
 func (a *attachmentSource) Open(ctx context.Context, att backup.Attachment) (io.ReadCloser, error) {
@@ -39,7 +42,23 @@ func (a *attachmentSource) Open(ctx context.Context, att backup.Attachment) (io.
 		return nil, fmt.Errorf("backend %q unavailable", att.StorageLocation)
 	}
 	rc, _, err := b.Get(ctx, att.StoredFilename)
-	return rc, err
+	if err != nil {
+		return nil, err
+	}
+	if !att.Encrypted {
+		return rc, nil
+	}
+	// ponytail: only encrypted rows buffer; GCM authenticates the whole blob.
+	raw, err := io.ReadAll(rc)
+	rc.Close()
+	if err != nil {
+		return nil, err
+	}
+	plain, err := security.DecryptBlob(raw, a.key)
+	if err != nil {
+		return nil, err
+	}
+	return io.NopCloser(bytes.NewReader(plain)), nil
 }
 
 // shaPersister adapts AttachmentStore.BackfillSHA256 to backup.SHA256Persister.
@@ -117,10 +136,11 @@ func (s *Server) runBackupJob(job *Job, cap storage.S3Capable) {
 			SizeBytes:       a.SizeBytes,
 			StorageLocation: a.StorageLocation,
 			ContentSHA256:   a.ContentSHA256,
+			Encrypted:       a.Encrypted,
 		})
 	}
 
-	src := &attachmentSource{local: s.localBackend, s3: s.s3Backend}
+	src := &attachmentSource{local: s.localBackend, s3: s.s3Backend, key: security.DeriveDocKey(s.cfg.Password)}
 	env := backup.EnvDescriptor{BackendKind: "s3"}
 	if s.cfg.S3 != nil {
 		env.Bucket = s.cfg.S3.Bucket

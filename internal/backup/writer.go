@@ -24,6 +24,7 @@ type Attachment struct {
 	SizeBytes       int64
 	StorageLocation string
 	ContentSHA256   string // may be "" when unknown — backup will compute and persist via BackfillSHA256
+	Encrypted       bool   // true when the stored blob is AES-256-GCM ciphertext; AttachmentSource.Open must return plaintext regardless
 }
 
 // AttachmentSource resolves an attachment's content. Implementations typically

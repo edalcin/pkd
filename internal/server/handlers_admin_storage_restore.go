@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/edalcin/pkd/internal/backup"
+	"github.com/edalcin/pkd/internal/security"
 	"github.com/edalcin/pkd/internal/storage"
 	"github.com/edalcin/pkd/internal/store"
 )
@@ -37,6 +38,7 @@ func (l *attachmentLookup) LookupBySHA256(ctx context.Context, sha string) ([]ba
 			StoredFilename:  r.StoredFilename,
 			StorageLocation: r.StorageLocation,
 			MimeType:        r.MimeType,
+			Encrypted:       r.Encrypted,
 		})
 	}
 	return out, nil
@@ -160,6 +162,7 @@ func (s *Server) runRestoreJob(job *Job, zipSrc io.ReaderAt, zipSize int64, onCo
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
+	key := security.DeriveDocKey(s.cfg.Password)
 	res, err := backup.StreamingRestore(
 		ctx,
 		zipSrc,
@@ -170,6 +173,12 @@ func (s *Server) runRestoreJob(job *Job, zipSrc io.ReaderAt, zipSize int64, onCo
 			OnConflict: onConflict,
 			OnProgress: func(processed int64) {
 				atomic.StoreInt64(&job.Processed, processed)
+			},
+			Encrypt: func(ref backup.LookupRef, plain []byte) ([]byte, error) {
+				if !ref.Encrypted {
+					return plain, nil
+				}
+				return security.EncryptBlob(plain, key)
 			},
 		},
 	)

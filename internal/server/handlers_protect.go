@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/edalcin/pkd/internal/security"
@@ -35,17 +36,28 @@ func (s *Server) handleProtectDocument() http.HandlerFunc {
 			return
 		}
 		key := security.DeriveDocKey(s.cfg.Password)
+		if _, err := s.attachments.EncryptDocumentFiles(r.Context(), id, key); err != nil {
+			s.attachments.DecryptDocumentFiles(r.Context(), id, key) //nolint:errcheck // best-effort rollback
+			log.Printf("protect: encrypting attachments for doc %d failed: %v", id, err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 		cipherHTML, err := security.EncryptDoc(doc.BodyHTML, key)
 		if err != nil {
+			s.attachments.DecryptDocumentFiles(r.Context(), id, key) //nolint:errcheck // best-effort rollback
+			log.Printf("protect: encrypting body for doc %d failed, attachments rolled back: %v", id, err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		out, err := s.docs.Protect(id, cipherHTML)
 		if errors.Is(err, store.ErrNotFound) {
+			s.attachments.DecryptDocumentFiles(r.Context(), id, key) //nolint:errcheck // best-effort rollback
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		if err != nil {
+			s.attachments.DecryptDocumentFiles(r.Context(), id, key) //nolint:errcheck // best-effort rollback
+			log.Printf("protect: saving encrypted body for doc %d failed, attachments rolled back: %v", id, err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
@@ -102,6 +114,9 @@ func (s *Server) handleUnprotectDocument() http.HandlerFunc {
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
+		}
+		if _, err := s.attachments.DecryptDocumentFiles(r.Context(), id, key); err != nil {
+			log.Printf("unprotect: decrypting attachments for doc %d failed: %v", id, err)
 		}
 		s.embedder.notify()
 		writeJSON(w, http.StatusOK, out)

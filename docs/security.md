@@ -162,6 +162,26 @@ A variável `PKD_BASE_URL` define o prefixo usado na geração de links público
 
 ---
 
+## Documentos protegidos (cifra em repouso)
+
+Requer 2FA por e-mail configurado (`SES_USERNAME`, `SES_PASSWORD`, `EMAIL_SENDER`, `EMAIL_2FA`). Chave AES-256 derivada de `PKD_PASSWORD` via SHA-256 com contexto (`security.DeriveDocKey`).
+
+| Alvo | Onde | Formato |
+|---|---|---|
+| Corpo do documento | `documents.body_html` (`documents.encrypted = 1`) | `security.EncryptDoc` — base64(nonce‖ciphertext), AES-256-GCM |
+| Anexos do documento | blob no backend ativo (local ou S3), `attachments.encrypted = 1` | `security.EncryptBlob` — nonce‖ciphertext cru, sem base64 |
+
+Regras de acesso e invariantes:
+
+- Proteger cifra os anexos **antes** do corpo; qualquer falha desfaz o parcial (best-effort) para que os dois estados casem. A flag é por anexo, então um estado parcial ainda descreve a realidade de cada blob.
+- Ler, criar ou remover anexo de documento protegido exige sessão que já validou o código por e-mail (`sessions.IsDocUnlocked`); sem isso, `403 {"error":"unlock required"}`. Reinício do servidor tranca tudo novamente.
+- `attachments.size_bytes` e `attachments.content_sha256` sempre descrevem o **plaintext**. O ZIP de backup guarda anexos decifrados (o manifesto indexa por hash de conteúdo) e o restore recifra o que pertence a documento protegido; a migração local↔S3 copia o ciphertext verbatim e pula a checagem de hash.
+- Documento protegido não pode gerar share público (`409`) e links legados respondem `404`, inclusive para seus anexos.
+- Decifrar exige o arquivo inteiro em memória — GCM autentica o blob completo. Downloads mantêm Range/206 servindo de um buffer.
+- ⚠️ Trocar `PKD_PASSWORD` torna corpo e anexos protegidos indecifráveis. Desproteja antes de rotacionar a senha.
+
+---
+
 ## O que o PKD não protege
 
 | Ameaça | Não protegido |

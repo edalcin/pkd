@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -815,6 +816,9 @@ func (s *Server) handleAdminUnprotect() http.HandlerFunc {
 			if _, err := s.docs.Unprotect(id, plain, plainText); err != nil {
 				failed = append(failed, id)
 				continue
+			}
+			if _, err := s.attachments.DecryptDocumentFiles(r.Context(), id, key); err != nil {
+				log.Printf("bulk unprotect: decrypting attachments for doc %d failed: %v", id, err)
 			}
 			unprotected = append(unprotected, id)
 		}

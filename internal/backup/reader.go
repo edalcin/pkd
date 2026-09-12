@@ -27,6 +27,11 @@ type RestoreOptions struct {
 	// OnProgress is called after each attachment row is written. counter is
 	// monotonically increasing, including skipped/kept entries.
 	OnProgress func(processed int64)
+	// Encrypt transforms plaintext before it is written to dst, reapplying
+	// the destination's at-rest encryption for the given ref. nil means
+	// identity (write plaintext as-is). Called once per ref immediately
+	// before its dst.Put.
+	Encrypt func(ref LookupRef, plain []byte) ([]byte, error)
 }
 
 // AttachmentLookup resolves manifest entries to live attachment rows by
@@ -42,6 +47,7 @@ type LookupRef struct {
 	StoredFilename  string
 	StorageLocation string
 	MimeType        string
+	Encrypted       bool
 }
 
 // SkippedEntry records a manifest entry that restore did not write to the
@@ -197,6 +203,18 @@ func StreamingRestore(
 					}
 				}
 			}
+			payload := content
+			if opts.Encrypt != nil {
+				payload, err = opts.Encrypt(ref, content)
+				if err != nil {
+					res.Skipped = append(res.Skipped, SkippedEntry{
+						SHA256:    entry.SHA256,
+						SizeBytes: entry.SizeBytes,
+						Reason:    fmt.Sprintf("encrypt %s: %v", ref.StoredFilename, err),
+					})
+					continue
+				}
+			}
 
 			mime := ref.MimeType
 			if mime == "" {
@@ -205,7 +223,7 @@ func StreamingRestore(
 			if mime == "" {
 				mime = "application/octet-stream"
 			}
-			if err := dst.Put(ctx, ref.StoredFilename, bytes.NewReader(content), int64(len(content)), mime); err != nil {
+			if err := dst.Put(ctx, ref.StoredFilename, bytes.NewReader(payload), int64(len(payload)), mime); err != nil {
 				res.Skipped = append(res.Skipped, SkippedEntry{
 					SHA256:    entry.SHA256,
 					SizeBytes: entry.SizeBytes,
@@ -214,7 +232,7 @@ func StreamingRestore(
 				continue
 			}
 			res.Written++
-			res.BytesWritten += int64(len(content))
+			res.BytesWritten += int64(len(payload))
 			processed++
 			if opts.OnProgress != nil {
 				opts.OnProgress(processed)

@@ -119,6 +119,13 @@ func ms(start time.Time) int64 { return time.Since(start).Milliseconds() }
 // New code should use the async pipeline at
 // POST /api/admin/storage/backup-start, which supports both local and S3
 // backends, deduplicates by SHA256, emits a manifest, and reports progress.
+//
+// ponytail: copies backend bytes verbatim, with no attachments-table lookup
+// per key, so it cannot tell an encrypted blob from a plaintext one and
+// never decrypts. Encrypted attachments therefore export as ciphertext here
+// (unlike the async pipeline, which decrypts via backup.Attachment.Encrypted).
+// Known limitation of the legacy endpoint; fix is to route it through the
+// same store lookup the async path uses, not worth it for a deprecated path.
 func (s *Server) handleAdminStorageBackupAttachments() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -155,6 +162,11 @@ func (s *Server) handleAdminStorageBackupAttachments() http.HandlerFunc {
 // the attachments table (skips orphans), supports cross-backend restore,
 // per-entry conflict resolution (overwrite/keep/abort), and integrity
 // verification by SHA256.
+//
+// ponytail: writes ZIP entry bytes verbatim to the local backend, so it only
+// round-trips correctly with archives produced by the equally-verbatim
+// handleAdminStorageBackupAttachments above (ciphertext in, ciphertext out).
+// It never re-encrypts, unlike the async pipeline's RestoreOptions.Encrypt.
 func (s *Server) handleAdminStorageRestoreAttachments() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

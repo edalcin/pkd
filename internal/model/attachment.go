@@ -20,4 +20,5 @@ type Attachment struct {
 	CreatedAt       time.Time `json:"created_at"`
 	StorageLocation string    `json:"-"` // "local" or "s3"
 	ContentSHA256   string    `json:"-"` // set during S3 migration for verification
+	Encrypted       bool      `json:"encrypted"` // blob at rest is AES-GCM ciphertext
 }

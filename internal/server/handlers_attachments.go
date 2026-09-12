@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/edalcin/pkd/internal/model"
+	"github.com/edalcin/pkd/internal/security"
 	"github.com/edalcin/pkd/internal/storage"
 	"github.com/edalcin/pkd/internal/store"
 )
@@ -34,11 +35,37 @@ func isInlineableMIME(mimeType string) bool {
 	}
 }
 
+// requireDocUnlocked reports whether the caller may touch docID's files.
+// Protected documents demand a session that already passed the e-mail unlock.
+func (s *Server) requireDocUnlocked(w http.ResponseWriter, r *http.Request, docID int64) bool {
+	doc, err := s.docs.GetByID(docID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return false
+	}
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return false
+	}
+	if !doc.Encrypted {
+		return true
+	}
+	sess := SessionFromContext(r.Context())
+	if sess == nil || !s.sessions.IsDocUnlocked(sess.ID, docID) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "unlock required"})
+		return false
+	}
+	return true
+}
+
 func (s *Server) handleListAttachments() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		docID, err := parseID(r, "id")
 		if err != nil {
 			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		if !s.requireDocUnlocked(w, r, docID) {
 			return
 		}
 		atts, err := s.attachments.ListByDocument(docID)
@@ -55,6 +82,14 @@ func (s *Server) handleCreateAttachment() http.HandlerFunc {
 		docID, err := parseID(r, "id")
 		if err != nil {
 			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		if !s.requireDocUnlocked(w, r, docID) {
+			return
+		}
+		doc, err := s.docs.GetByID(docID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
@@ -111,6 +146,13 @@ func (s *Server) handleCreateAttachment() http.HandlerFunc {
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
+			if doc.Encrypted {
+				if err := s.attachments.EncryptAttachment(r.Context(), att, security.DeriveDocKey(s.cfg.Password)); err != nil {
+					s.attachments.Delete(att.ID) //nolint:errcheck
+					http.Error(w, "internal error", http.StatusInternalServerError)
+					return
+				}
+			}
 			writeJSON(w, http.StatusCreated, att)
 			return
 		}
@@ -123,6 +165,13 @@ func (s *Server) handleCreateAttachment() http.HandlerFunc {
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
+		}
+		if doc.Encrypted {
+			if err := s.attachments.EncryptAttachment(r.Context(), att, security.DeriveDocKey(s.cfg.Password)); err != nil {
+				s.attachments.Delete(att.ID) //nolint:errcheck
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
 		}
 		// CKEditor SimpleUploadAdapter expects: {"default": "<url>"}
 		writeJSON(w, http.StatusCreated, map[string]interface{}{
@@ -149,6 +198,9 @@ func (s *Server) handleGetAttachment() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		if !s.requireDocUnlocked(w, r, att.DocumentID) {
+			return
+		}
 		s.serveAttachmentFile(w, r, att)
 	}
 }
@@ -170,6 +222,18 @@ func (s *Server) serveAttachmentFile(w http.ResponseWriter, r *http.Request, att
 	if inline {
 		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
+	}
+
+	if att.Encrypted {
+		// ponytail: encrypted blobs buffer in memory; GCM authenticates the whole file, so no streaming decrypt.
+		key := security.DeriveDocKey(s.cfg.Password)
+		plain, err := s.attachments.ReadPlaintext(r.Context(), att, key)
+		if err != nil {
+			http.Error(w, "file not found", http.StatusNotFound)
+			return
+		}
+		http.ServeContent(w, r, att.OriginalName, att.CreatedAt, bytes.NewReader(plain))
+		return
 	}
 
 	// Route to the correct backend based on storage_location.
@@ -210,6 +274,14 @@ func (s *Server) handleCreateAttachmentFromURL() http.HandlerFunc {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
+		if !s.requireDocUnlocked(w, r, docID) {
+			return
+		}
+		doc, err := s.docs.GetByID(docID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 		var body struct {
 			URL string `json:"url"`
 		}
@@ -228,6 +300,13 @@ func (s *Server) handleCreateAttachmentFromURL() http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		if doc.Encrypted {
+			if err := s.attachments.EncryptAttachment(r.Context(), att, security.DeriveDocKey(s.cfg.Password)); err != nil {
+				s.attachments.Delete(att.ID) //nolint:errcheck
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+		}
 		writeJSON(w, http.StatusCreated, att)
 	}
 }
@@ -237,6 +316,18 @@ func (s *Server) handleDeleteAttachment() http.HandlerFunc {
 		id, err := parseID(r, "id")
 		if err != nil {
 			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		att, err := s.attachments.GetByID(id)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if !s.requireDocUnlocked(w, r, att.DocumentID) {
 			return
 		}
 		if err := s.attachments.Delete(id); errors.Is(err, store.ErrNotFound) {

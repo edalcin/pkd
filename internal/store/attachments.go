@@ -117,10 +117,10 @@ func (s *AttachmentStore) GetByID(id int64) (*model.Attachment, error) {
 	var createdStr string
 	var sha sql.NullString
 	err := s.db.QueryRow(`
-		SELECT id, document_id, original_name, stored_filename, mime_type, size_bytes, storage_location, content_sha256, created_at
+		SELECT id, document_id, original_name, stored_filename, mime_type, size_bytes, storage_location, content_sha256, encrypted, created_at
 		FROM attachments WHERE id = ?`, id).Scan(
 		&att.ID, &att.DocumentID, &att.OriginalName, &att.StoredFilename,
-		&att.MimeType, &att.SizeBytes, &att.StorageLocation, &sha, &createdStr)
+		&att.MimeType, &att.SizeBytes, &att.StorageLocation, &sha, &att.Encrypted, &createdStr)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -148,7 +148,7 @@ func (s *AttachmentStore) Delete(id int64) error {
 // ListByDocument returns all attachments for a document.
 func (s *AttachmentStore) ListByDocument(docID int64) ([]*model.Attachment, error) {
 	rows, err := s.db.Query(`
-		SELECT id, document_id, original_name, stored_filename, mime_type, size_bytes, storage_location, created_at
+		SELECT id, document_id, original_name, stored_filename, mime_type, size_bytes, storage_location, encrypted, created_at
 		FROM attachments WHERE document_id = ? ORDER BY created_at`, docID)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (s *AttachmentStore) ListByDocument(docID int64) ([]*model.Attachment, erro
 		var att model.Attachment
 		var createdStr string
 		if err := rows.Scan(&att.ID, &att.DocumentID, &att.OriginalName, &att.StoredFilename,
-			&att.MimeType, &att.SizeBytes, &att.StorageLocation, &createdStr); err != nil {
+			&att.MimeType, &att.SizeBytes, &att.StorageLocation, &att.Encrypted, &createdStr); err != nil {
 			return nil, err
 		}
 		att.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdStr)
@@ -167,6 +167,122 @@ func (s *AttachmentStore) ListByDocument(docID int64) ([]*model.Attachment, erro
 		atts = append(atts, &att)
 	}
 	return atts, rows.Err()
+}
+
+// EncryptAttachment encrypts att's blob in place with key and marks it
+// encrypted. No-op if att is already encrypted. size_bytes and
+// content_sha256 always describe the plaintext and are never touched here.
+func (s *AttachmentStore) EncryptAttachment(ctx context.Context, att *model.Attachment, key []byte) error {
+	if att.Encrypted {
+		return nil
+	}
+	backend := s.BackendForLocation(att.StorageLocation)
+	rc, _, err := backend.Get(ctx, att.StoredFilename)
+	if err != nil {
+		return fmt.Errorf("read attachment %d: %w", att.ID, err)
+	}
+	// ponytail: whole-file buffer; GCM needs it. Chunked framing only if attachments get huge.
+	plain, err := io.ReadAll(rc)
+	rc.Close()
+	if err != nil {
+		return fmt.Errorf("buffer attachment %d: %w", att.ID, err)
+	}
+	cipherBytes, err := security.EncryptBlob(plain, key)
+	if err != nil {
+		return fmt.Errorf("encrypt attachment %d: %w", att.ID, err)
+	}
+	if err := backend.Put(ctx, att.StoredFilename, bytes.NewReader(cipherBytes), int64(len(cipherBytes)), att.MimeType); err != nil {
+		return fmt.Errorf("write attachment %d: %w", att.ID, err)
+	}
+	if _, err := s.db.ExecContext(ctx, `UPDATE attachments SET encrypted = 1 WHERE id = ?`, att.ID); err != nil {
+		return fmt.Errorf("mark attachment %d encrypted: %w", att.ID, err)
+	}
+	att.Encrypted = true
+	return nil
+}
+
+// DecryptAttachment reverses EncryptAttachment. No-op if att is not encrypted.
+func (s *AttachmentStore) DecryptAttachment(ctx context.Context, att *model.Attachment, key []byte) error {
+	if !att.Encrypted {
+		return nil
+	}
+	backend := s.BackendForLocation(att.StorageLocation)
+	rc, _, err := backend.Get(ctx, att.StoredFilename)
+	if err != nil {
+		return fmt.Errorf("read attachment %d: %w", att.ID, err)
+	}
+	// ponytail: whole-file buffer; GCM needs it. Chunked framing only if attachments get huge.
+	raw, err := io.ReadAll(rc)
+	rc.Close()
+	if err != nil {
+		return fmt.Errorf("buffer attachment %d: %w", att.ID, err)
+	}
+	plain, err := security.DecryptBlob(raw, key)
+	if err != nil {
+		return fmt.Errorf("decrypt attachment %d: %w", att.ID, err)
+	}
+	if err := backend.Put(ctx, att.StoredFilename, bytes.NewReader(plain), int64(len(plain)), att.MimeType); err != nil {
+		return fmt.Errorf("write attachment %d: %w", att.ID, err)
+	}
+	if _, err := s.db.ExecContext(ctx, `UPDATE attachments SET encrypted = 0 WHERE id = ?`, att.ID); err != nil {
+		return fmt.Errorf("mark attachment %d decrypted: %w", att.ID, err)
+	}
+	att.Encrypted = false
+	return nil
+}
+
+// EncryptDocumentFiles encrypts every attachment of docID with key, returning
+// how many were actually transformed. The first error aborts and is returned
+// alongside the partial count so the caller can attempt a rollback.
+func (s *AttachmentStore) EncryptDocumentFiles(ctx context.Context, docID int64, key []byte) (int, error) {
+	atts, err := s.ListByDocument(docID)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, att := range atts {
+		if err := s.EncryptAttachment(ctx, att, key); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
+// DecryptDocumentFiles is the mirror of EncryptDocumentFiles.
+func (s *AttachmentStore) DecryptDocumentFiles(ctx context.Context, docID int64, key []byte) (int, error) {
+	atts, err := s.ListByDocument(docID)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, att := range atts {
+		if err := s.DecryptAttachment(ctx, att, key); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
+}
+
+// ReadPlaintext returns att's bytes from its backend, decrypting with key
+// when att.Encrypted is set.
+func (s *AttachmentStore) ReadPlaintext(ctx context.Context, att *model.Attachment, key []byte) ([]byte, error) {
+	backend := s.BackendForLocation(att.StorageLocation)
+	rc, _, err := backend.Get(ctx, att.StoredFilename)
+	if err != nil {
+		return nil, fmt.Errorf("read attachment %d: %w", att.ID, err)
+	}
+	// ponytail: whole-file buffer; GCM needs it. Chunked framing only if attachments get huge.
+	raw, err := io.ReadAll(rc)
+	rc.Close()
+	if err != nil {
+		return nil, fmt.Errorf("buffer attachment %d: %w", att.ID, err)
+	}
+	if !att.Encrypted {
+		return raw, nil
+	}
+	return security.DecryptBlob(raw, key)
 }
 
 // ListAllWithDocumentPaged returns a page of attachments joined with their document title,
@@ -357,7 +473,7 @@ func (s *AttachmentStore) ReconcileStorageLocations(ctx context.Context, src sto
 // pass nil to skip progress reporting.
 func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.Backend, onProgress func(processed, total int64)) (int, int, []string) {
 	rows, err := s.db.Query(`
-		SELECT id, stored_filename, mime_type, storage_location, content_sha256
+		SELECT id, stored_filename, mime_type, storage_location, content_sha256, encrypted
 		FROM attachments WHERE storage_location != ?`, target.Name())
 	if err != nil {
 		return 0, 0, []string{fmt.Sprintf("query failed: %v", err)}
@@ -365,17 +481,18 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 	defer rows.Close()
 
 	type row struct {
-		id       int64
-		key      string
-		mime     string
-		location string
-		sha256   string
+		id        int64
+		key       string
+		mime      string
+		location  string
+		sha256    string
+		encrypted bool
 	}
 	var todo []row
 	for rows.Next() {
 		var r row
 		var sha sql.NullString
-		if err := rows.Scan(&r.id, &r.key, &r.mime, &r.location, &sha); err != nil {
+		if err := rows.Scan(&r.id, &r.key, &r.mime, &r.location, &sha, &r.encrypted); err != nil {
 			return 0, 0, []string{fmt.Sprintf("scan: %v", err)}
 		}
 		r.sha256 = sha.String
@@ -420,7 +537,10 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 		// Verify source integrity if SHA256 is stored.
 		sum := sha256.Sum256(data)
 		checksum := hex.EncodeToString(sum[:])
-		if r.sha256 != "" && r.sha256 != checksum {
+		// ponytail: content_sha256 always describes plaintext; an encrypted row's
+		// backend bytes are ciphertext and can never hash-match it. Skip the
+		// plaintext-hash check for those rows and copy the ciphertext verbatim.
+		if !r.encrypted && r.sha256 != "" && r.sha256 != checksum {
 			errs = append(errs, fmt.Sprintf("%s: SHA256 mismatch (expected %s, got %s)", r.key, r.sha256, checksum))
 			progress(i)
 			continue
@@ -456,10 +576,15 @@ func (s *AttachmentStore) MigrateToBackend(ctx context.Context, target storage.B
 			continue
 		}
 
-		// Update DB row.
+		// Update DB row. Encrypted rows keep their existing plaintext hash —
+		// checksum here is over ciphertext and must not replace content_sha256.
+		newSHA := r.sha256
+		if !r.encrypted {
+			newSHA = checksum
+		}
 		if _, err := s.db.ExecContext(ctx, `
 			UPDATE attachments SET storage_location = ?, content_sha256 = ? WHERE id = ?`,
-			target.Name(), checksum, r.id); err != nil {
+			target.Name(), newSHA, r.id); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: DB update failed: %v", r.key, err))
 			progress(i)
 			continue
@@ -550,6 +675,7 @@ type AttachmentForBackup struct {
 	SizeBytes       int64
 	StorageLocation string
 	ContentSHA256   string
+	Encrypted       bool
 }
 
 // EnumerateForBackup returns every attachment row, regardless of backend.
@@ -557,7 +683,7 @@ type AttachmentForBackup struct {
 // stream it into the backup archive.
 func (s *AttachmentStore) EnumerateForBackup(ctx context.Context) ([]AttachmentForBackup, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, stored_filename, mime_type, size_bytes, storage_location, content_sha256
+		SELECT id, stored_filename, mime_type, size_bytes, storage_location, content_sha256, encrypted
 		FROM attachments
 		ORDER BY id`)
 	if err != nil {
@@ -569,7 +695,7 @@ func (s *AttachmentStore) EnumerateForBackup(ctx context.Context) ([]AttachmentF
 	for rows.Next() {
 		var a AttachmentForBackup
 		var sha sql.NullString
-		if err := rows.Scan(&a.ID, &a.StoredFilename, &a.MimeType, &a.SizeBytes, &a.StorageLocation, &sha); err != nil {
+		if err := rows.Scan(&a.ID, &a.StoredFilename, &a.MimeType, &a.SizeBytes, &a.StorageLocation, &sha, &a.Encrypted); err != nil {
 			return nil, fmt.Errorf("scan attachment: %w", err)
 		}
 		a.ContentSHA256 = sha.String
@@ -597,6 +723,7 @@ type AttachmentRef struct {
 	StoredFilename  string
 	StorageLocation string
 	MimeType        string
+	Encrypted       bool
 }
 
 // LookupBySHA256 returns every attachment row whose content_sha256 matches
@@ -606,7 +733,7 @@ type AttachmentRef struct {
 // Uses idx_attachments_content_sha256 created in migrate.go.
 func (s *AttachmentStore) LookupBySHA256(ctx context.Context, sha256Hex string) ([]AttachmentRef, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, stored_filename, storage_location, mime_type
+		SELECT id, stored_filename, storage_location, mime_type, encrypted
 		FROM attachments
 		WHERE content_sha256 = ?`, sha256Hex)
 	if err != nil {
@@ -616,7 +743,7 @@ func (s *AttachmentStore) LookupBySHA256(ctx context.Context, sha256Hex string) 
 	var out []AttachmentRef
 	for rows.Next() {
 		var r AttachmentRef
-		if err := rows.Scan(&r.ID, &r.StoredFilename, &r.StorageLocation, &r.MimeType); err != nil {
+		if err := rows.Scan(&r.ID, &r.StoredFilename, &r.StorageLocation, &r.MimeType, &r.Encrypted); err != nil {
 			return nil, fmt.Errorf("scan ref: %w", err)
 		}
 		out = append(out, r)

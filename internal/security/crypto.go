@@ -59,6 +59,38 @@ func DecryptDoc(encoded string, key []byte) (string, error) {
 	return string(pt), nil
 }
 
+// EncryptBlob returns nonce||ciphertext (raw bytes, no base64) under AES-256-GCM.
+// Attachments are binary and often large, so skipping base64 avoids a 33% size
+// inflation on top of the ciphertext.
+func EncryptBlob(plain, key []byte) ([]byte, error) {
+	gcm, err := newGCM(key)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+	return gcm.Seal(nonce, nonce, plain, nil), nil
+}
+
+// DecryptBlob reverses EncryptBlob. Returns ErrDecrypt on wrong key/tamper.
+func DecryptBlob(raw, key []byte) ([]byte, error) {
+	gcm, err := newGCM(key)
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) < gcm.NonceSize() {
+		return nil, ErrDecrypt
+	}
+	nonce, ct := raw[:gcm.NonceSize()], raw[gcm.NonceSize():]
+	pt, err := gcm.Open(nil, nonce, ct, nil)
+	if err != nil {
+		return nil, ErrDecrypt
+	}
+	return pt, nil
+}
+
 func newGCM(key []byte) (cipher.AEAD, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {

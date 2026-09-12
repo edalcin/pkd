@@ -8,6 +8,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Adicionado
 
+- **Anexos de documentos protegidos: cifra em repouso + exigência de desbloqueio** — a proteção de documento passa a cobrir os arquivos associados, não só o corpo:
+  - `POST /api/documents/{id}/protect` cifra cada anexo do documento com AES-256-GCM (`security.EncryptBlob`, mesma chave derivada de `PKD_PASSWORD`) antes de cifrar o corpo; falha em qualquer etapa desfaz o parcial (best-effort) e retorna 500, de modo que corpo e arquivos nunca ficam em estados diferentes. `/unprotect` e a desproteção em lote da Administração revertem os arquivos junto com o corpo. Nova coluna `attachments.encrypted`.
+  - Novo portão de acesso: `GET/POST/DELETE` de anexos de um documento protegido exigem que a sessão já tenha passado pelo desbloqueio por e-mail (`403 {"error":"unlock required"}`). Antes, `GET /api/attachments/{id}` servia o arquivo de qualquer documento sem checar proteção — o corpo ficava trancado, os anexos não.
+  - Upload em documento protegido nasce cifrado (nenhum passo manual). O download decifra em memória e continua suportando Range/206.
+  - `size_bytes` e `content_sha256` continuam descrevendo o **plaintext**: o ZIP de backup guarda anexos decifrados (o manifesto indexa por hash do conteúdo) e o restore recifra o que pertence a documento protegido. A migração local↔S3 copia o ciphertext verbatim e pula a checagem de hash nessas linhas.
+  - Compartilhamento público de documento protegido agora é recusado (`409`); links legados que apontem para documento protegido respondem `404`, inclusive nos anexos.
+  - Endpoints legados `/api/admin/storage/{backup,restore}-attachments` copiam bytes por chave, sem vínculo com a tabela `attachments` — anexo cifrado entra e sai como ciphertext nesse par (simétrico, então o round-trip com ele mesmo funciona). Use o pipeline assíncrono para backup com anexos protegidos.
+
 - **Editor: colapso de código Mermaid + Importar Markdown** — `frontend/src/lib/editor/mermaid-code-block.js` e `frontend/src/lib/components/Editor.svelte`:
   - Blocos de código com fence ` ```mermaid ` (ou conteúdo detectado por padrão de sintaxe) escondem o código-fonte por padrão, mostrando apenas o diagrama renderizado; um chip `</>` no canto do bloco alterna a exibição. Clicar no diagrama tem o mesmo efeito.
   - O código-fonte também reaparece automaticamente quando o cursor do editor está posicionado dentro do bloco, via `Decoration` de um novo `Plugin` do ProseMirror (`addProseMirrorPlugins`), e volta a ocultar-se ao sair.
