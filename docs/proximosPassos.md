@@ -1,8 +1,8 @@
 # Próximos Passos — Chat RAG sobre os Documentos
 
-> **Implementação de código CONCLUÍDA** em 2026-09-02 — as cinco fases estão
-> feitas e verificadas. O que resta é ação sua no deploy (seção "Ação do
-> usuário") mais as pendências abertas no fim.
+> **Implementação e deploy CONCLUÍDOS** — as cinco fases estão
+> feitas, verificadas e o deploy no UNRAID foi realizado. O que resta são
+> as observações de uso real e pendências herdadas no fim.
 >
 > Documento de handoff entre sessões: uma sessão nova deve ler este arquivo e a
 > [ADR-006](adr/006-chat-rag-sobre-documentos.md), nessa ordem.
@@ -188,7 +188,7 @@ coberto por smoke test manual (Fase 3) e pelos testes de contrato de
 servidor Gemini falso no `LinkStore`, que hoje constrói seu próprio
 `http.Client` — refatoração maior que o teste. **Decidir se vale.**
 
-## Ação do usuário depois do deploy (não é código)
+## Acompanhamento pós-deploy (deploy realizado no UNRAID)
 
 1. O novo `semanticBodyChars` invalida os 283 vetores (o hash de staleness cobre
    o texto embedado). O sweep repovoa automaticamente; custo ~$0,45.
