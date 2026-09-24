@@ -124,6 +124,6 @@ Para ler uma Memória: `GET <PKD_URL>/api/memories/{memory_id}`.
 
 - Não existe apagar nem buscar Memórias pela API. Se o Eduardo pedir para
   apagar, diga que ele apaga pela interface do PKD.
-- `409` num PATCH: a Memória está criptografada, bloqueada, ou o título já
-  existe. Explique ao Eduardo.
+- `409` num PATCH: a Memória está criptografada, o título já existe ou houve
+  conflito de versão. `403`: a Memória está bloqueada. Explique ao Eduardo.
 ```
