@@ -37,6 +37,7 @@
 | 📅 **Calendário** | Navegue pelos documentos pela data de criação |
 | 🕰️ **Histórico de versões** | Snapshot automático a cada save com dedup SHA-256 (saves idênticos não geram versão). Visualize, compare e restaure qualquer versão anterior via botão `⏱` na barra do documento. Retenção configurável (padrão 50 versões/documento) |
 | ⭐ **Favoritar da barra** | Botão ⭐ na barra de ações do documento — alterna favorito sem precisar ir à sidebar |
+| 🗓️ **Memória Cronológica** | Registre eventos no tempo (almoço, entrega, consulta) como **Memórias**, em árvore própria Ano → Mês → Dia no menu lateral. ID público estável `MEM-…`, API para agentes (Hermes). Ver [Memória Cronológica (MC)](#memória-cronológica-mc) |
 
 ### Árvore lateral
 
@@ -115,6 +116,9 @@ O PKD expõe um endpoint de importação para receber notas do app [Notas](https
 Memórias registram eventos no tempo (um almoço, uma entrega, um evento de saúde). Cada Memória é um documento com busca, embeddings, Chat, tags, anexos e links, mas vive **somente** na árvore da MC do menu lateral (Ano → Mês → Dia), posicionada pela **Data da Memória** — nunca na árvore normal, sem pai nem filhos. Termos em [`docs/adr/glossary.md`](docs/adr/glossary.md); ID público em [ADR-007](docs/adr/007-id-publico-de-memoria.md).
 
 - **Data da Memória**: só o ano é obrigatório; mês, dia e hora exata **ou** Período (madrugada, manhã, almoço, tarde, lanche, jantar, noite) entram quando conhecidos
+- **Árvore da MC**: bloco próprio no menu lateral, entre a árvore de documentos e "+ Novo documento", recolhível. Anos, meses e dias do **mais recente para o mais antigo**; dentro do dia: sem hora → início do dia → Período mais longo → hora exata → criação
+- **Criar pela interface**: "+ Nova Memória" abre um diálogo com Ano e Mês de hoje e o Dia vazio. No editor, o controle **Data da Memória** substitui a Data Associada e o ID tem botão Copiar. Ícone padrão `bx-calendar-event`
+- **Sem hierarquia**: Memória não tem pai nem filhos (bloqueado no backend e na interface); associe por link. Memórias entram na busca, no Chat e no Graph View
 - **ID de Memória**: `MEM-AAAA[-MM[-DD[T<HH>[MM]]]]-SUFIXO6`, ex. `MEM-2026-09-23T12-7QF3K9`. Congelado na criação: corrigir a data não muda o ID
 - **API para agentes** (Bearer `PKD_IMPORT_TOKEN`, ou sessão de login):
   - `POST /api/memories` — `{title, content (HTML), tags?, attachments?, date:{year, month?, day?, hour?, minute?, period?}, idempotency_key?}` → 201. A mesma `idempotency_key` devolve a Memória existente (200), sem duplicar
@@ -508,6 +512,7 @@ graph TD
     User(["👤 Usuário"]) -->|"HTTPS / Browser"| App
     Mobile(["📱 Mobile OS"]) -->|"PWA Share Target"| App
     Notas(["📝 Notas app"]) -->|"Bearer token\nPOST /api/import"| App
+    Hermes(["🤖 Hermes"]) -->|"Bearer token\n/api/memories"| App
 
     subgraph Container ["🐳 Docker Container"]
         App["⚙️ Go HTTP Server\n(chi router · handlers · middleware)"]
@@ -525,6 +530,7 @@ graph TD
 | Tabela | Descrição |
 |---|---|
 | `documents` | Documentos com hierarquia via `parent_id`, soft-delete, versionamento otimista |
+| `documents` (Memória) | Memória = documento com `memory_id` não nulo. Colunas `memory_id` (ID público, `UNIQUE`), `memory_hour`, `memory_minute`, `memory_period`, `memory_key` (idempotência, `UNIQUE`); dia em `assoc_year/month/day` |
 | `document_links` | Arestas simétricas entre documentos; o "outro doc" é derivado via `CASE WHEN` independente de qual lado é `source_id`. Flag `manual` distingue links do painel de notas relacionadas |
 | `document_urls` | URLs externas com título opcional associadas a documentos |
 | `attachments` | Metadados de arquivos; binários em volume externo com path sharding |
@@ -552,6 +558,19 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-09-24
+
+**Memória Cronológica (MC)**
+
+- Nova árvore Ano → Mês → Dia no menu lateral para **Memórias**: documentos posicionados pela Data da Memória (só o ano é obrigatório; hora exata ou Período opcionais)
+- ID público estável `MEM-AAAA[-MM[-DD[T<HH>[MM]]]]-SUFIXO6`; corrigir a data não muda o ID ([ADR-007](docs/adr/007-id-publico-de-memoria.md))
+- API `POST /api/memories` (idempotente por `idempotency_key`), `GET`/`PATCH /api/memories/{MEM-id}`; Bearer `PKD_IMPORT_TOKEN` ou sessão
+- "+ Nova Memória" na interface; Data da Memória e ID copiável no editor
+- Migração aditiva (colunas e índices novos em `documents`, sem backfill)
+- Prompt para a Skill do Hermes em [`docs/promptMcHermes.md`](docs/promptMcHermes.md)
+
+---
 
 ### 2026-07-28
 

@@ -1,7 +1,8 @@
 # Próximos Passos — Memória Cronológica (MC)
 
-> **Implementação concluída e verificada localmente (2026-09-24). Commit
-> `14e6978` em `main`, com push feito. O CI publica `:edge`.** Uma sessão nova deve ler este arquivo,
+> **Concluída, implantada no UNRAID e validada em uso real (2026-09-24).**
+> Código em `main` (`14e6978`); Skill do Hermes configurada e funcionando.
+> Uma sessão nova deve ler este arquivo,
 > [`docs/adr/glossary.md`](adr/glossary.md) (Memória, Memória Cronológica, Data
 > da Memória, Período, ID de Memória) e a
 > [ADR-007](adr/007-id-publico-de-memoria.md), nessa ordem. Spec original:
@@ -12,13 +13,9 @@
 ## Reinício — faça isto primeiro
 
 1. `git status -sb`: a working tree deve estar limpa e em sincronia com
-   `origin/main` (último commit da feature: `14e6978`, handoff em `f41e3b1`
-   ou posterior).
-2. Verifique se o CI do push terminou verde e publicou `ghcr.io/edalcin/pkd:edge`
-   (`gh run list --limit 3`).
-3. Siga "Próximos passos" a partir do item 2 (deploy no UNRAID).
-
-Não há trabalho pendente de código. Todo o código da MC já está em `main`.
+   `origin/main`.
+2. Não há trabalho pendente da MC. Próximo trabalho: revisar "Pontos abertos"
+   depois de algumas semanas de uso, ou nova feature pedida pelo usuário.
 
 **Armadilhas conhecidas**
 
@@ -90,7 +87,9 @@ Não redecidir sem motivo novo.
 - `documents.js`, `Admin.svelte` — recarregam a lista da MC em
   arquivar/lixeira/restaurar/renomear.
 
-**Docs** — `README.md` (seção MC, `PKD_IMPORT_TOKEN`), glossário, ADR-007,
+**Docs** — `README.md` (funcionalidade, seção MC, modelo de dados,
+arquitetura, changelog, `PKD_IMPORT_TOKEN`), glossário, ADR-007,
+`docs/security.md` (Bearer/`tokenOrSession`), C4 context e component,
 [`docs/promptMcHermes.md`](promptMcHermes.md) (prompt da Skill do Hermes).
 
 **Verificação**
@@ -107,16 +106,12 @@ Não redecidir sem motivo novo.
 
 ## Próximos passos
 
-1. ~~Commit e push~~ — feito (`14e6978`, `f41e3b1`).
-2. **Deploy:** o push em `main` dispara o CI e publica `:edge`, que o UNRAID
-   atualiza sozinho. A migração é aditiva (colunas e índices novos, sem
-   backfill). Depois do deploy, confira no UNRAID que "+ Nova Memória" cria uma
-   Memória e que ela aparece na árvore da MC.
-3. **Configurar a Skill no Hermes** com [`docs/promptMcHermes.md`](promptMcHermes.md)
-   (substituir `<PKD_URL>`) e o mesmo `PKD_IMPORT_TOKEN` do container. Primeiro
-   teste: o relato do exemplo ("ontem almocei com minhas irmãs…") deve gerar
-   `MEM-AAAA-MM-DDT12-…` com Período almoço.
-4. Depois de algumas semanas de uso, revisar os "Pontos abertos" abaixo.
+1. ~~Commit e push~~ — feito (`14e6978`).
+2. ~~Deploy no UNRAID~~ — feito; "+ Nova Memória" e árvore da MC validadas.
+3. ~~Skill no Hermes~~ — configurada com `docs/promptMcHermes.md`; funcionando.
+4. Ordem da árvore (Q6, mais recente primeiro) confirmada pelo usuário em uso
+   real — manter.
+5. Depois de algumas semanas de uso, revisar os "Pontos abertos" abaixo.
 
 ## Pontos abertos (decidir com uso real)
 
