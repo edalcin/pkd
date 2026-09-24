@@ -1,8 +1,7 @@
 # Próximos Passos — Memória Cronológica (MC)
 
-> **Implementação concluída e verificada localmente (2026-09-24).
-> NADA COMMITADO, deploy não feito.** Todo o trabalho está só na working tree
-> de `main`. Uma sessão nova deve ler este arquivo,
+> **Implementação concluída e verificada localmente (2026-09-24). Commit
+> `14e6978` em `main`, com push feito. O CI publica `:edge`.** Uma sessão nova deve ler este arquivo,
 > [`docs/adr/glossary.md`](adr/glossary.md) (Memória, Memória Cronológica, Data
 > da Memória, Período, ID de Memória) e a
 > [ADR-007](adr/007-id-publico-de-memoria.md), nessa ordem. Spec original:
@@ -125,8 +124,8 @@ Não redecidir sem motivo novo.
 
 ## Próximos passos
 
-1. **Commit** em `main` com os arquivos listados em "Reinício" (usar a skill
-   `git-commit`), depois push.
+1. ~~Commit e push~~ — feito (`14e6978`). Na seção "Reinício", pule os itens
+   1 e 3.
 2. **Deploy:** o push em `main` dispara o CI e publica `:edge`, que o UNRAID
    atualiza sozinho. A migração é aditiva (colunas e índices novos, sem
    backfill). Depois do deploy, confira no UNRAID que "+ Nova Memória" cria uma
