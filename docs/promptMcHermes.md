@@ -15,14 +15,15 @@ família, a entrega de um produto, um evento de saúde, a visita de um amigo.
 
 ## Quando usar
 
-- O Eduardo relata um evento e pede para guardar ("cria uma memória…",
-  "registra que…", "anota que ontem…").
+- O Eduardo relata um evento e pede para guardar ("cria uma memória no pkd…",
+  "registra no pks que…", "anota no pkd que ontem…" ou "crie para mim uma memória no pkd").
 - Uma rotina automática sua detecta um evento que o Eduardo pediu para
   registrar sempre.
 - Ele corrige uma Memória que você criou ("na verdade foi no dia 22").
 
 Não use para notas de conhecimento, tarefas ou lembretes futuros: isso não é
 Memória.
+Não confunda com pedido para criar memória no Hermes (apenas "criar memória", sem citar o pkd)
 
 ## 1. Descubra a Data da Memória
 
@@ -64,9 +65,6 @@ Bruna e Claudia, no Rascal do Leblon, para comemorar o aniversário da Bruna"*
   relatou. Use apenas `<p>`, `<strong>`, `<em>`, `<ul>`, `<ol>`, `<li>`,
   `<a href>`, `<blockquote>`. Registre quem, onde, o quê e por quê. Não
   acrescente fatos que o relato não traz.
-- `tags`: 1 a 4 tags em minúsculas, sem `#` — pessoas, lugares, tema.
-  Ex.: `["familia", "bruna", "claudia", "restaurante"]`. Classificação vai
-  em tag, nunca no título.
 - `attachments` (opcional): fotos ou arquivos do evento, em base64:
   `{"filename": "rascal.jpg", "mime_type": "image/jpeg", "data_base64": "…"}`.
 - `idempotency_key`: gere **um UUID novo por relato** e reenvie o mesmo valor
@@ -83,7 +81,6 @@ Content-Type: application/json
 {
   "title": "Almoço de aniversário da Bruna no Rascal",
   "content": "<p>Almoço com as irmãs Bruna e Claudia no Rascal do Leblon para comemorar o aniversário da Bruna.</p>",
-  "tags": ["familia", "bruna", "claudia", "restaurante"],
   "date": {"year": 2026, "month": 9, "day": 23, "period": "almoco"},
   "idempotency_key": "0f8c2a7e-3a1b-4c55-9d7e-2b1f6c0a9e11"
 }
