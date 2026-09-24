@@ -11,31 +11,14 @@
 
 ## Reinício — faça isto primeiro
 
-1. `git status --short` e confira que a working tree bate com a lista abaixo.
-2. Rode `go build ./... && go test ./tests/... ./internal/... -count=1` e
-   `npm run build` em `frontend/` para confirmar que nada regrediu.
-3. **Pergunte ao usuário** se pode commitar (a sessão anterior parou nessa
-   pergunta) e siga "Próximos passos".
+1. `git status -sb`: a working tree deve estar limpa e em sincronia com
+   `origin/main` (último commit da feature: `14e6978`, handoff em `f41e3b1`
+   ou posterior).
+2. Verifique se o CI do push terminou verde e publicou `ghcr.io/edalcin/pkd:edge`
+   (`gh run list --limit 3`).
+3. Siga "Próximos passos" a partir do item 2 (deploy no UNRAID).
 
-**Arquivos desta feature** (commitar juntos):
-
-- Novos: `internal/store/memories.go`, `internal/server/handlers_memories.go`,
-  `tests/unit/store_memories_test.go`,
-  `frontend/src/lib/stores/memories.js`,
-  `frontend/src/lib/components/MemoryDateFields.svelte`,
-  `frontend/src/lib/components/NewMemoryDialog.svelte`,
-  `docs/adr/007-id-publico-de-memoria.md`, `docs/promptMcHermes.md`.
-- Modificados: `internal/model/document.go`, `internal/store/documents.go`,
-  `internal/store/migrate.go`, `internal/server/server.go`,
-  `internal/server/handlers_documents.go`, `internal/server/handlers_tree.go`,
-  `internal/server/web/dist/index.html` (saída do `npm run build`),
-  `frontend/src/lib/components/{Sidebar,Editor,TreeNode,Admin}.svelte`,
-  `frontend/src/lib/stores/documents.js`, `README.md`,
-  `docs/adr/glossary.md`, `docs/proximosPassos.md`.
-
-**Não são desta sessão — perguntar antes de commitar:**
-`docs/memoriaCronologica.md` (editado pelo usuário) e `docs/mcImage.png`
-(imagem de referência do usuário, não rastreada).
+Não há trabalho pendente de código. Todo o código da MC já está em `main`.
 
 **Armadilhas conhecidas**
 
@@ -124,8 +107,7 @@ Não redecidir sem motivo novo.
 
 ## Próximos passos
 
-1. ~~Commit e push~~ — feito (`14e6978`). Na seção "Reinício", pule os itens
-   1 e 3.
+1. ~~Commit e push~~ — feito (`14e6978`, `f41e3b1`).
 2. **Deploy:** o push em `main` dispara o CI e publica `:edge`, que o UNRAID
    atualiza sozinho. A migração é aditiva (colunas e índices novos, sem
    backfill). Depois do deploy, confira no UNRAID que "+ Nova Memória" cria uma
