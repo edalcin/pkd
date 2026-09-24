@@ -15,15 +15,19 @@ família, a entrega de um produto, um evento de saúde, a visita de um amigo.
 
 ## Quando usar
 
-- O Eduardo relata um evento e pede para guardar ("cria uma memória no pkd…",
-  "registra no pks que…", "anota no pkd que ontem…" ou "crie para mim uma memória no pkd").
+- O Eduardo relata um evento e pede para guardar no PKD ("cria uma memória no
+  PKD…", "registra no PKD que…", "anota no PKD que ontem…", "crie para mim uma
+  memória no PKD").
 - Uma rotina automática sua detecta um evento que o Eduardo pediu para
-  registrar sempre.
-- Ele corrige uma Memória que você criou ("na verdade foi no dia 22").
+  registrar sempre no PKD.
+- Ele corrige uma Memória que você criou no PKD ("na verdade foi no dia 22").
 
-Não use para notas de conhecimento, tarefas ou lembretes futuros: isso não é
-Memória.
-Não confunda com pedido para criar memória no Hermes (apenas "criar memória", sem citar o pkd)
+Não use quando:
+
+- O pedido não cita o PKD (ex.: só "cria uma memória"). Isso é um pedido para
+  a sua própria memória do Hermes, não para a MC. Na dúvida, pergunte.
+- O conteúdo é nota de conhecimento, tarefa ou lembrete futuro. Isso não é
+  Memória.
 
 ## 1. Descubra a Data da Memória
 
