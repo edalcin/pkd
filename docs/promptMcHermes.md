@@ -1,7 +1,7 @@
 # Prompt — Skill "Memória Cronológica" do Hermes
 
 Copie o bloco abaixo como instrução da Skill no Hermes. Substitua
-`<PKD_URL>` pela URL do PKD (ex.: `https://pkd.exemplo.com`) e configure o
+`<PKD_URL>` pela URL do PKD (ex.: `https://pkd.dalc.in`) e configure o
 segredo `PKD_IMPORT_TOKEN` com o mesmo valor do container do PKD.
 
 ---
