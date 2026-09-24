@@ -107,3 +107,43 @@ substring e `semanticQueryFloor` é 0.30 — e responder sobre oito documentos
 irrelevantes produz resposta alucinada com fontes decorativas. É deliberadamente
 **separado** de `semanticQueryFloor`: subir o piso da busca para consertar o
 Chat degradaria a busca.
+
+## Memória (Memory)
+
+Documento que registra um evento no tempo (um almoço, uma entrega, um evento de
+saúde). É um **Documento** com tipo próprio, não uma entidade separada: tem
+busca, embedding, Chat, tags, anexos e links iguais aos de qualquer Documento.
+Não aparece na árvore normal; aparece somente na árvore da **Memória
+Cronológica**, posicionada pela sua **Data da Memória**. Não tem pai nem
+filhos: associação com Documentos é só por link, e nenhum dos dois muda de árvore.
+
+## Memória Cronológica (MC)
+
+O conjunto de todas as **Memórias**, organizado por ano, mês e dia.
+
+## Data da Memória (Memory Date)
+
+Momento em que o evento de uma **Memória** aconteceu, conforme o relato. Só o
+ano é obrigatório; mês, dia, hora, minuto ou **Período** entram quando
+conhecidos, nunca inventados (hora ou Período exigem dia). É
+diferente da data de criação, que o sistema registra no momento em que o
+Documento é criado. Exemplo: relato feito em 24/09 sobre "ontem, no almoço"
+→ Data da Memória 23/09, hora do almoço; data de criação 24/09.
+_Evitar_: data do registro, data associada (para Memórias).
+
+## Período (Period)
+
+Parte nomeada do dia usada como **Data da Memória** quando a hora exata não é
+conhecida: madrugada (00–06h), manhã (06–12h), tarde (12–18h), noite (18–24h),
+almoço (12–15h), lanche (16–18h), jantar (18–21h). Períodos podem se sobrepor;
+cada um é identificado pela sua hora de início.
+_Evitar_: bucket, turno.
+
+## ID de Memória (Memory ID)
+
+Identificador público e legível de uma **Memória**, como
+`MEM-2026-09-23T12-7QF3K9`: prefixo fixo `MEM`, a **Data da Memória** na
+precisão conhecida e um sufixo aleatório. Congelado na criação — não muda se a
+data for corrigida (ADR-007). É rótulo de indexação; links internos usam o ID
+numérico do Documento.
+_Evitar_: código, slug, número da memória.

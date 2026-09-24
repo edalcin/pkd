@@ -27,6 +27,12 @@ type Document struct {
 	AssocYear        *int       `json:"assoc_year,omitempty"`
 	AssocMonth       *int       `json:"assoc_month,omitempty"`
 	AssocDay         *int       `json:"assoc_day,omitempty"`
+	// Memória fields (empty for normal documents). For a Memória, Assoc* hold
+	// the Data da Memória year/month/day.
+	MemoryID     string `json:"memory_id,omitempty"`
+	MemoryHour   *int   `json:"memory_hour,omitempty"`
+	MemoryMinute *int   `json:"memory_minute,omitempty"`
+	MemoryPeriod string `json:"memory_period,omitempty"`
 }
 
 // DocumentTreeNode is the nested shape returned by GET /api/tree.
@@ -43,6 +49,7 @@ type DocumentTreeNode struct {
 	Archived   bool                `json:"archived"`
 	ArchivedAt *time.Time          `json:"archived_at"`
 	Tags       []string            `json:"tags,omitempty"`
+	IsMemory   bool                `json:"is_memory,omitempty"`
 	Children   []*DocumentTreeNode `json:"children"`
 }
 

@@ -9,6 +9,10 @@
     onNavigate,
   } = $props()
 
+  // Search results (GET /api/tree?q=…) mix Memórias in; they are never
+  // draggable, never a drop target and never get children.
+  const isMemory = $derived(!!node.is_memory)
+
   const STORAGE_KEY = 'pkd-tree-collapsed'
 
   function loadExpanded() {
@@ -114,6 +118,7 @@
   }
 
   function onDragOver(e) {
+    if (isMemory) return // Memórias are never a drop target
     e.preventDefault()
     const rect = e.currentTarget.getBoundingClientRect()
     const relY = (e.clientY - rect.top) / rect.height
@@ -151,7 +156,7 @@
     class="tree-item {node.id === activeId ? 'active' : ''} {node.archived ? 'node-archived' : ''} {dropZone === 'inside' ? 'drag-over' : ''} {dropZone === 'before' ? 'drop-before' : ''} {dropZone === 'after' ? 'drop-after' : ''}"
     style="padding-left: {0.4 + depth * 0.75}rem"
     onclick={navigate}
-    draggable="true"
+    draggable={!isMemory}
     ondragstart={onDragStart}
     ondragover={onDragOver}
     ondragleave={onDragLeave}
@@ -202,7 +207,7 @@
           aria-label="Relacionar"
         >→</button>
       {/if}
-      <button class="row-btn" onclick={handleNewChild} title="Novo filho">+</button>
+      {#if !isMemory}<button class="row-btn" onclick={handleNewChild} title="Novo filho">+</button>{/if}
       {#if node.archived}
         <button class="row-btn row-btn-unarchive" onclick={handleUnarchive} title="Desarquivar"><i class="bx bx-undo"></i></button>
       {:else}

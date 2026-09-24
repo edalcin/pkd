@@ -2,15 +2,13 @@
 
 Quero implementar um sistema de "memória cronológica" (MC) no PKD que irá criar um novo "bloco" de documentos indexados cronologicamente. A memória cronológica servirá para eu registrar eventos, como por exemplo, um almoço em família, a entrega de um produto, evento de saúde ou a visita de um amigo. Estes eventos serão indexados pela data e, opcionalmente, hora em que aconteceram, ou período do dia (manhã, tarde, noite ou madrugada).
 
-A lista destes documentos da MC será mostrada, opcionalmente, no menu da esquerda (figura), após o bloco que lista os documentos "normais" e antes da entrada de "+ Novo Documento". A lista será representada por uma árvore colapsável, como a dos documentos "normais", onde o documento-raiz é o ANO da MC, seguido dos meses e dias.
-
-![image-20260924054653310](C:\Users\EDalcin\AppData\Roaming\Typora\typora-user-images\image-20260924054653310.png)
-
-Esta árvore é mostrada, por default, colapsada até sua raiz (ano) e com a opção de "mostrar/esconder", como são as TAGs.
+A lista destes documentos da MC será mostrada, opcionalmente, no menu da esquerda (@docs/mcImage.png ), após o bloco que lista os documentos "normais" e antes da entrada de "+ Novo Documento". A lista será representada por uma árvore colapsável, como a dos documentos "normais", onde o documento-raiz é o ANO da MC, seguido dos meses e dias. Esta árvore é mostrada, por default, colapsada até sua raiz (ano) e com a opção de "mostrar/esconder", como são as TAGs.
 
 Quero uma API específica para esta funcionalidade, onde ferramentas como o HERMES Agent pode criar uma MC automaticamente ou sob demanda, um relato meu solicitando para criar uma memoria cronológica. Esta API irá usar a mesma variável "PKD_IMPORT_TOKEN" já existente no docker do PKD, que será passada para o HERMES e qualquer outra ferramenta que necessite criar conteúdo no PKD.
 
 Os documentos do PKD seguirão o mesmo princípio dos documentos normais, sendo embedados e pesquisáveis sintática e semanticamente, além de estarem disponíveis ao CHAT.
+
+A criação de documentos na MC é feita principalmente por agentes de IA e pelo HERMES agent, via API. Porém, posso querer criar manualmente um registro (documento) na MC. Na criação de registro Manual, "criar memória", a interface vai pedir o escopo temporal desta memória (dia, mês, ano, hora, período do dia), onde dia, mês e ano são obrigatórios. Uma vez informado, o PKD vai criar o ID para o documento, conforme definido.
 
 
 
@@ -57,6 +55,11 @@ mesmo slot da hora exata:
   T06  manhã      06:00–11:59
   T12  tarde      12:00–17:59
   T18  noite      18:00–23:59
+  TAL hora do almoço (12:00-15:00)
+  TJN hora do jantar (18:00-21:00)
+  TLN hora do lanche (16:00-18:00)
+
+
 
 Os limites são convenção do projeto e devem ficar declarados junto do
 formato. A ambiguidade entre "hora exata 06h" e "bucket manhã" é

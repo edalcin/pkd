@@ -110,6 +110,18 @@ O PKD expõe um endpoint de importação para receber notas do app [Notas](https
 - **O que faz**: cria um documento com o título, conteúdo HTML e tags da nota de origem; aplica automaticamente a tag `notas` para identificar a procedência
 - **Ativação**: defina `PKD_IMPORT_TOKEN` no container (ver [Variáveis de ambiente](#variáveis-de-ambiente)); o endpoint é desativado quando a variável está ausente
 
+### Memória Cronológica (MC)
+
+Memórias registram eventos no tempo (um almoço, uma entrega, um evento de saúde). Cada Memória é um documento com busca, embeddings, Chat, tags, anexos e links, mas vive **somente** na árvore da MC do menu lateral (Ano → Mês → Dia), posicionada pela **Data da Memória** — nunca na árvore normal, sem pai nem filhos. Termos em [`docs/adr/glossary.md`](docs/adr/glossary.md); ID público em [ADR-007](docs/adr/007-id-publico-de-memoria.md).
+
+- **Data da Memória**: só o ano é obrigatório; mês, dia e hora exata **ou** Período (madrugada, manhã, almoço, tarde, lanche, jantar, noite) entram quando conhecidos
+- **ID de Memória**: `MEM-AAAA[-MM[-DD[T<HH>[MM]]]]-SUFIXO6`, ex. `MEM-2026-09-23T12-7QF3K9`. Congelado na criação: corrigir a data não muda o ID
+- **API para agentes** (Bearer `PKD_IMPORT_TOKEN`, ou sessão de login):
+  - `POST /api/memories` — `{title, content (HTML), tags?, attachments?, date:{year, month?, day?, hour?, minute?, period?}, idempotency_key?}` → 201. A mesma `idempotency_key` devolve a Memória existente (200), sem duplicar
+  - `GET /api/memories/{MEM-id}` e `PATCH /api/memories/{MEM-id}` (`title`, `content`, `tags`, `date` — `date` substitui a data inteira)
+  - Sem `DELETE` e sem busca: apagar é ação do usuário na interface
+- **Prompt para a Skill do Hermes**: [`docs/promptMcHermes.md`](docs/promptMcHermes.md)
+
 ---
 
 ## Início rápido
@@ -186,7 +198,7 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 | `PKD_MAX_ATTACHMENT_MB` | não | `100` | Tamanho máximo de arquivo anexado (MB) |
 | `PKD_TRUST_PROXY_HEADERS` | não | `0` | Defina como `1` apenas atrás de proxy reverso confiável |
 | `PKD_BASE_URL` | não | *(host da request)* | URL pública base para links de compartilhamento (ex: `https://pkd.exemplo.com/`) |
-| `PKD_IMPORT_TOKEN` | não | *(desativado)* | Token secreto para o endpoint `POST /api/import`. Se vazio, o endpoint não existe. Gere com `openssl rand -hex 32` |
+| `PKD_IMPORT_TOKEN` | não | *(desativado)* | Token secreto (Bearer) para `POST /api/import` e para a API de Memórias (`/api/memories`). Se vazio, `/api/import` não existe e `/api/memories` aceita só sessão de login. Gere com `openssl rand -hex 32` |
 | `PKD_S3_BUCKET` | não | *(vazio)* | Nome do bucket S3; junto com `PKD_S3_REGION` habilita S3 como backend disponível |
 | `PKD_S3_REGION` | não | *(vazio)* | Região AWS do bucket (ex: `us-east-1`) |
 | `PKD_S3_PREFIX` | não | *(vazio)* | Prefixo de caminho dentro do bucket (ex: `pkd/attachments/`) |

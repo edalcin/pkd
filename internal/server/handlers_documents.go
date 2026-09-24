@@ -29,6 +29,10 @@ func (s *Server) handleCreateDocument() http.HandlerFunc {
 			req.Title = "Untitled"
 		}
 		doc, err := s.docs.Create(req.ParentID, req.Title)
+		if errors.Is(err, store.ErrMemoryHierarchy) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
@@ -310,6 +314,9 @@ func (s *Server) handleMoveDocument() http.HandlerFunc {
 		if err := s.docs.Move(id, req.NewParentID); errors.Is(err, store.ErrCircularMove) {
 			http.Error(w, "circular move not allowed", http.StatusBadRequest)
 			return
+		} else if errors.Is(err, store.ErrMemoryHierarchy) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		} else if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
@@ -339,6 +346,9 @@ func (s *Server) handleReorderDocument() http.HandlerFunc {
 		}
 		if err := s.docs.Reorder(id, req.NewParentID, req.BeforeID); errors.Is(err, store.ErrCircularMove) {
 			http.Error(w, "circular move not allowed", http.StatusBadRequest)
+			return
+		} else if errors.Is(err, store.ErrMemoryHierarchy) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)

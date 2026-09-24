@@ -210,6 +210,12 @@ func (s *Server) buildRouter() http.Handler {
 		r.With(ImportTokenAuth(s.cfg.ImportToken)).Post("/api/import", s.handleImport())
 	}
 
+	// Memória Cronológica: agents (bearer PKD_IMPORT_TOKEN) or the UI session.
+	// No DELETE and no search here: deleting is a user action in the UI.
+	r.With(s.tokenOrSession).Post("/api/memories", s.handleCreateMemory())
+	r.With(s.tokenOrSession).Get("/api/memories/{memoryID}", s.handleGetMemory())
+	r.With(s.tokenOrSession).Patch("/api/memories/{memoryID}", s.handlePatchMemory())
+
 	// Static assets (unauthenticated).
 	// Svelte build outputs to /assets/ with hashed filenames; legacy paths kept.
 	sf := staticFileServer()
@@ -254,6 +260,7 @@ func (s *Server) buildRouter() http.Handler {
 		// Tree
 		r.Get("/api/tree", s.handleTree())
 		r.Post("/api/tree/sort", s.handleSortTree())
+		r.Get("/api/memories", s.handleListMemories())
 
 		// Chat RAG sobre os documentos (ADR-006). POST, não GET+EventSource:
 		// o CSRF é middleware global e EventSource não manda headers.

@@ -4,6 +4,7 @@
   import { loadTags, tags } from '../stores/tags.js'
   import { autoSaveInterval } from '../stores/settings.js'
   import { docBodyRefreshedSignal, loadTree } from '../stores/documents.js'
+  import { loadMemories } from '../stores/memories.js'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
 
@@ -671,6 +672,7 @@
   async function restoreFromTrash(id) {
     await apiPost(`/api/documents/${id}/restore`)
     await loadTrash()
+    await loadMemories()
   }
 
   async function permanentDelete(id) {

@@ -67,6 +67,11 @@ func (s *Server) respondHybridSearch(w http.ResponseWriter, r *http.Request, q, 
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	memIDs, err := s.docs.MemoryDocIDs()
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	docsByID := make(map[int64]*model.Document, len(docs))
 	for _, d := range docs {
 		docsByID[d.ID] = d
@@ -91,6 +96,7 @@ func (s *Server) respondHybridSearch(w http.ResponseWriter, r *http.Request, q, 
 			Archived:   d.Archived,
 			ArchivedAt: d.ArchivedAt,
 			Tags:       d.Tags,
+			IsMemory:   memIDs[d.ID],
 			Children:   []*model.DocumentTreeNode{},
 		})
 	}

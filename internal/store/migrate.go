@@ -103,6 +103,12 @@ func Open(dbPath string) (*sql.DB, error) {
 		{`ALTER TABLE attachments ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0`, "alter attachments encrypted"},
 		{`ALTER TABLE share_links ADD COLUMN include_children INTEGER NOT NULL DEFAULT 1`, "alter share_links include_children"},
 		{`ALTER TABLE share_links ADD COLUMN include_parent   INTEGER NOT NULL DEFAULT 0`, "alter share_links include_parent"},
+		// Memória Cronológica: memory_id NOT NULL marks a Memória (ADR-007).
+		{`ALTER TABLE documents ADD COLUMN memory_id     TEXT`, "alter documents memory_id"},
+		{`ALTER TABLE documents ADD COLUMN memory_hour   INTEGER`, "alter documents memory_hour"},
+		{`ALTER TABLE documents ADD COLUMN memory_minute INTEGER`, "alter documents memory_minute"},
+		{`ALTER TABLE documents ADD COLUMN memory_period TEXT`, "alter documents memory_period"},
+		{`ALTER TABLE documents ADD COLUMN memory_key    TEXT`, "alter documents memory_key"},
 	}
 	for _, m := range colMigrations {
 		if _, err := db.Exec(m.sql); err != nil {
@@ -120,6 +126,18 @@ func Open(dbPath string) (*sql.DB, error) {
 	); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("store.Open idx_documents_archived_at: %w", err)
+	}
+
+	// Memória ID and client idempotency key are unique; partial so normal
+	// documents (NULL) are unaffected.
+	for _, ix := range []string{
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_memory_id  ON documents(memory_id)  WHERE memory_id  IS NOT NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_memory_key ON documents(memory_key) WHERE memory_key IS NOT NULL`,
+	} {
+		if _, err := db.Exec(ix); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("store.Open memory index: %w", err)
+		}
 	}
 
 	// Index on content_sha256 supports SHA256 lookups during attachment restore

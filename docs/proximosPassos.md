@@ -1,211 +1,160 @@
-# Próximos Passos — Chat RAG sobre os Documentos
+# Próximos Passos — Memória Cronológica (MC)
 
-> **Implementação e deploy CONCLUÍDOS** — as cinco fases estão
-> feitas, verificadas e o deploy no UNRAID foi realizado. O que resta são
-> as observações de uso real e pendências herdadas no fim.
+> **Implementação concluída e verificada localmente (2026-09-24).
+> NADA COMMITADO, deploy não feito.** Todo o trabalho está só na working tree
+> de `main`. Uma sessão nova deve ler este arquivo,
+> [`docs/adr/glossary.md`](adr/glossary.md) (Memória, Memória Cronológica, Data
+> da Memória, Período, ID de Memória) e a
+> [ADR-007](adr/007-id-publico-de-memoria.md), nessa ordem. Spec original:
+> [`docs/memoriaCronologica.md`](memoriaCronologica.md).
 >
-> Documento de handoff entre sessões: uma sessão nova deve ler este arquivo e a
-> [ADR-006](adr/006-chat-rag-sobre-documentos.md), nessa ordem.
+> A feature anterior (Chat RAG, ADR-006) está concluída e implantada.
 
-**Objetivo:** rota `#/chat` que responde perguntas com base nos documentos do
-PKD, reusando a busca híbrida como recuperador e a `GEMINI_API_KEY` existente.
-Dropdown de **Modelo de Chat** em Administração → Preferências.
+## Reinício — faça isto primeiro
 
-Todas as 21 decisões de desenho estão em
-[ADR-006](adr/006-chat-rag-sobre-documentos.md) (D1–D12) e os termos em
-[glossary.md](adr/glossary.md). **Não redecidir nada** que esteja lá: as
-alternativas descartadas e os gatilhos de reversão já foram discutidos.
+1. `git status --short` e confira que a working tree bate com a lista abaixo.
+2. Rode `go build ./... && go test ./tests/... ./internal/... -count=1` e
+   `npm run build` em `frontend/` para confirmar que nada regrediu.
+3. **Pergunte ao usuário** se pode commitar (a sessão anterior parou nessa
+   pergunta) e siga "Próximos passos".
 
-## Resumo do desenho em uma frase
+**Arquivos desta feature** (commitar juntos):
 
-A pergunta entra na busca híbrida existente (`LexicalDocIDs` +
-`SemanticSearchDocIDs` + `FuseRRF`), os até 8 melhores documentos vão
-**inteiros** no prompt sob um teto de tokens, o Gemini Flash responde em
-streaming SSE, e o backend devolve a lista das fontes que ele mesmo enviou.
+- Novos: `internal/store/memories.go`, `internal/server/handlers_memories.go`,
+  `tests/unit/store_memories_test.go`,
+  `frontend/src/lib/stores/memories.js`,
+  `frontend/src/lib/components/MemoryDateFields.svelte`,
+  `frontend/src/lib/components/NewMemoryDialog.svelte`,
+  `docs/adr/007-id-publico-de-memoria.md`, `docs/promptMcHermes.md`.
+- Modificados: `internal/model/document.go`, `internal/store/documents.go`,
+  `internal/store/migrate.go`, `internal/server/server.go`,
+  `internal/server/handlers_documents.go`, `internal/server/handlers_tree.go`,
+  `internal/server/web/dist/index.html` (saída do `npm run build`),
+  `frontend/src/lib/components/{Sidebar,Editor,TreeNode,Admin}.svelte`,
+  `frontend/src/lib/stores/documents.js`, `README.md`,
+  `docs/adr/glossary.md`, `docs/proximosPassos.md`.
 
-## Fases
+**Não são desta sessão — perguntar antes de commitar:**
+`docs/memoriaCronologica.md` (editado pelo usuário) e `docs/mcImage.png`
+(imagem de referência do usuário, não rastreada).
 
-### Fase 1 — Backend base ✅ (2026-09-02)
+**Armadilhas conhecidas**
 
-- `internal/store/chat.go` — **novo**. Whitelist compilada (`ChatModelFlash` =
-  `models/gemini-3.7-flash`, `ChatModelPro` = `models/gemini-3.1-pro` preview,
-  `DefaultChatModel`), `IsValidChatModel`, e os helpers compartilhados
-  `geminiURL(model, method, sse)` e `setGeminiAuth(req, apiKey)`.
-- `internal/store/settings.go` — `ChatModel()` / `SetChatModel()`. Chave
-  `chat.model`; **nenhuma migração de schema** (a tabela `settings` já existe).
-  Valor fora da whitelist cai para o default sem reescrever o DB (ADR-004 D7).
-- `internal/store/semantic.go`
-  - `semanticBodyChars` **800 → 20.000** (ADR-006 D2). Dispara re-embed completo
-    do corpus no primeiro sweep após o deploy — ver "Ação do usuário".
-  - `embedBatch` autentica por header `x-goog-api-key`, não `?key=` (D10).
-  - **Bug corrigido:** `SuggestCommunityName` chamava
-    `models/gemini-1.5-flash`, família desligada — a sugestão de nome de
-    comunidade no Graph View estava morta. Agora recebe `chatModel` e usa o
-    Modelo de Chat configurado.
-- `internal/server/handlers_admin.go` — `chat.model` exposto em
-  `handleAdminGetSettings`; `case "chat.model"` em `handleAdminSetSettings`
-  validando pela whitelist (antes, toda chave desconhecida era 400).
-- `internal/server/handlers_graph.go` — passa `s.settings.ChatModel()` ao
-  `SuggestCommunityName`.
-- `tests/unit/store_chat_model_test.go` — **novo**. Fallback com chave ausente,
-  round-trip, e modelo fora da whitelist caindo para o default **sem** reescrever
-  o valor persistido.
+- **Não rode `gofmt -w` em `internal/` inteiro.** Ele reescreve dezenas de
+  arquivos sem relação (CRLF → LF e alinhamento). Rode só nos arquivos
+  alterados.
+- **Smoke test local:** use caminhos nativos do Windows (nunca `/tmp`), por
+  exemplo `PKD_DB_PATH=C:/Users/EDalcin/Desktop/OMPtemp/pkdmc/pkd.db`,
+  `PKD_ATTACHMENTS_PATH=…/att`, `PKD_PASSWORD`, `PKD_IMPORT_TOKEN`,
+  `PKD_LISTEN_ADDR=127.0.0.1:18090`. Compile o binário fora do repo e rode
+  `npm run build` antes de `go build`, porque o binário embute `web/dist`.
+- Screenshots e binários de teste vão somente para
+  `C:\Users\EDalcin\Desktop\OMPtemp`.
+- Depois de mudar código, rode `graphify update .`.
 
-Verificação: `go build ./...` limpo, `go vet ./...` limpo,
-`go test ./tests/... ./internal/...` verde.
+## Decisões de desenho (sessão de grilling, Q1–Q17)
 
-### Fase 2 — Backend do chat ✅ (2026-09-02)
+Não redecidir sem motivo novo.
 
-`POST /api/chat` respondendo `text/event-stream`, dentro do grupo autenticado
-(`server.go:258-260`).
-
-- `internal/server/handlers_chat.go` — **novo**.
-  - `retrieveChatContext`: reusa `LexicalDocIDs` + `SemanticSearchDocIDs` +
-    `FuseRRF` + `ListByIDsFiltered` com `view="all"`; `q` vem de
-    `retrievalQuery`, que concatena as 3 últimas mensagens **do usuário** (D6).
-  - `chatRelevanceFloor = 0.50` gateando pelo **melhor** `SemanticHit.Score` —
-    primeiro consumidor real do campo (D4). Abaixo do piso, responde "não
-    encontrei nada relevante" **sem chamar o modelo**.
-  - Orçamento: `chatMaxDocs = 8`, `chatTokenBudget = 100_000`, custo por
-    `len/4`. Documento que não cabe é **omitido**, nunca truncado (D3).
-  - Documentos `encrypted` são excluídos: a perna léxica não os filtra, e o
-    corpo é ciphertext.
-  - Eventos SSE: `sources` (Documentos Consultados, servidos pelo backend, D5),
-    `text` por chunk, `error`, `done`. `chatErrorMessage` traduz 429/400/404 em
-    mensagem acionável, **sem retry** (D11).
-- `internal/store/chat.go` — `StreamChat`, `ChatDoc`, `ChatMessage`,
-  `formatChatDocs`. `systemInstruction` com grounding estrito;
-  `generationConfig` só com `maxOutputTokens` — **`temperature` não é enviada**
-  (D12). `finishReason` **não** é usado como sinal de fim (pode estar ausente);
-  o fim é o corpo fechado. `SAFETY` vira erro. `geminiBaseURL` virou `var` com
-  `SetGeminiBaseURLForTest` — hook só para teste, sem caller de produção.
-- `tests/integration/chat_test.go` — **novo**. 503 sem `GEMINI_API_KEY`,
-  rejeição de corpo vazio/em branco, e rota inacessível sem autenticação.
-- `tests/unit/store_stream_chat_test.go` — **novo**. Parser SSE contra frames
-  reais (texto, sem parte de texto, frame malformado ignorado, `finishReason`),
-  mais as invariantes de contrato: auth por header `x-goog-api-key`, `alt=sse`
-  na URL, corpo do documento no request, e `temperature` **ausente**.
-
-Verificação: `go build`/`go vet` limpos, `go test ./tests/... ./internal/...`
-verde, 5 testes novos passando.
-
-### Fase 3 — Frontend do chat ✅ (2026-09-02)
-
-- `frontend/src/App.svelte`: `#/chat` em `getRoute()`, `<Chat />` no bloco
-  condicional da `content-area`, título "Chat", e o ícone 💬 na topbar (desktop
-  e mobile). `chatAvailable` vem de `embed.key_configured`: sem chave o ícone é
-  um `<span class="icon-btn-disabled">` com tooltip, **nunca escondido** (D9).
-- `frontend/src/lib/components/Chat.svelte` **novo**: `apiFetch` (reusa o CSRF
-  de `api.js`, não duplica leitura de cookie) + `ReadableStream` +
-  `AbortController`. Parser de frames SSE, cursor de digitação, botão "Parar",
-  fontes como links `#/doc/{id}` com `target="_blank"`, e "Salvar como
-  documento" via `createDoc` + `saveDoc`.
-- `frontend/src/styles/app.css`: `.icon-btn-disabled` (span, não button, para o
-  tooltip sobreviver ao `pointer-events`).
-
-**Defeito encontrado no smoke test e corrigido** (mudança de backend, decidida
-durante a Fase 3): com a perna semântica falhando — chave inválida, por
-exemplo — `retrieveChatContext` devolvia zero documentos e o chat respondia
-"não encontrei nada relevante", **mentindo** sobre o corpus quando a verdade é
-que a recuperação nunca rodou. `retrieveChatContext` agora devolve `semErr`
-separado do erro fatal, o handler emite evento `error`, e `chatErrorMessage`
-detecta `API_KEY_INVALID` **antes** do 400 genérico (o Gemini reporta chave
-ruim como 400 INVALID_ARGUMENT, e a mensagem de "excedeu o limite" mandaria o
-usuário caçar o problema errado).
-
-Verificação — smoke test com o binário real e navegador:
-
-|Caminho|Resultado|
+|#|Decisão|
 |---|---|
-|Sem `GEMINI_API_KEY`|`POST /api/chat` → 503; ícone desabilitado, opacidade 0.35, tooltip correto|
-|Chave inválida + documentos|SSE `sources: []` + `error` com a mensagem de chave inválida, em 1,2 s|
-|Piso de relevância (base sem embeddings)|"Não encontrei nada relevante sobre isso nos seus documentos."|
-|Salvar como documento|Documento criado e visível em `GET /api/tree`|
-|Bolha vazia em erro|Removida (`messages.slice(0,-1)` quando o texto ficou vazio)|
+|Q1|Memória = Documento com tipo (`memory_id IS NOT NULL`), mesma tabela. Conversão Documento ↔ Memória adiada (sem caso de uso).|
+|Q2|Dia da Data da Memória em `assoc_year/month/day`; colunas novas para hora, minuto, Período.|
+|Q3|Hermes converte o relato em campos; PKD só valida.|
+|Q4|Período no ID = hora de início (almoço `T12`, lanche `T16`, jantar `T18`).|
+|Q5|Dentro do dia: sem hora → início → Período mais longo → hora exata → criação.|
+|Q6|Anos/meses/dias do mais recente para o mais antigo.|
+|Q7|Precisão mínima = ano; nada inventado.|
+|Q8|ID nunca muda, mesmo corrigindo a data (ADR-007).|
+|Q9|Prefixo fixo `MEM-`; sufixo 6 Crockford aleatório.|
+|Q10|`idempotency_key` do cliente com `UNIQUE`.|
+|Q11|API: `POST`, `GET {MEM-id}`, `PATCH {MEM-id}`. Sem DELETE, sem busca.|
+|Q12|Contrato do `/api/import`: HTML sanitizado + anexos base64; título obrigatório.|
+|Q13|Memórias entram no Graph View.|
+|Q14|Sem pai nem filhos; bloqueio no backend e no frontend; associação só por link.|
+|Q15|Diálogo "+ Nova Memória": Ano/Mês de hoje, Dia vazio e focado.|
+|Q16|No editor, Data da Memória substitui Data Associada; ID com botão Copiar.|
+|Q17|Ícone padrão `bx-calendar-event` (boxicons, equivalente ao 🗓️).|
 
-`npm run build` limpo; `go test ./tests/... ./internal/...` verde.
+## O que foi feito
 
-**Nota de ambiente para sessões futuras:** rodar o binário com
-`PKD_DB_PATH` em `/tmp` (filesystem do sandbox) faz o SQLite **pendurar** no
-primeiro `INSERT` — com `SetMaxOpenConns(1)` (`migrate.go:30`) a conexão única
-fica presa e todo o app trava, inclusive `/healthz`. Não é bug do PKD: usar
-sempre um caminho nativo do Windows no smoke test.
+**Backend**
+- `internal/store/migrate.go` — colunas `memory_id`, `memory_hour`,
+  `memory_minute`, `memory_period`, `memory_key` + índices `UNIQUE` parciais.
+- `internal/store/memories.go` — **novo**. `MemoryDate.Validate` (rejeita
+  31/02, hora sem dia, hora + Período…), emissão do ID, `NormalizeMemoryID`
+  (Crockford I/L→1, O→0), `CreateMemory` (idempotência + retry de colisão de
+  sufixo), `GetByMemoryID`, `UpdateMemoryDate`, `ListMemories` (ordem da
+  árvore da MC), `MemoryDocIDs`, guards de hierarquia.
+- `internal/store/documents.go` — `Create`/`Move`/`Reorder` rejeitam
+  hierarquia com Memória (`ErrMemoryHierarchy` → 400); `ListTree` e
+  `RootStats` excluem Memórias; `GetByID` devolve os campos de Memória.
+- `internal/server/handlers_memories.go` — **novo**. Rotas e middleware
+  `tokenOrSession` (bearer `PKD_IMPORT_TOKEN` com comparação em tempo
+  constante, ou sessão). Bearer errado → 401, nunca cai para o cookie.
+  `GET /api/memories` (lista da árvore) é só sessão.
+- `internal/server/handlers_tree.go` — resultados de busca marcam
+  `is_memory`.
 
-### Fase 4 — Dropdown no admin ✅ (2026-09-02)
+**Frontend**
+- `stores/memories.js`, `MemoryDateFields.svelte`, `NewMemoryDialog.svelte` —
+  **novos**.
+- `Sidebar.svelte` — bloco MC entre a árvore e "+ Novo documento", toggle
+  persistido em `pkd-mc-collapsed`, anos colapsados por padrão.
+- `Editor.svelte` — controle de Data da Memória + ID copiável; sem
+  "Criar sub-documento" em Memórias.
+- `TreeNode.svelte` — Memória em resultado de busca não arrasta, não recebe
+  drop, sem "+".
+- `documents.js`, `Admin.svelte` — recarregam a lista da MC em
+  arquivar/lixeira/restaurar/renomear.
 
-`Admin.svelte`, aba Preferências, nova seção **"Chat com os documentos"** logo
-abaixo de "Embeddings semânticos":
+**Docs** — `README.md` (seção MC, `PKD_IMPORT_TOKEN`), glossário, ADR-007,
+[`docs/promptMcHermes.md`](promptMcHermes.md) (prompt da Skill do Hermes).
 
-- `CHAT_MODELS` espelha a whitelist de `internal/store/chat.go`, com o rótulo
-  `(preview)` explícito no `gemini-3.1-pro` (D9).
-- `chatModel` é carregado de `chat.model` no mesmo `apiGet('/api/admin/settings')`
-  que já roda no mount. Como o servidor reporta o modelo **efetivo** (cai para o
-  default quando o persistido saiu da whitelist), o `<select>` nunca aparece em
-  branco — o defeito que ADR-004 D7 documenta.
-- `saveChatModel` usa o payload genérico existente
-  `apiPut('/api/admin/settings', {key:'chat.model', value})`.
-- Texto explicando que trocar o Modelo de Chat **não invalida nada**, em
-  contraste com o Modelo de Embedding.
+**Verificação**
+- `tests/unit/store_memories_test.go` — validação, formato do ID, idempotência,
+  correção de data mantendo o ID, ordem da árvore (cenário da Q5), hierarquia
+  bloqueada e exclusão da árvore normal. `go test ./tests/... ./internal/...`
+  verde; `npm run build` limpo.
+- Smoke com binário real: 201/200 idempotente, 400 em 31/02 e sem título, 401
+  com token errado, `GET` com ID minúsculo, `PATCH` de data mantendo o ID,
+  sanitização de `<script>`. Navegador: árvore Ano → Mês → Dia na ordem certa,
+  correção de data move a Memória para o dia 21, diálogo cria
+  `MEM-2026-09-24T18-…` (jantar) e abre o editor, `/api/tree` sem Memórias e
+  busca com `is_memory: true`.
 
-Verificação — navegador contra o binário real:
+## Próximos passos
 
-|Caminho|Resultado|
-|---|---|
-|Opções do `<select>`|exatamente os dois modelos da whitelist, com rótulos|
-|Valor inicial|`models/gemini-3.7-flash` (default, não em branco)|
-|Salvar `Pro`|`Salvo!` e `GET /api/admin/settings` → `models/gemini-3.1-pro`|
-|Reload da aba|`<select>` volta em `models/gemini-3.1-pro`|
-|`PUT` com `models/gemini-1.5-flash`|400 `chat.model is not a supported model`; valor anterior intacto|
+1. **Commit** em `main` com os arquivos listados em "Reinício" (usar a skill
+   `git-commit`), depois push.
+2. **Deploy:** o push em `main` dispara o CI e publica `:edge`, que o UNRAID
+   atualiza sozinho. A migração é aditiva (colunas e índices novos, sem
+   backfill). Depois do deploy, confira no UNRAID que "+ Nova Memória" cria uma
+   Memória e que ela aparece na árvore da MC.
+3. **Configurar a Skill no Hermes** com [`docs/promptMcHermes.md`](promptMcHermes.md)
+   (substituir `<PKD_URL>`) e o mesmo `PKD_IMPORT_TOKEN` do container. Primeiro
+   teste: o relato do exemplo ("ontem almocei com minhas irmãs…") deve gerar
+   `MEM-AAAA-MM-DDT12-…` com Período almoço.
+4. Depois de algumas semanas de uso, revisar os "Pontos abertos" abaixo.
 
-### Fase 5 — Testes e documentação ✅ (2026-09-02)
+## Pontos abertos (decidir com uso real)
 
-- `internal/server/handlers_chat_test.go` — **novo**, primeiro teste in-package
-  do pacote `server`. `TestRetrievalQuery`: a query de follow-up carrega o
-  assunto do turno anterior, turnos do modelo **não** entram (uma resposta longa
-  afogaria a query), o limite de `chatHistoryTurns` é respeitado, e turnos em
-  branco não vazam. `TestChatErrorMessage`: trava a **ordem** dos casos —
-  `API_KEY_INVALID` antes do 400 genérico, senão o usuário é mandado caçar o
-  problema errado.
-- `README.md`: linha de feature do Chat na tabela; `GEMINI_API_KEY` passa a
-  listar os **três** consumidores (embeddings, Chat, sugestão de nome de
-  comunidade); nova seção "Chat com os documentos" com o caminho completo de uma
-  pergunta; `settings` na tabela de schema agora cita `chat.model` e registra
-  que o modelo de embedding **não** vive lá.
-- `docs/semanticGraph.md`: `semanticBodyChars` = 20.000 (era 800), auth por
-  header, e a seção de admin do Modelo de Chat.
+- **Títulos repetidos.** A unicidade de título do PKD vale para Memórias:
+  "Almoço em família" vira "Almoço em família (2)". O prompt do Hermes pede
+  títulos distintos. Se incomodar, isentar Memórias da regra (afeta
+  wikilinks por título).
+- **Memórias arquivadas** somem da árvore da MC e não aparecem na visão
+  "Arquivados" (que é da árvore normal). Continuam na busca e no Chat.
+- **Filtros de tag e favoritos** não se aplicam à árvore da MC.
+- **Aglomerado no Graph View** (Q13): se Memórias parecidas poluírem o grafo,
+  adicionar filtro mostrar/esconder Memórias.
+- **Pré-existente, fora do escopo:** `POST /api/import` não indexa o FTS nem
+  notifica o embedder na criação; a nota só entra na busca léxica após um
+  restart. A API de Memórias não tem esse defeito.
 
-**Documentação corrigida de quebra** (`README.md:214`): o README descrevia um
-badge de similaridade de cosseno com faixas de cor ao lado dos títulos de
-busca. Esse badge **nunca existiu na interface** — `glossary.md:10-14` já
-registrava isso, e o campo `score` saiu do wire na ADR-004. A linha foi
-substituída pelo comportamento real.
+## Pendências herdadas (Chat RAG)
 
-Sobre o teste de integração do piso de relevância que esta fase previa: ele
-exigiria uma `GEMINI_API_KEY` **válida**, porque sem chave
-`SemanticSearchDocIDs` retorna vazio antes de qualquer piso. O caminho está
-coberto por smoke test manual (Fase 3) e pelos testes de contrato de
-`StreamChat` com servidor falso. Um teste automatizado real exigiria injetar um
-servidor Gemini falso no `LinkStore`, que hoje constrói seu próprio
-`http.Client` — refatoração maior que o teste. **Decidir se vale.**
-
-## Acompanhamento pós-deploy (deploy realizado no UNRAID)
-
-1. O novo `semanticBodyChars` invalida os 283 vetores (o hash de staleness cobre
-   o texto embedado). O sweep repovoa automaticamente; custo ~$0,45.
-2. Durante o sweep a busca opera **só com o léxico** — comportamento correto,
-   não erro (ADR-002 D1). Acompanhar `Documentos embedados` em Administração →
-   Preferências até voltar a 283.
-3. Depois do sweep, conferir a densidade de arestas do **Graph View**. Os
-   vetores agora representam 20.000 caracteres em vez de 800, então a
-   distribuição de similaridade muda. Se o caráter do grafo piorar, ajustar
-   `semanticSimThreshold` (`semantic.go`) — **nunca os dois pisos juntos**
-   (ADR-004 D6).
-4. Sugestão de nome de comunidade no Graph View voltou a funcionar (usava um
-   modelo desligado). Vale testar.
-
-## Pendências herdadas, ainda abertas
-
-- **Nenhum teste cobre o `DELETE` de embeddings na troca de modelo de
-  embedding.** Herdado da migração anterior; decidir se vale.
-- **`chatRelevanceFloor = 0.50` é um chute.** O valor certo só sai de uso real.
-  É constante, não configuração de UI (ADR-006 D4).
+- Nenhum teste cobre o `DELETE` de embeddings na troca de modelo de embedding.
+- `chatRelevanceFloor = 0.50` é um chute; ajustar com uso real (ADR-006 D4).
+- Teste automatizado do piso de relevância exigiria injetar servidor Gemini
+  falso no `LinkStore`. Decidir se vale.

@@ -12,10 +12,12 @@
   import TurndownService from 'turndown'
   import { saveDoc, loadDoc, linksRefreshSignal, docBodyRefreshedSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc, restoreVersion, protectDoc, unprotectDoc, requestDocCode, unlockDoc, trashDoc } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
+  import { updateMemoryDate, memoryDateFromDoc, buildMemoryDate } from '../stores/memories.js'
   import { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../api.js'
   import IconPicker from './IconPicker.svelte'
   import VersionHistoryDialog from './VersionHistoryDialog.svelte'
   import DuplicateTitleDialog from './DuplicateTitleDialog.svelte'
+  import MemoryDateFields from './MemoryDateFields.svelte'
   import { get } from 'svelte/store'
   import { autoSaveInterval } from '../stores/settings.js'
   import { marked } from 'marked'
@@ -46,6 +48,13 @@
   let children = $state([])
   let ancestors = $state([])
   let assocPaneEl = $state(null)
+  let memYear = $state(null)
+  let memMonth = $state(null)
+  let memDay = $state(null)
+  let memMomento = $state('nenhum')
+  let memTime = $state('')
+  let memPeriod = $state('')
+  let memCopied = $state(false)
 
   let urlInput = $state('')
   let urlTitleInput = $state('')
@@ -409,6 +418,15 @@
         assocYear = today.getFullYear()
         assocMonth = today.getMonth() + 1
         assocDay = today.getDate()
+      }
+      if (doc.memory_id) {
+        const md = memoryDateFromDoc(doc)
+        memYear = md.year
+        memMonth = md.month
+        memDay = md.day
+        memMomento = md.momento
+        memTime = md.time
+        memPeriod = md.period
       }
       loadTags()
       await loadLinks(targetId)
@@ -810,6 +828,32 @@
     return `${String(assocDay).padStart(2,'0')}/${String(assocMonth).padStart(2,'0')}/${assocYear}`
   }
 
+  // ── Data da Memória ────────────────────────────────────────────────────────
+
+  async function saveMemoryDate() {
+    if (!doc?.memory_id || !memYear) return
+    try {
+      const date = buildMemoryDate({ year: memYear, month: memMonth, day: memDay, momento: memMomento, time: memTime, period: memPeriod })
+      const updated = await updateMemoryDate(doc.memory_id, date)
+      doc = {
+        ...doc,
+        assoc_year: updated.assoc_year,
+        assoc_month: updated.assoc_month,
+        assoc_day: updated.assoc_day,
+        memory_hour: updated.memory_hour,
+        memory_minute: updated.memory_minute,
+        memory_period: updated.memory_period,
+      }
+    } catch { /* silent — user can retry, mirrors saveAssocDate */ }
+  }
+
+  async function copyMemoryId() {
+    if (!doc?.memory_id) return
+    await navigator.clipboard.writeText(doc.memory_id)
+    memCopied = true
+    setTimeout(() => { memCopied = false }, 1500)
+  }
+
   // ── Documentos relacionados ────────────────────────────────────────────────
 
   function onLinkInput() {
@@ -1160,12 +1204,14 @@
           aria-label="Título"
           disabled={doc.locked}
         />
-        <button
-          class="subdoc-btn"
-          onclick={handleCreateSubDoc}
-          title="Criar sub-documento"
-          aria-label="Criar sub-documento"
-        ><i class="bx bxs-file-plus"></i></button>
+        {#if !doc.memory_id}
+          <button
+            class="subdoc-btn"
+            onclick={handleCreateSubDoc}
+            title="Criar sub-documento"
+            aria-label="Criar sub-documento"
+          ><i class="bx bxs-file-plus"></i></button>
+        {/if}
         <button
           class="copy-link-btn"
           onclick={handleCopyLink}
@@ -1699,63 +1745,90 @@
           </div>
         </section>
 
-        <!-- Coluna 4: Data associada -->
+        <!-- Coluna 4: Data associada / Data da Memória -->
         <section class="assoc-col">
-          <h4 class="assoc-col-title">📅 Data associada</h4>
+          {#if doc.memory_id}
+            <h4 class="assoc-col-title">📅 Data da Memória</h4>
 
-          {#if doc}
             <p class="assoc-date-created">
               <span class="assoc-date-label">Criação:</span>
               {new Date(doc.created_at).toLocaleString('pt-BR')}
             </p>
+
+            <MemoryDateFields
+              bind:year={memYear}
+              bind:month={memMonth}
+              bind:day={memDay}
+              bind:momento={memMomento}
+              bind:time={memTime}
+              bind:period={memPeriod}
+              onchange={saveMemoryDate}
+            />
+
+            <div class="mem-id-row">
+              <span class="assoc-date-label">ID:</span>
+              <code class="mem-id-value">{doc.memory_id}</code>
+              <button class="assoc-clear-date-btn" onclick={copyMemoryId}>
+                {memCopied ? '✓ Copiado' : 'Copiar'}
+              </button>
+            </div>
+          {:else}
+            <h4 class="assoc-col-title">📅 Data associada</h4>
+
+            {#if doc}
+              <p class="assoc-date-created">
+                <span class="assoc-date-label">Criação:</span>
+                {new Date(doc.created_at).toLocaleString('pt-BR')}
+              </p>
+            {/if}
+
+            <div class="assoc-date-row">
+              <select
+                class="assoc-date-select"
+                bind:value={assocDay}
+                onchange={saveAssocDate}
+                disabled={!assocMonth}
+                aria-label="Dia"
+              >
+                <option value={null}>Dia</option>
+                {#each Array.from({length: daysInMonth(assocYear, assocMonth)}, (_, i) => i + 1) as d}
+                  <option value={d}>{d}</option>
+                {/each}
+              </select>
+
+              <select
+                class="assoc-date-select"
+                bind:value={assocMonth}
+                onchange={saveAssocDate}
+                aria-label="Mês"
+              >
+                <option value={null}>Mês</option>
+                {#each ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'] as m, i}
+                  <option value={i + 1}>{m}</option>
+                {/each}
+              </select>
+
+              <select
+                class="assoc-date-select assoc-date-year"
+                bind:value={assocYear}
+                onchange={saveAssocDate}
+                aria-label="Ano"
+              >
+                <option value={null}>Ano</option>
+                {#each Array.from({length: new Date().getFullYear() - 1900 + 11}, (_, i) => new Date().getFullYear() + 10 - i) as y}
+                  <option value={y}>{y}</option>
+                {/each}
+              </select>
+            </div>
+
+            {#if assocYear || assocMonth || assocDay}
+              <p class="assoc-date-display">{formatAssocDate()}</p>
+            {/if}
+
+            <button class="assoc-clear-date-btn" onclick={clearAssocDate}>
+              Limpar data
+            </button>
           {/if}
-
-          <div class="assoc-date-row">
-            <select
-              class="assoc-date-select"
-              bind:value={assocDay}
-              onchange={saveAssocDate}
-              disabled={!assocMonth}
-              aria-label="Dia"
-            >
-              <option value={null}>Dia</option>
-              {#each Array.from({length: daysInMonth(assocYear, assocMonth)}, (_, i) => i + 1) as d}
-                <option value={d}>{d}</option>
-              {/each}
-            </select>
-
-            <select
-              class="assoc-date-select"
-              bind:value={assocMonth}
-              onchange={saveAssocDate}
-              aria-label="Mês"
-            >
-              <option value={null}>Mês</option>
-              {#each ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'] as m, i}
-                <option value={i + 1}>{m}</option>
-              {/each}
-            </select>
-
-            <select
-              class="assoc-date-select assoc-date-year"
-              bind:value={assocYear}
-              onchange={saveAssocDate}
-              aria-label="Ano"
-            >
-              <option value={null}>Ano</option>
-              {#each Array.from({length: new Date().getFullYear() - 1900 + 11}, (_, i) => new Date().getFullYear() + 10 - i) as y}
-                <option value={y}>{y}</option>
-              {/each}
-            </select>
-          </div>
-
-          {#if assocYear || assocMonth || assocDay}
-            <p class="assoc-date-display">{formatAssocDate()}</p>
-          {/if}
-
-          <button class="assoc-clear-date-btn" onclick={clearAssocDate}>
-            Limpar data
-          </button>
         </section>
 
       </div>
@@ -2641,6 +2714,25 @@
   .assoc-clear-date-btn:hover {
     border-color: var(--text-muted);
     color: var(--text);
+  }
+
+  .mem-id-row {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .75rem;
+    flex-wrap: wrap;
+  }
+
+  .mem-id-value {
+    font-family: var(--font-mono, monospace);
+    font-size: .78rem;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .15rem .4rem;
+    word-break: break-all;
   }
 
   .assoc-add-btn {
