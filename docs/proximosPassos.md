@@ -112,6 +112,16 @@ arquitetura, changelog, `PKD_IMPORT_TOKEN`), glossário, ADR-007,
 4. Ordem da árvore (Q6, mais recente primeiro) confirmada pelo usuário em uso
    real — manter.
 5. Depois de algumas semanas de uso, revisar os "Pontos abertos" abaixo.
+6. **Hermes corrigir Memórias sozinho (sem urgência).** O Hermes disse que
+   precisa de um endpoint de edição, mas `PATCH /api/memories/{memory_id}` já
+   existe (`server.go`, Bearer ou sessão; seção 4 do prompt). Por enquanto o
+   usuário corrige direto no PKD. Investigar, nesta ordem:
+   1. A Skill no Hermes tem a versão atual de `docs/promptMcHermes.md`
+      (com a seção 4, "Corrija uma Memória")?
+   2. O Hermes guarda o `memory_id` das Memórias que cria?
+   3. Se o problema for achar o ID de uma Memória que o Hermes não criou ou
+      esqueceu: a API não tem busca (Q11). Opção: `GET /api/memories?date=…`
+      ou `?q=…` com Bearer — isso redecide a Q11; decidir com o usuário.
 
 ## Pontos abertos (decidir com uso real)
 
