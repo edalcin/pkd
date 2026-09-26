@@ -1,6 +1,6 @@
-# Próximos Passos — Nota (feature em andamento)
+# Próximos Passos — Nota
 
-> **Em andamento (2026-09-26).** Terceiro tipo de conteúdo do PKD: **Nota**
+> **Concluída e em produção (2026-09-26, `v1.3.0`).** Terceiro tipo de conteúdo do PKD: **Nota**
 > (ver glossário: Nota, app Notas). Bloco próprio na barra lateral, igual ao
 > da MC. Migração das notas ativas do app Notas (EC2
 > `/home/ec2-user/notas`, somente leitura — nunca alterar nada lá).
@@ -25,10 +25,20 @@
 3. ~~Implantar no `pkd2` e migrar~~ — feito (2026-09-26, imagem `5ae262d`):
    74 Notas, 3 favoritas, 10 anexos no S3 dev, cores de tag aplicadas,
    `/healthz` estável. Backup anterior:
-   `pkd.sqlite.bak-2026-09-26-pre-notas`. **Falta:** usuário validar na
-   interface (`https://pkd2.dalc.in`).
-4. Depois: produção no EC2 (Q15: ler antes o banco do PKD de produção e
-   listar Documentos com tag `notas` que coincidem com notas ativas).
+   `pkd.sqlite.bak-2026-09-26-pre-notas`. Validado pelo usuário, inclusive o
+   filtro de tag no bloco Notas (fix `525ecfc`).
+4. ~~Produção no EC2~~ — feito (2026-09-26): tag `v1.3.0` → `:stable`
+   (digest `sha256:d381ef6f…`, fixado em `/home/ec2-user/docker-compose.yml`).
+   Q15: nenhum Documento com tag `notas` coincidia com nota ativa. Migração:
+   74 Notas (201), 3 favoritas, 10 anexos no S3 `pkd-prod-attachments`, 82
+   vínculos de tag, cores aplicadas só onde faltavam. `/healthz` 200.
+   **Backup antes da atualização:** `/home/ec2-user/pkd-backups/2026-09-26-pre-notas/`
+   (banco via `.backup`, `docker-compose.yml`, id da imagem anterior, cópia dos
+   55 objetos do S3) e `.tgz` do mesmo em
+   `C:\Users\EDalcin\Desktop\OMPtemp\pkd-prod-backup\`. Rollback: restaurar a
+   linha `image:` do compose salvo e o `pkd.sqlite`.
+5. **Próximo (manual, usuário):** desligar o app Notas no EC2 e arquivar o
+   repositório `notas`. Depois: item 8 (formas de captura) é prioridade.
 
 **Script de migração** (descartável, fora do repo):
 `C:\Users\EDalcin\Desktop\OMPtemp\notas-probe\migrate_notas.py`, com a cópia
