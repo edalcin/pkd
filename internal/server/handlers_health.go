@@ -11,7 +11,9 @@ type healthHandler struct {
 }
 
 func (h *healthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if err := h.db.QueryRow("SELECT 1").Err(); err != nil {
+	// Scan, not Row.Err: only Scan releases the connection, and the pool has one.
+	var one int
+	if err := h.db.QueryRow("SELECT 1").Scan(&one); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		json.NewEncoder(w).Encode(map[string]string{"status": "error", "error": err.Error()})

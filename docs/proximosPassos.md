@@ -4,9 +4,38 @@
 > (ver glossário: Nota, app Notas). Bloco próprio na barra lateral, igual ao
 > da MC. Migração das notas ativas do app Notas (EC2
 > `/home/ec2-user/notas`, somente leitura — nunca alterar nada lá).
-> Ordem: homologação no UNRAID (`/mnt/user/Storage/appsdata/pkd`, anexos em
-> disco local) → validação do usuário → produção no EC2 (anexos no S3),
-> migração junto com a atualização do container.
+> Ordem: homologação no UNRAID (`pkd2`, `https://pkd2.dalc.in`, dados em
+> `/mnt/user/Storage/appsdata/pkd`) → validação do usuário → produção no EC2,
+> migração junto com a atualização do container. Testes: primeiro no Docker
+> local (Windows).
+>
+> **Atenção:** o banco do `pkd2` tem `attachments.backend = s3` (bucket
+> `pkd-dev-attachments`), não disco local. A migração usa a API, então grava
+> no backend que estiver ativo.
+
+## Estado e próximo passo
+
+1. Feature + migração validadas no Docker local (cópia do banco do `pkd2`):
+   74 Notas (201), segunda execução 74×200 (idempotente), 3 favoritas, 10
+   anexos, 82 vínculos de tag, `created_at`/`updated_at` originais, cores de
+   tag só preenchidas onde faltavam.
+2. **Bug pré-existente corrigido:** `/healthz` prendia a única conexão do
+   pool; depois da primeira checagem o servidor inteiro travava (aconteceu
+   no `pkd2`). Ver CHANGELOG.
+3. **Próximo:** implantar `:edge` no `pkd2`, rodar a migração lá, usuário
+   valida na interface. Backup do banco antes: já existe
+   `pkd.sqlite.bak-2026-09-26-pre-notas` no mesmo diretório.
+4. Depois: produção no EC2 (Q15: ler antes o banco do PKD de produção e
+   listar Documentos com tag `notas` que coincidem com notas ativas).
+
+**Script de migração** (descartável, fora do repo):
+`C:\Users\EDalcin\Desktop\OMPtemp\notas-probe\migrate_notas.py`, com a cópia
+somente leitura de `notes.db` e `files/` do EC2 na mesma pasta
+(`fetch_files.py` baixa os anexos). Uso:
+`PKD_TOKEN=<PKD_IMPORT_TOKEN> python migrate_notas.py --target <url>`
+(`--dry-run` lista sem enviar; `--skip 12,34` pula notas). No fim ele imprime
+os `UPDATE tags SET color=…` (Q9) para rodar no banco do PKD. Para produção,
+copiar de novo `notes.db` e os anexos (as notas mudam com o uso).
 
 ## Decisões da Nota (grilling, Q1–Q20)
 

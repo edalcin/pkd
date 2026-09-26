@@ -6,6 +6,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+### Corrigido
+
+- **`/healthz` travava o servidor inteiro** — `QueryRow("SELECT 1").Err()` não devolve a conexão ao pool (só `Scan` devolve) e o pool do SQLite tem uma conexão só (`SetMaxOpenConns(1)`). Depois da primeira checagem de saúde, toda consulta seguinte esperava para sempre. Agora usa `Scan`. Teste: `internal/server/handlers_health_test.go`.
+
 ### Adicionado
 
 - **Nota — terceiro tipo de conteúdo** — mirror de Memória Cronológica, ver `docs/proximosPassos.md` (Q1–Q20) e `docs/adr/glossary.md`:
