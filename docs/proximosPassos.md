@@ -22,9 +22,11 @@
 2. **Bug pré-existente corrigido:** `/healthz` prendia a única conexão do
    pool; depois da primeira checagem o servidor inteiro travava (aconteceu
    no `pkd2`). Ver CHANGELOG.
-3. **Próximo:** implantar `:edge` no `pkd2`, rodar a migração lá, usuário
-   valida na interface. Backup do banco antes: já existe
-   `pkd.sqlite.bak-2026-09-26-pre-notas` no mesmo diretório.
+3. ~~Implantar no `pkd2` e migrar~~ — feito (2026-09-26, imagem `5ae262d`):
+   74 Notas, 3 favoritas, 10 anexos no S3 dev, cores de tag aplicadas,
+   `/healthz` estável. Backup anterior:
+   `pkd.sqlite.bak-2026-09-26-pre-notas`. **Falta:** usuário validar na
+   interface (`https://pkd2.dalc.in`).
 4. Depois: produção no EC2 (Q15: ler antes o banco do PKD de produção e
    listar Documentos com tag `notas` que coincidem com notas ativas).
 
