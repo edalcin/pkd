@@ -1,5 +1,6 @@
 <script>
   import { createDoc, trashDoc, moveDoc, reorderDoc, findNextSiblingId, treeExpansionSignal, linksRefreshSignal, toggleFavorite, revealActiveSignal, archiveDoc, unarchiveDoc } from '../stores/documents.js'
+  import { convertNoteToDocument } from '../stores/notes.js'
   import { apiPost } from '../api.js'
 
   let {
@@ -9,9 +10,10 @@
     onNavigate,
   } = $props()
 
-  // Search results (GET /api/tree?q=…) mix Memórias in; they are never
-  // draggable, never a drop target and never get children.
+  // Search results (GET /api/tree?q=…) mix Memórias and Notas in; they are
+  // never draggable, never a drop target and never get children.
   const isMemory = $derived(!!node.is_memory)
+  const isNote = $derived(!!node.is_note)
 
   const STORAGE_KEY = 'pkd-tree-collapsed'
 
@@ -118,7 +120,7 @@
   }
 
   function onDragOver(e) {
-    if (isMemory) return // Memórias are never a drop target
+    if (isMemory || isNote) return // Memórias/Notas are never a drop target
     e.preventDefault()
     const rect = e.currentTarget.getBoundingClientRect()
     const relY = (e.clientY - rect.top) / rect.height
@@ -135,8 +137,21 @@
     e.preventDefault()
     const zone = dropZone
     dropZone = null
+    const isNoteDrag = e.dataTransfer.types.includes('application/x-pkd-note')
     const draggedId = Number(e.dataTransfer.getData('text/plain'))
     if (!draggedId || draggedId === node.id) return
+
+    if (isNoteDrag) {
+      if (zone === 'inside') {
+        await convertNoteToDocument(draggedId, node.id, null)
+      } else if (zone === 'before') {
+        await convertNoteToDocument(draggedId, node.parent_id, node.id)
+      } else {
+        const nextId = findNextSiblingId(node.id, node.parent_id)
+        await convertNoteToDocument(draggedId, node.parent_id, nextId)
+      }
+      return
+    }
 
     if (zone === 'inside') {
       await moveDoc(draggedId, node.id)
@@ -156,7 +171,7 @@
     class="tree-item {node.id === activeId ? 'active' : ''} {node.archived ? 'node-archived' : ''} {dropZone === 'inside' ? 'drag-over' : ''} {dropZone === 'before' ? 'drop-before' : ''} {dropZone === 'after' ? 'drop-after' : ''}"
     style="padding-left: {0.4 + depth * 0.75}rem"
     onclick={navigate}
-    draggable={!isMemory}
+    draggable={!isMemory && !isNote}
     ondragstart={onDragStart}
     ondragover={onDragOver}
     ondragleave={onDragLeave}
@@ -207,7 +222,7 @@
           aria-label="Relacionar"
         >→</button>
       {/if}
-      {#if !isMemory}<button class="row-btn" onclick={handleNewChild} title="Novo filho">+</button>{/if}
+      {#if !isMemory && !isNote}<button class="row-btn" onclick={handleNewChild} title="Novo filho">+</button>{/if}
       {#if node.archived}
         <button class="row-btn row-btn-unarchive" onclick={handleUnarchive} title="Desarquivar"><i class="bx bx-undo"></i></button>
       {:else}

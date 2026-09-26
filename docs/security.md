@@ -23,7 +23,7 @@ PKD é uma ferramenta **de usuário único, auto-hospedada**. O modelo de ameaç
 | Cookie de sessão | `HttpOnly; SameSite=Strict; Path=/`. Flag `Secure` intencionalmente ausente porque PKD frequentemente roda na LAN sem TLS. |
 | Bloqueio por falhas | 5 tentativas incorretas do mesmo IP → bloqueio de 30 minutos. Contador reseta no login bem-sucedido. Header `Retry-After` indica o tempo de espera. |
 | Detecção de IP | Por padrão `RemoteAddr`. Com `PKD_TRUST_PROXY_HEADERS=1` usa `X-Forwarded-For`. **Não ativar sem proxy reverso — permite spoofing de IP.** |
-| Bearer token (agentes) | `POST /api/import` e `/api/memories` aceitam `Authorization: Bearer <PKD_IMPORT_TOKEN>`, comparado com `crypto/subtle.ConstantTimeCompare`. Em `/api/memories`, o middleware `tokenOrSession` aceita token **ou** sessão; um Bearer presente e errado → 401, nunca cai para o cookie. `GET /api/memories` (lista da árvore da MC) aceita só sessão. Sem `PKD_IMPORT_TOKEN`, `/api/import` não existe e `/api/memories` aceita só sessão. Requisições com Bearer não passam pelo CSRF (não usam cookie). |
+| Bearer token (agentes) | `POST /api/import`, `/api/memories` e `/api/notes` aceitam `Authorization: Bearer <PKD_IMPORT_TOKEN>`, comparado com `crypto/subtle.ConstantTimeCompare`. Em `/api/memories` e `/api/notes`, o middleware `tokenOrSession` aceita token **ou** sessão; um Bearer presente e errado → 401, nunca cai para o cookie. `GET /api/memories`/`GET /api/notes` (listas das árvores/blocos) e `POST /api/notes/{id}/convert` aceitam só sessão. Sem `PKD_IMPORT_TOKEN`, `/api/import` não existe e `/api/memories`/`/api/notes` aceitam só sessão. `created_at`/`updated_at` em `POST /api/notes` só são honrados com Bearer — com sessão, são ignorados (Q11). Requisições com Bearer não passam pelo CSRF (não usam cookie). |
 
 ---
 
@@ -69,6 +69,8 @@ Texto plano é derivado do HTML sanitizado para indexação FTS5.
 **Captura de conteúdo**: o conteúdo recebido via `/api/capture` (POST JSON ou form-encoded) passa pela mesma sanitização antes de ser armazenado.
 
 **Memórias via API**: o `content` de `POST`/`PATCH /api/memories` passa pelo mesmo EditorPolicy (ex.: `<script>` removido). A Data da Memória é validada no servidor (datas impossíveis como 31/02, hora sem dia, hora e Período juntos → 400).
+
+**Notas via API**: o `content` de `POST`/`PATCH /api/notes` passa pelo mesmo EditorPolicy. `POST /api/notes/{id}/convert` para Memória valida a Data da Memória do mesmo jeito antes de gravar.
 
 ---
 

@@ -1204,7 +1204,7 @@
           aria-label="Título"
           disabled={doc.locked}
         />
-        {#if !doc.memory_id}
+        {#if !doc.memory_id && !doc.is_note}
           <button
             class="subdoc-btn"
             onclick={handleCreateSubDoc}

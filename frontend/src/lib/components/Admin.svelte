@@ -5,6 +5,7 @@
   import { autoSaveInterval } from '../stores/settings.js'
   import { docBodyRefreshedSignal, loadTree } from '../stores/documents.js'
   import { loadMemories } from '../stores/memories.js'
+  import { loadNotes } from '../stores/notes.js'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
 
@@ -673,6 +674,7 @@
     await apiPost(`/api/documents/${id}/restore`)
     await loadTrash()
     await loadMemories()
+    await loadNotes()
   }
 
   async function permanentDelete(id) {

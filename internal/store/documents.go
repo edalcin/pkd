@@ -99,6 +99,9 @@ func (s *DocumentStore) Create(parentID *int64, title string) (*model.Document, 
 		if err := rejectMemoryParent(tx, parentID); err != nil {
 			return err
 		}
+		if err := rejectNoteParent(tx, parentID); err != nil {
+			return err
+		}
 		actualTitle := uniqueTitle(tx, title)
 
 		// Determine next position among siblings
@@ -510,6 +513,9 @@ func (s *DocumentStore) Reorder(id int64, newParentID *int64, beforeID *int64) e
 		if err := rejectMemoryMove(tx, id, newParentID); err != nil {
 			return err
 		}
+		if err := rejectNoteMove(tx, id, newParentID); err != nil {
+			return err
+		}
 		var oldParentID sql.NullInt64
 		if err := tx.QueryRow(`SELECT parent_id FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&oldParentID); err != nil {
 			return err
@@ -676,6 +682,9 @@ func (s *DocumentStore) Move(id int64, newParentID *int64) error {
 		if err := rejectMemoryMove(tx, id, newParentID); err != nil {
 			return err
 		}
+		if err := rejectNoteMove(tx, id, newParentID); err != nil {
+			return err
+		}
 		var oldParentID sql.NullInt64
 		if err := tx.QueryRow(`SELECT parent_id FROM documents WHERE id = ? AND trashed_at IS NULL`, id).Scan(&oldParentID); err != nil {
 			return err
@@ -734,7 +743,7 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 		rows, err = s.db.Query(`
 			WITH RECURSIVE archived_subtree AS (
 			  SELECT id FROM documents
-			  WHERE archived_at IS NOT NULL AND trashed_at IS NULL AND memory_id IS NULL` + favExtra + `
+			  WHERE archived_at IS NOT NULL AND trashed_at IS NULL AND memory_id IS NULL AND is_note = 0` + favExtra + `
 			  UNION ALL
 			  SELECT d.id FROM documents d
 			  JOIN archived_subtree a ON d.parent_id = a.id
@@ -748,7 +757,7 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 		rows, err = s.db.Query(`
 			SELECT ` + cols + `
 			FROM documents
-			WHERE trashed_at IS NULL AND memory_id IS NULL` + favExtra + `
+			WHERE trashed_at IS NULL AND memory_id IS NULL AND is_note = 0` + favExtra + `
 			ORDER BY position ASC, id ASC`)
 	default: // "active"
 		// Recursive CTE: traverse only non-archived nodes from non-archived roots.
@@ -758,7 +767,7 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 		rows, err = s.db.Query(`
 			WITH RECURSIVE active_ids AS (
 			  SELECT id FROM documents
-			  WHERE parent_id IS NULL AND trashed_at IS NULL AND archived_at IS NULL AND memory_id IS NULL
+			  WHERE parent_id IS NULL AND trashed_at IS NULL AND archived_at IS NULL AND memory_id IS NULL AND is_note = 0
 			  UNION ALL
 			  SELECT d.id FROM documents d
 			  JOIN active_ids a ON d.parent_id = a.id
@@ -959,7 +968,7 @@ func (s *DocumentStore) listByTags(view string, tags []string, favoriteOnly bool
 		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.encrypted, d.archived_at,
 		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
 		FROM documents d
-		WHERE d.trashed_at IS NULL AND d.memory_id IS NULL` + extra + `
+		WHERE d.trashed_at IS NULL AND d.memory_id IS NULL AND d.is_note = 0` + extra + `
 		  AND d.id IN (
 			SELECT dt.document_id
 			FROM document_tags dt
@@ -1019,7 +1028,10 @@ func scanDoc(db *sql.DB, id int64, doc *model.Document) error {
 	}
 	doc.Tags, _ = queryTagNames(db, id)
 	doc.AttachmentIDs, _ = queryAttachmentIDs(db, id)
-	return scanMemoryFields(db, id, doc)
+	if err := scanMemoryFields(db, id, doc); err != nil {
+		return err
+	}
+	return scanNoteFields(db, id, doc)
 }
 
 func scanDocFromTx(tx *sql.Tx, id int64, doc *model.Document) error {
@@ -1032,7 +1044,10 @@ func scanDocFromTx(tx *sql.Tx, id int64, doc *model.Document) error {
 	}
 	doc.Tags, _ = queryTagNamesTx(tx, id)
 	doc.AttachmentIDs, _ = queryAttachmentIDsTx(tx, id)
-	return scanMemoryFields(tx, id, doc)
+	if err := scanMemoryFields(tx, id, doc); err != nil {
+		return err
+	}
+	return scanNoteFields(tx, id, doc)
 }
 
 func scanDocRow(row *sql.Row, doc *model.Document) error {
@@ -1371,7 +1386,7 @@ func (s *DocumentStore) ListByIDsFiltered(ids []int64, view string, tagFilter []
 func (s *DocumentStore) RootStats() ([]*model.RootDocStats, error) {
 	rows, err := s.db.Query(`
 		WITH RECURSIVE subtree(id, root_id) AS (
-		  SELECT id, id FROM documents WHERE parent_id IS NULL AND trashed_at IS NULL AND memory_id IS NULL
+		  SELECT id, id FROM documents WHERE parent_id IS NULL AND trashed_at IS NULL AND memory_id IS NULL AND is_note = 0
 		  UNION ALL
 		  SELECT d.id, s.root_id
 		  FROM documents d

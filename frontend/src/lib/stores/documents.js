@@ -1,6 +1,7 @@
 import { writable, get } from 'svelte/store'
 import { apiGet, apiPost, apiPut, apiDelete } from '../api.js'
 import { loadMemories } from './memories.js'
+import { loadNotes } from './notes.js'
 
 /** Full tree of DocumentTreeNode objects. */
 export const tree = writable([])
@@ -108,6 +109,7 @@ export async function archiveDoc(id) {
   const doc = await apiPost(`/api/documents/${id}/archive`, {})
   await loadTree()
   await loadMemories()
+  await loadNotes()
   return doc
 }
 
@@ -116,6 +118,7 @@ export async function unarchiveDoc(id) {
   const doc = await apiPost(`/api/documents/${id}/unarchive`, {})
   await loadTree()
   await loadMemories()
+  await loadNotes()
   return doc
 }
 
@@ -150,6 +153,7 @@ export async function saveDoc(id, { version, title, body_html, body_text, icon }
   tree.update(nodes => updateTreeNode(nodes, id, { title, icon }))
   // Memórias aren't in the normal tree; refresh the MC list on rename instead.
   if (result.memory_id) loadMemories()
+  if (result.is_note) loadNotes()
   return result
 }
 
@@ -160,6 +164,7 @@ export async function trashDoc(id) {
   activeDocId.set(null)
   await loadTree()
   await loadMemories()
+  await loadNotes()
 }
 
 /** Restore a document from trash. */
@@ -167,6 +172,7 @@ export async function restoreDoc(id) {
   await apiPost(`/api/documents/${id}/restore`)
   await loadTree()
   await loadMemories()
+  await loadNotes()
 }
 
 /** Move a document to a new parent (nest as child). */

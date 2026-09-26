@@ -33,6 +33,8 @@ type Document struct {
 	MemoryHour   *int   `json:"memory_hour,omitempty"`
 	MemoryMinute *int   `json:"memory_minute,omitempty"`
 	MemoryPeriod string `json:"memory_period,omitempty"`
+	// IsNote marks a Nota (empty/false for normal documents and Memórias).
+	IsNote bool `json:"is_note,omitempty"`
 }
 
 // DocumentTreeNode is the nested shape returned by GET /api/tree.
@@ -50,6 +52,7 @@ type DocumentTreeNode struct {
 	ArchivedAt *time.Time          `json:"archived_at"`
 	Tags       []string            `json:"tags,omitempty"`
 	IsMemory   bool                `json:"is_memory,omitempty"`
+	IsNote     bool                `json:"is_note,omitempty"`
 	Children   []*DocumentTreeNode `json:"children"`
 }
 

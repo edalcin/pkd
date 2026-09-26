@@ -147,3 +147,20 @@ precisão conhecida e um sufixo aleatório. Congelado na criação — não muda
 data for corrigida (ADR-007). É rótulo de indexação; links internos usam o ID
 numérico do Documento.
 _Evitar_: código, slug, número da memória.
+
+## Nota (Note)
+
+Texto curto, de formatação simples, para guardar uma informação rápida (um
+endereço, um contato, uma lista). É um **Documento** com tipo próprio, não uma
+entidade separada: tem busca, embedding, Chat, Graph View, tags, anexos e
+links iguais aos de qualquer Documento. Não tem pai nem filhos e não aparece
+na árvore normal; aparece somente no bloco **Notas**. Uma Nota pode ser
+convertida em Documento ou em **Memória** (neste caso, com **Data da Memória**
+de, no mínimo, o ano).
+_Evitar_: anotação, lembrete.
+
+## app Notas
+
+Ferramenta separada, de origem das **Notas** migradas para o PKD. Não é parte
+do PKD e será arquivada depois da migração.
+_Evitar_: "notas" sozinho quando o sentido for a ferramenta.

@@ -38,6 +38,7 @@
 | 🕰️ **Histórico de versões** | Snapshot automático a cada save com dedup SHA-256 (saves idênticos não geram versão). Visualize, compare e restaure qualquer versão anterior via botão `⏱` na barra do documento. Retenção configurável (padrão 50 versões/documento) |
 | ⭐ **Favoritar da barra** | Botão ⭐ na barra de ações do documento — alterna favorito sem precisar ir à sidebar |
 | 🗓️ **Memória Cronológica** | Registre eventos no tempo (almoço, entrega, consulta) como **Memórias**, em árvore própria Ano → Mês → Dia no menu lateral. ID público estável `MEM-…`, API para agentes (Hermes). Ver [Memória Cronológica (MC)](#memória-cronológica-mc) |
+| 📝 **Nota** | Texto curto e rápido (endereço, contato, lista) no bloco "Notas" da barra lateral, fora da árvore normal, sem pai nem filhos. Conversível em Documento (arrastar para a árvore) ou Memória (arrastar para a MC). Ver [Nota](#nota) |
 
 ### Árvore lateral
 
@@ -126,6 +127,20 @@ Memórias registram eventos no tempo (um almoço, uma entrega, um evento de saú
   - Sem `DELETE` e sem busca: apagar é ação do usuário na interface
 - **Prompt para a Skill do Hermes**: [`docs/promptMcHermes.md`](docs/promptMcHermes.md)
 
+### Nota
+
+Notas guardam um texto curto e de formatação simples (um endereço, um contato, uma lista). Cada Nota é um documento com busca, embeddings, Chat, Graph View, tags, anexos e links, mas vive **somente** no bloco "Notas" da barra lateral — nunca na árvore normal, sem pai nem filhos. Termos em [`docs/adr/glossary.md`](docs/adr/glossary.md).
+
+- **Bloco Notas**: lista plana na barra lateral, favoritas primeiro, depois mais recentes; recolhido por padrão. Respeita os filtros de tag e favoritos da barra lateral
+- **Criar pela interface**: "+ Nova Nota" pede só o título e abre o editor completo (mesmo TipTap do Documento)
+- **Sem hierarquia**: Nota não tem pai nem filhos (bloqueado no backend e na interface). Ícone padrão `bx-sticky-note`
+- **Conversão só de ida**: arraste uma Nota para a árvore normal para virar Documento na posição solta (sem diálogo); arraste para o bloco MC para virar Memória (diálogo pede a Data da Memória, ano obrigatório). Corpo, tags, anexos e favorito são preservados; não existe conversão de volta
+- **API para agentes** (Bearer `PKD_IMPORT_TOKEN`, ou sessão de login):
+  - `POST /api/notes` — `{title, content (HTML)?, tags?, attachments?, favorite?, idempotency_key?, created_at?, updated_at?}` → 201. A mesma `idempotency_key` devolve a Nota existente (200), sem duplicar. `created_at`/`updated_at` só são honrados com Bearer
+  - `GET /api/notes/{id}` e `PATCH /api/notes/{id}` (`title`, `content`, `tags`)
+  - `GET /api/notes` (só sessão) — lista do bloco Notas, com os mesmos filtros de tag/favorito da árvore
+  - `POST /api/notes/{id}/convert` (só sessão) — `{to:"document", parent_id?, before_id?}` ou `{to:"memory", date:{year, ...}}`
+
 ---
 
 ## Início rápido
@@ -202,7 +217,7 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
 | `PKD_MAX_ATTACHMENT_MB` | não | `100` | Tamanho máximo de arquivo anexado (MB) |
 | `PKD_TRUST_PROXY_HEADERS` | não | `0` | Defina como `1` apenas atrás de proxy reverso confiável |
 | `PKD_BASE_URL` | não | *(host da request)* | URL pública base para links de compartilhamento (ex: `https://pkd.exemplo.com/`) |
-| `PKD_IMPORT_TOKEN` | não | *(desativado)* | Token secreto (Bearer) para `POST /api/import` e para a API de Memórias (`/api/memories`). Se vazio, `/api/import` não existe e `/api/memories` aceita só sessão de login. Gere com `openssl rand -hex 32` |
+| `PKD_IMPORT_TOKEN` | não | *(desativado)* | Token secreto (Bearer) para `POST /api/import` e para as APIs de Memórias (`/api/memories`) e Notas (`/api/notes`). Se vazio, `/api/import` não existe e `/api/memories`/`/api/notes` aceitam só sessão de login. Gere com `openssl rand -hex 32` |
 | `PKD_S3_BUCKET` | não | *(vazio)* | Nome do bucket S3; junto com `PKD_S3_REGION` habilita S3 como backend disponível |
 | `PKD_S3_REGION` | não | *(vazio)* | Região AWS do bucket (ex: `us-east-1`) |
 | `PKD_S3_PREFIX` | não | *(vazio)* | Prefixo de caminho dentro do bucket (ex: `pkd/attachments/`) |
@@ -512,7 +527,7 @@ graph TD
     User(["👤 Usuário"]) -->|"HTTPS / Browser"| App
     Mobile(["📱 Mobile OS"]) -->|"PWA Share Target"| App
     Notas(["📝 Notas app"]) -->|"Bearer token\nPOST /api/import"| App
-    Hermes(["🤖 Hermes"]) -->|"Bearer token\n/api/memories"| App
+    Hermes(["🤖 Hermes"]) -->|"Bearer token\n/api/memories, /api/notes"| App
 
     subgraph Container ["🐳 Docker Container"]
         App["⚙️ Go HTTP Server\n(chi router · handlers · middleware)"]
@@ -531,6 +546,7 @@ graph TD
 |---|---|
 | `documents` | Documentos com hierarquia via `parent_id`, soft-delete, versionamento otimista |
 | `documents` (Memória) | Memória = documento com `memory_id` não nulo. Colunas `memory_id` (ID público, `UNIQUE`), `memory_hour`, `memory_minute`, `memory_period`, `memory_key` (idempotência, `UNIQUE`); dia em `assoc_year/month/day` |
+| `documents` (Nota) | Nota = documento com `is_note = 1`. Coluna `note_key` (idempotência, `UNIQUE`); sem pai nem filhos, fora da árvore normal |
 | `document_links` | Arestas simétricas entre documentos; o "outro doc" é derivado via `CASE WHEN` independente de qual lado é `source_id`. Flag `manual` distingue links do painel de notas relacionadas |
 | `document_urls` | URLs externas com título opcional associadas a documentos |
 | `attachments` | Metadados de arquivos; binários em volume externo com path sharding |
@@ -558,6 +574,16 @@ graph TD
 ---
 
 ## Changelog
+
+### 2026-09-26
+
+**Nota**
+
+- Terceiro tipo de conteúdo: **Nota**, documento sem pai nem filhos, fora da árvore normal, com bloco próprio "Notas" na barra lateral (favoritas primeiro, depois mais recentes; filtros de tag/favorito)
+- API `POST /api/notes` (idempotente por `idempotency_key`, `created_at`/`updated_at` honrados só via Bearer), `GET`/`PATCH /api/notes/{id}`, `GET /api/notes`; Bearer `PKD_IMPORT_TOKEN` ou sessão
+- Conversão só de ida: `POST /api/notes/{id}/convert` para Documento (posição na árvore) ou Memória (Data da Memória, ID `MEM-…`); arrastar a Nota para a árvore ou para o bloco MC dispara a conversão na interface
+- "+ Nova Nota" pede só o título e abre o editor completo; ícone padrão `bx-sticky-note`
+- Migração aditiva (`is_note`, `note_key` em `documents`, sem backfill)
 
 ### 2026-09-24
 

@@ -1,3 +1,133 @@
+# Próximos Passos — Nota (feature em andamento)
+
+> **Em andamento (2026-09-26).** Terceiro tipo de conteúdo do PKD: **Nota**
+> (ver glossário: Nota, app Notas). Bloco próprio na barra lateral, igual ao
+> da MC. Migração das notas ativas do app Notas (EC2
+> `/home/ec2-user/notas`, somente leitura — nunca alterar nada lá).
+> Ordem: homologação no UNRAID (`/mnt/user/Storage/appsdata/pkd`, anexos em
+> disco local) → validação do usuário → produção no EC2 (anexos no S3),
+> migração junto com a atualização do container.
+
+## Decisões da Nota (grilling, Q1–Q20)
+
+Não redecidir sem motivo novo.
+
+|#|Decisão|
+|---|---|
+|Q2|Nota = Documento com tipo, mesma tabela. Sem pai nem filhos; fora da árvore normal; busca, embedding, Chat, Graph View, tags, anexos, links.|
+|Q3|Conversão só de ida: Nota → Documento, Nota → Memória.|
+|Q4|Bloco Notas: lista plana, favoritas primeiro, depois `created_at` desc. Colapsado por padrão, toggle persistido.|
+|Q5|Filtros de tag e favoritos agem no bloco Notas.|
+|Q6|Diálogo "+ Nova Nota": só título, depois abre o editor.|
+|Q7|Migração: título = 1ª linha não vazia sem `#`; a linha sai do corpo; repetido → "(2)".|
+|Q8|Migração: linhas só de hashtags saem do corpo; hashtags viram tags.|
+|Q9|Sem tag `notas`. Cor de tag copiada só se a tag não existe ou não tem cor.|
+|Q10|Nota fixada (pinned) → Favorita.|
+|Q11|Migração mantém `created_at`/`updated_at`; datas explícitas só via Bearer.|
+|Q12|Anexos em bloco "Anexos" no fim do corpo (ADR-003 D2).|
+|Q13|API `/api/notes`: `POST`, `GET {id}`, `PATCH {id}`; Bearer ou sessão; `idempotency_key` (`notas:<id>`).|
+|Q14|Extensão Chrome e share target Android: Fog; prioridade (item 8 abaixo).|
+|Q15|Antes de migrar, ler o banco do PKD (somente leitura) e achar notas já exportadas pelo botão antigo (tag `notas`); usuário decide caso a caso.|
+|Q16|Ícone padrão `bx-sticky-note`.|
+|Q17|Soltar Nota na MC abre diálogo de Data da Memória (ano obrigatório, vazio); cancelar não muda nada.|
+|Q18|Soltar Nota na árvore normal converte em Documento na posição, sem diálogo.|
+|Q19|Nota arquivada: igual à MC (some da barra lateral; busca e Chat continuam).|
+|Q20|Editor TipTap completo, igual ao do Documento.|
+
+Fatos do app Notas (produção, 2026-09-26): 74 notas ativas, 3 arquivadas, 37
+na lixeira; 16 tags em uso; 10 anexos (imagens) em notas ativas, 12,6 MB;
+corpo em Markdown, sem campo título; anexos não referenciados no corpo.
+
+## O que foi feito
+
+**Backend**
+- `internal/store/migrate.go` — colunas `is_note`, `note_key` + índice `UNIQUE`
+  parcial em `documents`.
+- `internal/store/notes.go` — **novo**. `CreateNote` (idempotência,
+  `created_at`/`updated_at` explícitos só honrados pelo handler quando Bearer,
+  `favorite`), `GetNote`, `ListNotes` (favoritas primeiro, depois `created_at`
+  desc; filtro de tag/favorito), `NoteDocIDs`, guards de hierarquia
+  (`ErrNoteHierarchy`), `ConvertNoteToDocument` (reusa `Reorder`, restaura o
+  ícone padrão de Documento se ainda era `bx-sticky-note`) e
+  `ConvertNoteToMemory` (mesmo retry de colisão de sufixo do `CreateMemory`).
+- `internal/store/documents.go` — `Create`/`Move`/`Reorder` rejeitam
+  hierarquia com Nota (`ErrNoteHierarchy`); `ListTree`, `RootStats` e
+  `listByTags` excluem Notas; `scanDoc`/`scanDocFromTx` devolvem `is_note`.
+- `internal/model/document.go` — campo `IsNote` em `Document` e
+  `DocumentTreeNode`.
+- `internal/server/handlers_notes.go` — **novo**. `POST /api/notes` (aceita
+  `created_at`/`updated_at` só quando `Authorization: Bearer`, ignora com
+  sessão), `GET`/`PATCH /api/notes/{id}`, `GET /api/notes` (só sessão),
+  `POST /api/notes/{id}/convert` (só sessão, `{to:"document",...}` ou
+  `{to:"memory",date:...}`). Reusa `tokenOrSession`, `withheldIfEncrypted` e
+  `importAttachments`/`rollbackImportedDocument` de `handlers_memories.go`/
+  `handlers_import.go`; `reindexNote` mirror de `reindexMemory`.
+- `internal/server/handlers_documents.go` — `Create`/`Move`/`Reorder` também
+  tratam `ErrNoteHierarchy` como 400.
+- `internal/server/handlers_tree.go` — resultados de busca marcam `is_note`
+  (mesmo padrão de `is_memory`).
+- `internal/server/server.go` — rotas `POST/GET/PATCH /api/notes[/{id}]`
+  (`tokenOrSession`) e `GET /api/notes`, `POST /api/notes/{id}/convert` (só
+  sessão).
+
+**Frontend**
+- `stores/notes.js`, `NewNoteDialog.svelte`, `ConvertNoteToMemoryDialog.svelte`
+  — **novos**.
+- `Sidebar.svelte` — bloco "Notas" (lista plana, favoritas primeiro) ao lado
+  do bloco MC, toggle persistido em `pkd-notes-collapsed` (colapsado por
+  padrão), "+ Nova Nota", filtros de tag/favorito também recarregam a lista de
+  Notas. Arrastar uma Nota (marcador `application/x-pkd-note` no
+  `dataTransfer`, além do id em `text/plain`) para a árvore normal converte em
+  Documento na posição solta sem diálogo (Q18); soltar no bloco MC abre
+  `ConvertNoteToMemoryDialog` (campos vazios, ano obrigatório) e só converte
+  ao confirmar — cancelar não muda nada (Q17).
+- `TreeNode.svelte` — Nota em resultado de busca não arrasta, não recebe
+  drop, sem "+" (mirror de Memória); `onDrop` converte em vez de
+  mover/reordenar quando a origem é uma Nota.
+- `Editor.svelte` — sem "Criar sub-documento" em Notas.
+- `documents.js`, `Admin.svelte` — recarregam a lista de Notas em
+  arquivar/lixeira/restaurar/renomear.
+
+**Docs** — `README.md` (funcionalidade, seção "Nota", modelo de dados,
+arquitetura, changelog, `PKD_IMPORT_TOKEN`), `CHANGELOG.md`, glossário (já
+continha o termo Nota), `docs/security.md` (Bearer/`tokenOrSession` em
+`/api/notes`, `created_at`/`updated_at` só via Bearer), C4 context e
+component.
+
+**Verificação**
+- `tests/unit/store_notes_test.go` — idempotência, `created_at`/`updated_at`
+  explícitos mantidos, ordem do bloco Notas (favoritas primeiro) + filtro de
+  tag + filtro de favoritos + exclusão de arquivadas/lixeira, hierarquia
+  bloqueada, exclusão da árvore normal, conversão para Documento (sai da
+  lista de Notas, aparece na árvore sob o pai, ícone restaurado) e para
+  Memória (ID `MEM-…` válido, ano sozinho ok).
+- `tests/integration/notes_test.go` — `created_at` honrado com Bearer e
+  ignorado com sessão; conversão para Memória com data inválida (31/02) → 400.
+- `go test ./tests/... ./internal/...` verde; `go vet ./internal/...` limpo;
+  `npm run build` limpo.
+- Smoke com binário real (`PKD_LISTEN_ADDR=127.0.0.1:18091`): `POST
+  /api/notes` com Bearer + `idempotency_key` + `created_at` + anexo PNG → 201;
+  repetir a mesma chave → 200 com o mesmo id e `created_at` mantido; Bearer
+  errado → 401; `GET`/`PATCH /api/notes/{id}` ok; `GET /api/tree` sem Notas;
+  `GET /api/tree?q=` marca `is_note:true`; `POST /api/notes/{id}/convert`
+  para Documento (aparece na árvore sob o pai, some de `/api/notes`) e para
+  Memória com `{year:2020}` → `MEM-2020-…`.
+- Navegador (via `browser` do eval, sessão logada no smoke acima): bloco
+  Notas aparece, expande/colapsa e persiste em `localStorage` após reload;
+  "+ Nova Nota" cria e abre o editor; filtro de tag da barra lateral narrows
+  a lista de Notas; arrastar uma Nota (evento `DragEvent` sintético com
+  `DataTransfer`, já que a instância de Chromium deste ambiente é acessada
+  via relay sem foco de janela do SO — CDP não conseguiu sintetizar
+  clique/teclado nem screenshot; contornado com `page.evaluate` disparando
+  os mesmos eventos DOM que um drag real dispara) para a árvore converte em
+  Documento visível sob o pai; arrastar para o bloco MC abre o diálogo de
+  Data da Memória sem alterar nada e, ao confirmar o ano, converte e a
+  memória aparece no ano correspondente na MC. Sem evidência fotográfica
+  (screenshot indisponível neste ambiente); evidência é o estado do DOM lido
+  via `page.evaluate` em cada etapa.
+
+---
+
 # Próximos Passos — Memória Cronológica (MC)
 
 > **Concluída, implantada no UNRAID e validada em uso real (2026-09-24).**
@@ -122,6 +252,22 @@ arquitetura, changelog, `PKD_IMPORT_TOKEN`), glossário, ADR-007,
    3. Se o problema for achar o ID de uma Memória que o Hermes não criou ou
       esqueceu: a API não tem busca (Q11). Opção: `GET /api/memories?date=…`
       ou `?q=…` com Bearer — isso redecide a Q11; decidir com o usuário.
+7. **Tag de origem configurável no `/api/import` (documentos do Hermes).**
+   Hoje `handlers_import.go` força a tag `notas` em todo documento importado
+   (`append([]string{"notas"}, body.Tags...)`). Permitir que o chamador defina
+   a tag de origem (ex.: `"source_tag": "hermes"`), mantendo `notas` como
+   padrão para o app Notas. Objetivo: documentos criados pelo Hermes (skill
+   `pkd-documentos`) saírem só com `#hermes`. Por ora o usuário aceita
+   `notas` + `hermes`.
+8. **PRIORIDADE — formas de captura de Nota (depois da feature Nota).** Quando
+   o app Notas for desligado, estas duas formas de criar notas deixam de
+   existir. O usuário usa as duas e elas são muito úteis para ele:
+   1. **Extensão Chrome** (hoje em `notas/extension/`, com `EXTENSION_TOKEN`)
+      → criar Nota no PKD.
+   2. **Compartilhamento do Android** (PWA `share_target` em
+      `notas/frontend/manifest.json`) → criar Nota no PKD.
+   Estão na Fog do mapa wayfinder da feature Nota; decidir depois da migração
+   em homologação.
 
 ## Pontos abertos (decidir com uso real)
 

@@ -29,7 +29,7 @@ func (s *Server) handleCreateDocument() http.HandlerFunc {
 			req.Title = "Untitled"
 		}
 		doc, err := s.docs.Create(req.ParentID, req.Title)
-		if errors.Is(err, store.ErrMemoryHierarchy) {
+		if errors.Is(err, store.ErrMemoryHierarchy) || errors.Is(err, store.ErrNoteHierarchy) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -314,7 +314,7 @@ func (s *Server) handleMoveDocument() http.HandlerFunc {
 		if err := s.docs.Move(id, req.NewParentID); errors.Is(err, store.ErrCircularMove) {
 			http.Error(w, "circular move not allowed", http.StatusBadRequest)
 			return
-		} else if errors.Is(err, store.ErrMemoryHierarchy) {
+		} else if errors.Is(err, store.ErrMemoryHierarchy) || errors.Is(err, store.ErrNoteHierarchy) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else if errors.Is(err, store.ErrNotFound) {
@@ -347,7 +347,7 @@ func (s *Server) handleReorderDocument() http.HandlerFunc {
 		if err := s.docs.Reorder(id, req.NewParentID, req.BeforeID); errors.Is(err, store.ErrCircularMove) {
 			http.Error(w, "circular move not allowed", http.StatusBadRequest)
 			return
-		} else if errors.Is(err, store.ErrMemoryHierarchy) {
+		} else if errors.Is(err, store.ErrMemoryHierarchy) || errors.Is(err, store.ErrNoteHierarchy) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		} else if err != nil {

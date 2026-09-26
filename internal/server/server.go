@@ -216,6 +216,11 @@ func (s *Server) buildRouter() http.Handler {
 	r.With(s.tokenOrSession).Get("/api/memories/{memoryID}", s.handleGetMemory())
 	r.With(s.tokenOrSession).Patch("/api/memories/{memoryID}", s.handlePatchMemory())
 
+	// Nota: agents (bearer PKD_IMPORT_TOKEN) or the UI session (Q13).
+	r.With(s.tokenOrSession).Post("/api/notes", s.handleCreateNote())
+	r.With(s.tokenOrSession).Get("/api/notes/{id}", s.handleGetNote())
+	r.With(s.tokenOrSession).Patch("/api/notes/{id}", s.handlePatchNote())
+
 	// Static assets (unauthenticated).
 	// Svelte build outputs to /assets/ with hashed filenames; legacy paths kept.
 	sf := staticFileServer()
@@ -261,6 +266,8 @@ func (s *Server) buildRouter() http.Handler {
 		r.Get("/api/tree", s.handleTree())
 		r.Post("/api/tree/sort", s.handleSortTree())
 		r.Get("/api/memories", s.handleListMemories())
+		r.Get("/api/notes", s.handleListNotes())
+		r.Post("/api/notes/{id}/convert", s.handleConvertNote())
 
 		// Chat RAG sobre os documentos (ADR-006). POST, não GET+EventSource:
 		// o CSRF é middleware global e EventSource não manda headers.

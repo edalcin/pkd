@@ -109,6 +109,9 @@ func Open(dbPath string) (*sql.DB, error) {
 		{`ALTER TABLE documents ADD COLUMN memory_minute INTEGER`, "alter documents memory_minute"},
 		{`ALTER TABLE documents ADD COLUMN memory_period TEXT`, "alter documents memory_period"},
 		{`ALTER TABLE documents ADD COLUMN memory_key    TEXT`, "alter documents memory_key"},
+		// Nota: is_note=1 marks a Nota (docs/adr/glossary.md).
+		{`ALTER TABLE documents ADD COLUMN is_note  INTEGER NOT NULL DEFAULT 0`, "alter documents is_note"},
+		{`ALTER TABLE documents ADD COLUMN note_key TEXT`, "alter documents note_key"},
 	}
 	for _, m := range colMigrations {
 		if _, err := db.Exec(m.sql); err != nil {
@@ -133,6 +136,7 @@ func Open(dbPath string) (*sql.DB, error) {
 	for _, ix := range []string{
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_memory_id  ON documents(memory_id)  WHERE memory_id  IS NOT NULL`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_memory_key ON documents(memory_key) WHERE memory_key IS NOT NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_note_key   ON documents(note_key)   WHERE note_key   IS NOT NULL`,
 	} {
 		if _, err := db.Exec(ix); err != nil {
 			db.Close()

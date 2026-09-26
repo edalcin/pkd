@@ -8,6 +8,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Adicionado
 
+- **Nota — terceiro tipo de conteúdo** — mirror de Memória Cronológica, ver `docs/proximosPassos.md` (Q1–Q20) e `docs/adr/glossary.md`:
+  - `internal/store/notes.go` (novo): `CreateNote` (idempotência, `created_at`/`updated_at` explícitos), `GetNote`, `ListNotes` (favoritas primeiro, depois `created_at` desc; filtro de tag/favorito), `NoteDocIDs`, guards de hierarquia (`ErrNoteHierarchy`), `ConvertNoteToDocument`/`ConvertNoteToMemory` (conversão só de ida, Q3).
+  - `internal/store/migrate.go` — colunas `is_note`, `note_key` + índice `UNIQUE` parcial em `documents`.
+  - `internal/store/documents.go` — `Create`/`Move`/`Reorder` rejeitam hierarquia com Nota; `ListTree`, `RootStats` e `listByTags` excluem Notas; `GetByID` devolve `is_note`.
+  - `internal/server/handlers_notes.go` (novo): `POST /api/notes`, `GET`/`PATCH /api/notes/{id}`, `GET /api/notes` (só sessão), `POST /api/notes/{id}/convert` (só sessão). Reutiliza o middleware `tokenOrSession`.
+  - Frontend: `stores/notes.js`, `NewNoteDialog.svelte`, diálogo de conversão para Memória — **novos**. Bloco "Notas" na barra lateral (`Sidebar.svelte`), colapsado por padrão, com "+ Nova Nota" e drag-and-drop para converter (soltar na árvore normal → Documento; soltar na MC → diálogo de Data da Memória). `TreeNode.svelte` bloqueia drag/drop de Notas em resultado de busca. `documents.js`/`Admin.svelte` recarregam a lista de Notas em arquivar/lixeira/restaurar/renomear.
+
 - **Anexos de documentos protegidos: cifra em repouso + exigência de desbloqueio** — a proteção de documento passa a cobrir os arquivos associados, não só o corpo:
   - `POST /api/documents/{id}/protect` cifra cada anexo do documento com AES-256-GCM (`security.EncryptBlob`, mesma chave derivada de `PKD_PASSWORD`) antes de cifrar o corpo; falha em qualquer etapa desfaz o parcial (best-effort) e retorna 500, de modo que corpo e arquivos nunca ficam em estados diferentes. `/unprotect` e a desproteção em lote da Administração revertem os arquivos junto com o corpo. Nova coluna `attachments.encrypted`.
   - Novo portão de acesso: `GET/POST/DELETE` de anexos de um documento protegido exigem que a sessão já tenha passado pelo desbloqueio por e-mail (`403 {"error":"unlock required"}`). Antes, `GET /api/attachments/{id}` servia o arquivo de qualquer documento sem checar proteção — o corpo ficava trancado, os anexos não.
