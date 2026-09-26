@@ -162,5 +162,6 @@ _Evitar_: anotação, lembrete.
 ## app Notas
 
 Ferramenta separada, de origem das **Notas** migradas para o PKD. Não é parte
-do PKD e será arquivada depois da migração.
+do PKD. Migrada e desligada em produção em 2026-09-26; o repositório será
+arquivado.
 _Evitar_: "notas" sozinho quando o sentido for a ferramenta.

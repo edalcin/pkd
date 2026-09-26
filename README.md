@@ -104,13 +104,15 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | ↩️ **Histórico de navegação** | Botões ← / → na barra superior (desktop) e atalhos Alt+← / Alt+→ navegam pelo histórico de documentos visitados na sessão |
 | 🔄 **Sessão persistente** | Login lembrado por até 30 dias de inatividade; último documento aberto restaurado automaticamente ao retornar à ferramenta |
 
-### Integração com Notas
+### Importação de documentos (`/api/import`)
 
-O PKD expõe um endpoint de importação para receber notas do app [Notas](https://github.com/edalcin/notas):
+O PKD expõe um endpoint de importação para agentes criarem **Documentos** (hoje usado pelo Hermes, skill `pkd-documentos`):
 
 - **Endpoint**: `POST /api/import` — autenticado via Bearer token (sem necessidade de sessão de login)
-- **O que faz**: cria um documento com o título, conteúdo HTML e tags da nota de origem; aplica automaticamente a tag `notas` para identificar a procedência
+- **O que faz**: cria um documento com título, conteúdo HTML, tags e anexos (base64, [ADR-003](docs/adr/003-import-de-anexos-do-notas.md)); aplica automaticamente a tag `notas`, herdada do antigo app [Notas](https://github.com/edalcin/notas)
 - **Ativação**: defina `PKD_IMPORT_TOKEN` no container (ver [Variáveis de ambiente](#variáveis-de-ambiente)); o endpoint é desativado quando a variável está ausente
+
+> O app Notas foi substituído pela [Nota](#nota) nativa: as notas ativas foram migradas em 2026-09-26 e o app foi desligado.
 
 ### Memória Cronológica (MC)
 
@@ -140,6 +142,7 @@ Notas guardam um texto curto e de formatação simples (um endereço, um contato
   - `GET /api/notes/{id}` e `PATCH /api/notes/{id}` (`title`, `content`, `tags`)
   - `GET /api/notes` (só sessão) — lista do bloco Notas, com os mesmos filtros de tag/favorito da árvore
   - `POST /api/notes/{id}/convert` (só sessão) — `{to:"document", parent_id?, before_id?}` ou `{to:"memory", date:{year, ...}}`
+- **Migração do app Notas (2026-09-26)**: as 74 notas ativas (não arquivadas, fora da lixeira) viraram Notas por `POST /api/notes`, com anexos, tags, favoritas (as notas fixadas) e as datas originais. Título = primeira linha da nota; linhas só de hashtags viraram tags. O script foi descartável e não está no repositório; detalhes em [`docs/proximosPassos.md`](docs/proximosPassos.md)
 
 ---
 
@@ -184,7 +187,7 @@ services:
       PKD_PASSWORD: ${PKD_PASSWORD:?PKD_PASSWORD is required}
       PKD_DB_PATH: /data/db/pkd.sqlite
       PKD_ATTACHMENTS_PATH: /data/attachments
-      # Opcional: ativa importação de notas externas (ex: app Notas)
+      # Opcional: ativa as APIs para agentes (/api/import, /api/memories, /api/notes)
       PKD_IMPORT_TOKEN: ${PKD_IMPORT_TOKEN}
     volumes:
       - ./data/db:/data/db
@@ -199,7 +202,7 @@ services:
 ```bash
 # .env — nunca versione este arquivo
 PKD_PASSWORD=senha-forte-aqui
-PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-notas  # opcional
+PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-agentes  # opcional
 ```
 
 ---
@@ -526,8 +529,7 @@ Nenhuma credencial é armazenada no repositório — o workflow usa o `GITHUB_TO
 graph TD
     User(["👤 Usuário"]) -->|"HTTPS / Browser"| App
     Mobile(["📱 Mobile OS"]) -->|"PWA Share Target"| App
-    Notas(["📝 Notas app"]) -->|"Bearer token\nPOST /api/import"| App
-    Hermes(["🤖 Hermes"]) -->|"Bearer token\n/api/memories, /api/notes"| App
+    Hermes(["🤖 Hermes"]) -->|"Bearer token\n/api/import, /api/memories, /api/notes"| App
 
     subgraph Container ["🐳 Docker Container"]
         App["⚙️ Go HTTP Server\n(chi router · handlers · middleware)"]
@@ -569,13 +571,16 @@ graph TD
 | [docs/c4/component.md](docs/c4/component.md) | 🇺🇸 EN | C4 Level 3 — Componentes Go |
 | [docs/c4/code.md](docs/c4/code.md) | 🇺🇸 EN | C4 Level 4 — Structs e fluxos de código |
 | [docs/security.md](docs/security.md) | 🇺🇸 EN | Referência de segurança |
-| [docs/operations.md](docs/operations.md) | 🇺🇸 EN | Guia de operações e backup |
+| [docs/operations.md](docs/operations.md) | 🇧🇷 PT-BR | Guia de operações, atualização, promoção dev → prod e backup |
+| [docs/proximosPassos.md](docs/proximosPassos.md) | 🇧🇷 PT-BR | Estado atual, próximos passos e decisões de cada feature |
+| [docs/adr/glossary.md](docs/adr/glossary.md) | 🇧🇷 PT-BR | Glossário (Memória, Nota, app Notas, busca, embeddings…) |
+| [docs/adr/](docs/adr/) | 🇧🇷 PT-BR | Decisões de arquitetura (ADRs) |
 
 ---
 
 ## Changelog
 
-### 2026-09-26
+### 2026-09-26 — `v1.3.0`
 
 **Nota**
 
@@ -584,6 +589,12 @@ graph TD
 - Conversão só de ida: `POST /api/notes/{id}/convert` para Documento (posição na árvore) ou Memória (Data da Memória, ID `MEM-…`); arrastar a Nota para a árvore ou para o bloco MC dispara a conversão na interface
 - "+ Nova Nota" pede só o título e abre o editor completo; ícone padrão `bx-sticky-note`
 - Migração aditiva (`is_note`, `note_key` em `documents`, sem backfill)
+- As 74 notas ativas do app Notas foram migradas (homologação e produção); o app Notas foi desligado
+
+**Correções**
+
+- `/healthz` prendia a única conexão do banco (`QueryRow().Err()` sem `Scan`); depois da primeira checagem o servidor inteiro parava de responder
+- O bloco Notas perdia o filtro de tag/favoritos ao recarregar depois de renomear, arquivar ou mandar para a lixeira
 
 ### 2026-09-24
 

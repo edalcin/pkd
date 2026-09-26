@@ -1,19 +1,103 @@
-# Próximos Passos — Nota
+# Próximos Passos — PKD
 
-> **Concluída e em produção (2026-09-26, `v1.3.0`).** Terceiro tipo de conteúdo do PKD: **Nota**
-> (ver glossário: Nota, app Notas). Bloco próprio na barra lateral, igual ao
-> da MC. Migração das notas ativas do app Notas (EC2
-> `/home/ec2-user/notas`, somente leitura — nunca alterar nada lá).
-> Ordem: homologação no UNRAID (`pkd2`, `https://pkd2.dalc.in`, dados em
-> `/mnt/user/Storage/appsdata/pkd`) → validação do usuário → produção no EC2,
-> migração junto com a atualização do container. Testes: primeiro no Docker
-> local (Windows).
->
-> **Atenção:** o banco do `pkd2` tem `attachments.backend = s3` (bucket
-> `pkd-dev-attachments`), não disco local. A migração usa a API, então grava
-> no backend que estiver ativo.
+> **Estado (2026-09-26):** produção no EC2 em **`v1.3.0`**. As três formas de
+> conteúdo estão em uso: **Documento**, **Memória** (Memória Cronológica, MC)
+> e **Nota** (termos em [`docs/adr/glossary.md`](adr/glossary.md)). As notas
+> ativas do app Notas foram migradas para o PKD e o app Notas foi desligado.
+> Uma sessão nova deve ler este arquivo e o glossário, nessa ordem.
 
-## Estado e próximo passo
+## Reinício — faça isto primeiro
+
+1. `git -c safe.directory=* status -sb` (o repo fica num compartilhamento de
+   rede; sem `safe.directory` o git recusa). A working tree deve estar limpa
+   e em sincronia com `origin/main`.
+2. Escolha o próximo trabalho em "Próximos passos", abaixo.
+
+**Ambientes**
+
+| Ambiente | Onde | Imagem | Anexos |
+|---|---|---|---|
+| Teste | Docker local (Windows) — **use primeiro** | build local | disco |
+| Homologação | UNRAID, container `pkd2`, `https://pkd2.dalc.in`, dados em `/mnt/user/Storage/appsdata/pkd` | `:edge` (cada push em `main`) | S3 `pkd-dev-attachments` |
+| Produção | EC2 `98.93.8.1`, `/home/ec2-user/docker-compose.yml`, serviço `pkd`, `https://pkd.dalc.in` | `:stable` fixada por digest | S3 `pkd-prod-attachments` |
+
+Atualizar e promover: [`docs/operations.md`](operations.md) §"Atualizações" e
+§"Promoção dev → prod" (backup antes, `docker compose up -d pkd` **com o nome
+do serviço**).
+
+**Armadilhas conhecidas**
+
+- **Não rode `gofmt -w` em `internal/` inteiro.** Ele reescreve dezenas de
+  arquivos sem relação (CRLF → LF e alinhamento). Rode só nos arquivos
+  alterados.
+- **Smoke test local:** use caminhos nativos do Windows (nunca `/tmp`), por
+  exemplo `PKD_DB_PATH=C:/Users/EDalcin/Desktop/OMPtemp/<dir>/pkd.db`,
+  `PKD_ATTACHMENTS_PATH=…/att`, `PKD_PASSWORD`, `PKD_IMPORT_TOKEN`,
+  `PKD_LISTEN_ADDR=127.0.0.1:18090`. Compile o binário fora do repo e rode
+  `npm run build` antes de `go build`, porque o binário embute `web/dist`.
+  Use sempre um diretório novo para cada cópia de banco: arquivos `-wal`/`-shm`
+  esquecidos de outra execução corrompem a cópia nova.
+- **O pool do SQLite tem uma conexão só** (`SetMaxOpenConns(1)`). Toda
+  consulta precisa devolver a conexão: `QueryRow(...).Scan(...)`, nunca só
+  `.Err()`; `rows.Close()` sempre. Um vazamento trava o servidor inteiro (foi o
+  bug do `/healthz`, corrigido na `v1.3.0`).
+- Screenshots, bancos e binários de teste vão somente para
+  `C:\Users\EDalcin\Desktop\OMPtemp`.
+- Depois de mudar código, rode `graphify update .`.
+
+## Próximos passos
+
+1. **PRIORIDADE — formas de captura de Nota.** Com o app Notas desligado,
+   estas duas formas de criar notas deixaram de existir. O usuário usa as
+   duas e elas são muito úteis para ele:
+   1. **Extensão Chrome** (código de referência em `notas/extension/`, com
+      `EXTENSION_TOKEN`) → criar Nota no PKD.
+   2. **Compartilhamento do Android.** O PKD já tem PWA `share_target`
+      (`frontend/public/manifest.webmanifest` → `POST /api/capture`), mas ele
+      cria um **Documento** com a tag `captura`, não uma Nota. Decidir com o
+      usuário: `/api/capture` passa a criar Nota, ou um segundo destino.
+   Começar com uma sessão de grilling (uma pergunta por vez).
+2. **Manual, usuário:** arquivar o repositório `notas`. O container `notas`
+   no EC2 está **parado, não removido** (`docker stop notas`, política
+   `unless-stopped`, dados em `/home/ec2-user/notas` intactos). Para religar:
+   `docker start notas`.
+3. **`/api/import` (documentos do Hermes): tag de origem e indexação.**
+   - `handlers_import.go` força a tag `notas` em todo documento importado
+     (`append([]string{"notas"}, body.Tags...)`). Com o app Notas desligado,
+     o único cliente é o Hermes (skill `pkd-documentos`). Opções: trocar o
+     padrão para `hermes`, ou aceitar `"source_tag"` do chamador. Por ora o
+     usuário aceita `notas` + `hermes`.
+   - O handler não indexa o FTS nem notifica o embedder na criação: o
+     documento só entra na busca léxica depois de um restart. Correção:
+     chamar a mesma reindexação de `handlers_notes.go` (`reindexNote`).
+4. **Hermes corrigir Memórias sozinho (sem urgência).** O Hermes disse que
+   precisa de um endpoint de edição, mas `PATCH /api/memories/{memory_id}` já
+   existe (`server.go`, Bearer ou sessão; seção 4 do prompt). Por enquanto o
+   usuário corrige direto no PKD. Investigar, nesta ordem:
+   1. A Skill no Hermes tem a versão atual de `docs/promptMcHermes.md`
+      (com a seção 4, "Corrija uma Memória")?
+   2. O Hermes guarda o `memory_id` das Memórias que cria?
+   3. Se o problema for achar o ID de uma Memória que o Hermes não criou ou
+      esqueceu: a API não tem busca (Q11 da MC). Opção:
+      `GET /api/memories?date=…` ou `?q=…` com Bearer — isso redecide a Q11;
+      decidir com o usuário.
+5. **Títulos das Notas migradas.** Alguns títulos vieram da primeira linha e
+   não são bons (`021919`, `48%52%62`, URLs, `Jaé`). A nota que começava com
+   um bloco de código ganhou como título o próprio conteúdo do bloco
+   (`*8RYXSdWlUx5q1du`), que parece um segredo: renomear. Correção manual,
+   feita pelo usuário.
+6. Depois de algumas semanas de uso, revisar os "Pontos abertos" da MC e da
+   Nota, abaixo.
+
+---
+
+# Nota — concluída (2026-09-26, `v1.3.0`)
+
+Terceiro tipo de conteúdo do PKD. Bloco próprio na barra lateral, igual ao da
+MC. Notas ativas migradas do app Notas (EC2 `/home/ec2-user/notas`, lido só
+em modo leitura).
+
+## Histórico da entrega
 
 1. Feature + migração validadas no Docker local (cópia do banco do `pkd2`):
    74 Notas (201), segunda execução 74×200 (idempotente), 3 favoritas, 10
@@ -22,32 +106,29 @@
 2. **Bug pré-existente corrigido:** `/healthz` prendia a única conexão do
    pool; depois da primeira checagem o servidor inteiro travava (aconteceu
    no `pkd2`). Ver CHANGELOG.
-3. ~~Implantar no `pkd2` e migrar~~ — feito (2026-09-26, imagem `5ae262d`):
-   74 Notas, 3 favoritas, 10 anexos no S3 dev, cores de tag aplicadas,
-   `/healthz` estável. Backup anterior:
-   `pkd.sqlite.bak-2026-09-26-pre-notas`. Validado pelo usuário, inclusive o
-   filtro de tag no bloco Notas (fix `525ecfc`).
-4. ~~Produção no EC2~~ — feito (2026-09-26): tag `v1.3.0` → `:stable`
-   (digest `sha256:d381ef6f…`, fixado em `/home/ec2-user/docker-compose.yml`).
-   Q15: nenhum Documento com tag `notas` coincidia com nota ativa. Migração:
-   74 Notas (201), 3 favoritas, 10 anexos no S3 `pkd-prod-attachments`, 82
-   vínculos de tag, cores aplicadas só onde faltavam. `/healthz` 200.
-   **Backup antes da atualização:** `/home/ec2-user/pkd-backups/2026-09-26-pre-notas/`
-   (banco via `.backup`, `docker-compose.yml`, id da imagem anterior, cópia dos
-   55 objetos do S3) e `.tgz` do mesmo em
-   `C:\Users\EDalcin\Desktop\OMPtemp\pkd-prod-backup\`. Rollback: restaurar a
-   linha `image:` do compose salvo e o `pkd.sqlite`.
-5. **Próximo (manual, usuário):** desligar o app Notas no EC2 e arquivar o
-   repositório `notas`. Depois: item 8 (formas de captura) é prioridade.
+3. Homologação (`pkd2`): mesma migração; o usuário validou, inclusive o
+   filtro de tag no bloco Notas (fix `525ecfc`: `loadNotes()` passou a usar o
+   filtro ativo por padrão). Backup antes:
+   `pkd.sqlite.bak-2026-09-26-pre-notas` no diretório do banco.
+4. Produção (EC2): tag `v1.3.0` → `:stable` (digest `sha256:d381ef6f…`,
+   fixado no `docker-compose.yml`). Q15: nenhum Documento com tag `notas`
+   coincidia com nota ativa. Migração: 74 Notas, 3 favoritas, 10 anexos no S3
+   `pkd-prod-attachments`, 82 vínculos de tag, cores aplicadas só onde
+   faltavam (`casa`, `contato`, `enderecos`). `/healthz` 200.
+5. **Backup de produção antes da atualização:**
+   `/home/ec2-user/pkd-backups/2026-09-26-pre-notas/` (banco via `.backup`,
+   `docker-compose.yml`, id da imagem anterior, cópia dos 55 objetos do S3) e
+   `.tgz` do mesmo em `C:\Users\EDalcin\Desktop\OMPtemp\pkd-prod-backup\`.
+6. App Notas desligado no EC2 (`docker stop notas`), a pedido do usuário.
 
-**Script de migração** (descartável, fora do repo):
+**Script de migração** (descartável, fora do repo, não precisa mais rodar):
 `C:\Users\EDalcin\Desktop\OMPtemp\notas-probe\migrate_notas.py`, com a cópia
 somente leitura de `notes.db` e `files/` do EC2 na mesma pasta
 (`fetch_files.py` baixa os anexos). Uso:
 `PKD_TOKEN=<PKD_IMPORT_TOKEN> python migrate_notas.py --target <url>`
-(`--dry-run` lista sem enviar; `--skip 12,34` pula notas). No fim ele imprime
-os `UPDATE tags SET color=…` (Q9) para rodar no banco do PKD. Para produção,
-copiar de novo `notes.db` e os anexos (as notas mudam com o uso).
+(`--dry-run` lista sem enviar; `--skip 12,34` pula notas). É idempotente
+(`idempotency_key = notas:<id>`). No fim ele imprime os
+`UPDATE tags SET color=…` (Q9) para rodar no banco do PKD.
 
 ## Decisões da Nota (grilling, Q1–Q20)
 
@@ -116,12 +197,16 @@ corpo em Markdown, sem campo título; anexos não referenciados no corpo.
   — **novos**.
 - `Sidebar.svelte` — bloco "Notas" (lista plana, favoritas primeiro) ao lado
   do bloco MC, toggle persistido em `pkd-notes-collapsed` (colapsado por
-  padrão), "+ Nova Nota", filtros de tag/favorito também recarregam a lista de
-  Notas. Arrastar uma Nota (marcador `application/x-pkd-note` no
-  `dataTransfer`, além do id em `text/plain`) para a árvore normal converte em
-  Documento na posição solta sem diálogo (Q18); soltar no bloco MC abre
-  `ConvertNoteToMemoryDialog` (campos vazios, ano obrigatório) e só converte
-  ao confirmar — cancelar não muda nada (Q17).
+  padrão), "+ Nova Nota". Um `$effect` recarrega as Notas sempre que
+  `tagFilter`/`favoriteFilter` mudam, venha a mudança de onde vier. Arrastar
+  uma Nota (marcador `application/x-pkd-note` no `dataTransfer`, além do id
+  em `text/plain`) para a árvore normal converte em Documento na posição
+  solta sem diálogo (Q18); soltar no bloco MC abre `ConvertNoteToMemoryDialog`
+  (campos vazios, ano obrigatório) e só converte ao confirmar — cancelar não
+  muda nada (Q17).
+- `stores/notes.js` — `loadNotes()` usa por padrão o filtro ativo (como
+  `loadTree`) e descarta respostas atrasadas; sem isso, recarregar depois de
+  renomear/arquivar/lixeira mostrava todas as Notas com a tag ainda marcada.
 - `TreeNode.svelte` — Nota em resultado de busca não arrasta, não recebe
   drop, sem "+" (mirror de Memória); `onDrop` converte em vez de
   mover/reordenar quando a origem é uma Nota.
@@ -142,8 +227,11 @@ component.
   bloqueada, exclusão da árvore normal, conversão para Documento (sai da
   lista de Notas, aparece na árvore sob o pai, ícone restaurado) e para
   Memória (ID `MEM-…` válido, ano sozinho ok).
-- `tests/integration/notes_test.go` — `created_at` honrado com Bearer e
-  ignorado com sessão; conversão para Memória com data inválida (31/02) → 400.
+- `tests/integration/notes_test.go` — `created_at`/`updated_at` honrados com
+  Bearer (mesmo depois de gravar corpo e tags) e ignorados com sessão;
+  conversão para Memória com data inválida (31/02) → 400.
+- `internal/server/handlers_health_test.go` — duas checagens seguidas de
+  `/healthz` não deixam conexão presa (regressão do travamento).
 - `go test ./tests/... ./internal/...` verde; `go vet ./internal/...` limpo;
   `npm run build` limpo.
 - Smoke com binário real (`PKD_LISTEN_ADDR=127.0.0.1:18091`): `POST
@@ -163,44 +251,32 @@ component.
   os mesmos eventos DOM que um drag real dispara) para a árvore converte em
   Documento visível sob o pai; arrastar para o bloco MC abre o diálogo de
   Data da Memória sem alterar nada e, ao confirmar o ano, converte e a
-  memória aparece no ano correspondente na MC. Sem evidência fotográfica
-  (screenshot indisponível neste ambiente); evidência é o estado do DOM lido
-  via `page.evaluate` em cada etapa.
+  memória aparece no ano correspondente na MC. Evidência: estado do DOM lido
+  via `page.evaluate` em cada etapa (screenshot indisponível no relay).
+- Filtro de tag (fix `525ecfc`), Docker local: `#saude` mostra 9 Notas e
+  continua com 9 depois de abrir, rolar e renomear uma Nota.
+
+## Pontos abertos (decidir com uso real)
+
+- **Nota arquivada** some da barra lateral (Q19, igual à MC) e não aparece na
+  visão "Arquivados". Continua na busca e no Chat.
+- **Unicidade de título** vale para Notas: títulos repetidos recebem " (2)".
+  Se incomodar, isentar Notas (afeta wikilinks por título).
+- **Bloco Notas sem paginação.** Hoje é uma lista inteira (74 itens). Se
+  crescer muito, aplicar rolagem infinita (regra do projeto).
 
 ---
 
-# Próximos Passos — Memória Cronológica (MC)
+# Memória Cronológica (MC) — concluída (2026-09-24)
 
-> **Concluída, implantada no UNRAID e validada em uso real (2026-09-24).**
-> Código em `main` (`14e6978`); Skill do Hermes configurada e funcionando.
-> Uma sessão nova deve ler este arquivo,
-> [`docs/adr/glossary.md`](adr/glossary.md) (Memória, Memória Cronológica, Data
-> da Memória, Período, ID de Memória) e a
-> [ADR-007](adr/007-id-publico-de-memoria.md), nessa ordem. Spec original:
-> [`docs/memoriaCronologica.md`](memoriaCronologica.md).
+> Implantada e validada em uso real; Skill do Hermes configurada e funcionando
+> (código `14e6978`). Termos no glossário (Memória, Memória Cronológica, Data
+> da Memória, Período, ID de Memória) e [ADR-007](adr/007-id-publico-de-memoria.md).
+> Spec original: [`docs/memoriaCronologica.md`](memoriaCronologica.md). A
+> feature anterior (Chat RAG, ADR-006) também está concluída.
 >
-> A feature anterior (Chat RAG, ADR-006) está concluída e implantada.
-
-## Reinício — faça isto primeiro
-
-1. `git status -sb`: a working tree deve estar limpa e em sincronia com
-   `origin/main`.
-2. Não há trabalho pendente da MC. Próximo trabalho: revisar "Pontos abertos"
-   depois de algumas semanas de uso, ou nova feature pedida pelo usuário.
-
-**Armadilhas conhecidas**
-
-- **Não rode `gofmt -w` em `internal/` inteiro.** Ele reescreve dezenas de
-  arquivos sem relação (CRLF → LF e alinhamento). Rode só nos arquivos
-  alterados.
-- **Smoke test local:** use caminhos nativos do Windows (nunca `/tmp`), por
-  exemplo `PKD_DB_PATH=C:/Users/EDalcin/Desktop/OMPtemp/pkdmc/pkd.db`,
-  `PKD_ATTACHMENTS_PATH=…/att`, `PKD_PASSWORD`, `PKD_IMPORT_TOKEN`,
-  `PKD_LISTEN_ADDR=127.0.0.1:18090`. Compile o binário fora do repo e rode
-  `npm run build` antes de `go build`, porque o binário embute `web/dist`.
-- Screenshots e binários de teste vão somente para
-  `C:\Users\EDalcin\Desktop\OMPtemp`.
-- Depois de mudar código, rode `graphify update .`.
+> Desde a Nota (Q3 da Nota), uma Nota pode virar Memória. A conversão
+> Documento ↔ Memória continua adiada.
 
 ## Decisões de desenho (sessão de grilling, Q1–Q17)
 
@@ -275,40 +351,16 @@ arquitetura, changelog, `PKD_IMPORT_TOKEN`), glossário, ADR-007,
   `MEM-2026-09-24T18-…` (jantar) e abre o editor, `/api/tree` sem Memórias e
   busca com `is_memory: true`.
 
-## Próximos passos
+## Histórico da entrega
 
-1. ~~Commit e push~~ — feito (`14e6978`).
-2. ~~Deploy no UNRAID~~ — feito; "+ Nova Memória" e árvore da MC validadas.
-3. ~~Skill no Hermes~~ — configurada com `docs/promptMcHermes.md`; funcionando.
-4. Ordem da árvore (Q6, mais recente primeiro) confirmada pelo usuário em uso
+1. Commit e push (`14e6978`); deploy no UNRAID; "+ Nova Memória" e árvore da
+   MC validadas.
+2. Skill no Hermes configurada com `docs/promptMcHermes.md`; funcionando.
+3. Ordem da árvore (Q6, mais recente primeiro) confirmada pelo usuário em uso
    real — manter.
-5. Depois de algumas semanas de uso, revisar os "Pontos abertos" abaixo.
-6. **Hermes corrigir Memórias sozinho (sem urgência).** O Hermes disse que
-   precisa de um endpoint de edição, mas `PATCH /api/memories/{memory_id}` já
-   existe (`server.go`, Bearer ou sessão; seção 4 do prompt). Por enquanto o
-   usuário corrige direto no PKD. Investigar, nesta ordem:
-   1. A Skill no Hermes tem a versão atual de `docs/promptMcHermes.md`
-      (com a seção 4, "Corrija uma Memória")?
-   2. O Hermes guarda o `memory_id` das Memórias que cria?
-   3. Se o problema for achar o ID de uma Memória que o Hermes não criou ou
-      esqueceu: a API não tem busca (Q11). Opção: `GET /api/memories?date=…`
-      ou `?q=…` com Bearer — isso redecide a Q11; decidir com o usuário.
-7. **Tag de origem configurável no `/api/import` (documentos do Hermes).**
-   Hoje `handlers_import.go` força a tag `notas` em todo documento importado
-   (`append([]string{"notas"}, body.Tags...)`). Permitir que o chamador defina
-   a tag de origem (ex.: `"source_tag": "hermes"`), mantendo `notas` como
-   padrão para o app Notas. Objetivo: documentos criados pelo Hermes (skill
-   `pkd-documentos`) saírem só com `#hermes`. Por ora o usuário aceita
-   `notas` + `hermes`.
-8. **PRIORIDADE — formas de captura de Nota (depois da feature Nota).** Quando
-   o app Notas for desligado, estas duas formas de criar notas deixam de
-   existir. O usuário usa as duas e elas são muito úteis para ele:
-   1. **Extensão Chrome** (hoje em `notas/extension/`, com `EXTENSION_TOKEN`)
-      → criar Nota no PKD.
-   2. **Compartilhamento do Android** (PWA `share_target` em
-      `notas/frontend/manifest.json`) → criar Nota no PKD.
-   Estão na Fog do mapa wayfinder da feature Nota; decidir depois da migração
-   em homologação.
+
+Pendências da MC que continuam abertas (Hermes corrigir Memórias,
+`/api/import`) estão em "Próximos passos", no topo deste arquivo.
 
 ## Pontos abertos (decidir com uso real)
 
@@ -321,9 +373,10 @@ arquitetura, changelog, `PKD_IMPORT_TOKEN`), glossário, ADR-007,
 - **Filtros de tag e favoritos** não se aplicam à árvore da MC.
 - **Aglomerado no Graph View** (Q13): se Memórias parecidas poluírem o grafo,
   adicionar filtro mostrar/esconder Memórias.
-- **Pré-existente, fora do escopo:** `POST /api/import` não indexa o FTS nem
-  notifica o embedder na criação; a nota só entra na busca léxica após um
-  restart. A API de Memórias não tem esse defeito.
+- **Pré-existente:** `POST /api/import` não indexa o FTS nem notifica o
+  embedder na criação; o documento só entra na busca léxica após um restart.
+  Afeta os documentos que o Hermes cria (`pkd-documentos`). As APIs de
+  Memórias e Notas não têm esse defeito (ver item 3 de "Próximos passos").
 
 ## Pendências herdadas (Chat RAG)
 

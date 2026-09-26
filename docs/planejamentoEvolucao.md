@@ -39,7 +39,7 @@ sem sessão de usuário:
 
 | Cliente | Situação hoje | Conteúdo |
 |---|---|---|
-| **Notas** | Integrado e em produção: `notas/internal/handlers/notes.go:422` monta `POST {PKD_URL}/api/import` com `Authorization: Bearer {PKD_TOKEN}`, converte Markdown→HTML com goldmark, manda anexos em base64, checa só o `201` (não lê o corpo). O frontend manda a nota para a lixeira depois (`notas/frontend/assets/js/notes.js:266`) — logo, nunca reenvia. | HTML |
+| **Notas** | **Desligado em 2026-09-26** (notas migradas para a Nota nativa; ver [`proximosPassos.md`](proximosPassos.md)). Antes: `notas/internal/handlers/notes.go:422` montava `POST {PKD_URL}/api/import` com `Authorization: Bearer {PKD_TOKEN}`, convertia Markdown→HTML com goldmark, mandava anexos em base64 e checava só o `201`. | HTML |
 | **meetingLog** | **Nenhuma** integração de saída (`meetingLog/internal/server/server.go:95-140`); `MeetingView.svelte` só tem imprimir. | HTML do TipTap (`Notas *string`) + campos estruturados: `data_hora`, `tipo`, `Participantes`, `Projetos`, `Pautas[]`, `Links[]` (`meetingLog/internal/model/types.go`) |
 | **Sessões de agente de código** (OMP / Claude Code) | Inexistente. Motivador original: gravar no PKD relatórios e documentação produzidos durante uma sessão de trabalho, em vez de deixá-los soltos em pastas do disco. | Markdown |
 

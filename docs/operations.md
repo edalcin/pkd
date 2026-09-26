@@ -281,25 +281,39 @@ Se `PKD_BASE_URL` não estiver definida, o servidor usa o host da requisição H
 | `:stable` | Aponta para a versão atual em produção | EC2 (prod) |
 | `:v1.2.3` | Imutável — release semver | Produção, histórico |
 
-### UNRAID (dev — tag `:edge`)
+### UNRAID (dev/homologação — tag `:edge`)
 
-O UNRAID usa `:edge`, que atualiza automaticamente a cada push em `main`.
+O UNRAID usa `:edge`, que é publicada a cada push em `main`. O container
+chama-se `pkd2` (`https://pkd2.dalc.in`); os dados ficam em
+`/mnt/user/Storage/appsdata/pkd/` e os anexos no bucket `pkd-dev-attachments`
+(`attachments.backend = s3` no banco).
 
-1. Docker tab → clique no ícone do container `pkd` → **Force Update**.
-2. O UNRAID baixa a nova imagem `:edge` e reinicia o container.
-3. Seus dados em `/mnt/user/appdata/pkd/` ficam intocados.
+1. Docker tab → clique no ícone do container `pkd2` → **Force Update**
+   (ou, por SSH: `/usr/local/emhttp/plugins/dynamix.docker.manager/scripts/update_container pkd2`
+   e, se ele estiver parado, `docker start pkd2`).
+2. O UNRAID baixa a nova imagem `:edge` e recria o container.
+3. Os dados ficam intocados.
 
-Ou com Watchtower (atualização automática sem intervenção manual).
+Teste primeiro no Docker local (Windows); o UNRAID é o ambiente de homologação.
 
-### EC2 (produção — tag `:stable`)
+### EC2 (produção — tag `:stable`, fixada por digest)
 
-A EC2 usa `:stable`, que **só muda quando você promove manualmente**. Veja §"Promoção dev → prod" abaixo.
+A EC2 roda o PKD pelo `/home/ec2-user/docker-compose.yml` (serviços
+`cloudflare`, `notas`, `spl`, `web`, `pkd`). A linha `image:` do `pkd` fixa o
+**digest** da `:stable` promovida, com o comentário da versão, por exemplo:
 
-```bash
-docker pull ghcr.io/edalcin/pkd:stable
-docker stop pkd && docker rm pkd
-# Re-execute o comando docker run original (dados ficam nos volumes)
+```yaml
+image: ghcr.io/edalcin/pkd@sha256:<digest>  # tag de origem: stable (v1.3.0)
 ```
+
+Os anexos de produção ficam no bucket `pkd-prod-attachments`. O container não
+publica porta: o acesso é pelo Cloudflare Tunnel (`pkd.dalc.in`, protegido por
+Cloudflare Access). Para chamar a API a partir de fora, use um túnel SSH até o
+IP do container na rede `cloudflare`.
+
+> ⚠️ Rode sempre `docker compose up -d pkd`, **com o nome do serviço**. Sem o
+> nome, o compose também liga o `notas`, que foi desligado de propósito
+> (`docker stop notas`, 2026-09-26) e deve continuar parado.
 
 ---
 
@@ -309,13 +323,13 @@ Depois de validar a versão rodando no UNRAID:
 
 ```bash
 # 1. Verificar qual commit está rodando em dev
-docker inspect ghcr.io/edalcin/pkd:edge --format '{{index .RepoDigests 0}}'
+docker image inspect ghcr.io/edalcin/pkd:edge --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
 
-# 2. Criar tag Git semver no commit atual de main
-git tag -a v1.2.3 -m "Release 1.2.3
+# 2. Criar tag Git semver nesse commit
+git tag -a v1.2.3 <commit> -m "Release 1.2.3
 
-- feat: armazenamento de anexos em S3
-- fix: descrição do fix
+- feat: …
+- fix: …
 "
 git push origin v1.2.3
 ```
@@ -323,23 +337,27 @@ git push origin v1.2.3
 O workflow `promote-to-prod.yml` dispara automaticamente, re-tagueando a imagem `:sha-*` correspondente como `:v1.2.3` e `:stable` (sem rebuild).
 
 ```bash
-# 3. Na EC2, puxar a nova :stable e reiniciar
+# 3. Na EC2: backup antes de atualizar
+B=/home/ec2-user/pkd-backups/$(date +%F)-pre-vX.Y.Z; mkdir -p $B
+sqlite3 /home/ec2-user/pkd/db/pkd.sqlite ".backup $B/pkd.sqlite"   # cópia consistente com o PKD ligado
+cp -p /home/ec2-user/docker-compose.yml $B/
+aws s3 sync s3://pkd-prod-attachments $B/s3-pkd-prod-attachments
+
+# 4. Puxar a nova :stable e anotar o digest
 docker pull ghcr.io/edalcin/pkd:stable
-docker stop pkd && docker rm pkd
-# Re-execute o comando docker run original
+docker image inspect ghcr.io/edalcin/pkd:stable --format '{{index .RepoDigests 0}}'
+
+# 5. Trocar o digest na linha image: do pkd no docker-compose.yml e recriar SÓ o pkd
+docker compose up -d pkd
 ```
 
 ### Reversão de produção
 
-```bash
-# Listar versões disponíveis
-docker images ghcr.io/edalcin/pkd
-
-# Reiniciar com versão anterior
-docker pull ghcr.io/edalcin/pkd:v1.2.2
-docker stop pkd && docker rm pkd
-docker run ... ghcr.io/edalcin/pkd:v1.2.2
-```
+Volte a linha `image:` do `docker-compose.yml` salvo no backup (ou o digest da
+versão anterior) e rode `docker compose up -d pkd`. Se a versão nova migrou o
+banco de forma incompatível, pare o `pkd`, restaure o `pkd.sqlite` do backup
+e suba de novo. As migrações do PKD até hoje são só aditivas (colunas e
+índices novos), então a imagem anterior lê o banco novo.
 
 Tempo total: **menos de 1 minuto**, sem rebuild, sem mexer em código.
 

@@ -18,14 +18,14 @@ C4Context
     System(pkd, "PKD", "Sistema PKM auto-hospedado. Armazena documentos, links bidirecionais, tags e anexos. Expõe API REST + SPA Svelte. Entregue como imagem Docker.")
 
     System_Ext(mobile_os, "SO Mobile (Android/iOS)", "Envia conteúdo ao PKD via menu 'Compartilhar' usando o PWA share_target.")
-    System_Ext(agents, "Agentes externos (Hermes, app Notas)", "Hermes cria e corrige Memórias e Notas; o app Notas importa notas legadas e será desligado após a migração para a Nota nativa do PKD. Autenticados por Bearer PKD_IMPORT_TOKEN.")
+    System_Ext(agents, "Agentes externos (Hermes)", "Hermes cria e corrige Memórias e Notas e cria Documentos via /api/import. Autenticado por Bearer PKD_IMPORT_TOKEN. O app Notas, que também usava /api/import, foi migrado para a Nota nativa e desligado em 2026-09-26.")
     System_Ext(ghcr, "GitHub Container Registry\nghcr.io/edalcin/pkd", "Hospeda a imagem Docker publicada pelo CI/CD a cada push em main.")
     System_Ext(og_sites, "Sites externos", "Consultados pelo servidor PKD para extração de metadados Open Graph quando uma URL é capturada.")
 
     Rel(user, pkd, "Usa", "HTTPS — autenticado via cookie de sessão")
     Rel(public, pkd, "Acessa documentos compartilhados", "HTTPS — sem autenticação")
     Rel(mobile_os, pkd, "Envia conteúdo compartilhado", "POST /api/capture via PWA share_target")
-    Rel(agents, pkd, "Cria Memórias/Notas / importa notas", "POST/GET/PATCH /api/memories, /api/notes, POST /api/import — Bearer token")
+    Rel(agents, pkd, "Cria Memórias/Notas/Documentos", "POST/GET/PATCH /api/memories, /api/notes, POST /api/import — Bearer token")
     Rel(pkd, og_sites, "Busca metadados Open Graph", "HTTP GET (best-effort, timeout 5s)")
     Rel(ghcr, pkd, "Fornece imagem Docker", "OCI pull pelo Docker runtime")
 
@@ -38,7 +38,7 @@ C4Context
 |---|---|
 | **Usuário → PKD** | Toda interação ocorre via SPA Svelte no navegador, autenticada pela senha mestra |
 | **Mobile → PKD** | O SO envia conteúdo (link, texto, imagem) para `/api/capture` via PWA share_target |
-| **Agentes → PKD** | Hermes registra Memórias na Memória Cronológica (`/api/memories`) e Notas (`/api/notes`); o app Notas usa `/api/import` até ser desligado. Ambos com Bearer `PKD_IMPORT_TOKEN` |
+| **Agentes → PKD** | Hermes registra Memórias na Memória Cronológica (`/api/memories`), Notas (`/api/notes`) e Documentos (`/api/import`), com Bearer `PKD_IMPORT_TOKEN`. O app Notas foi desligado depois da migração (2026-09-26) |
 | **Visitante → PKD** | Acessa `/public/{token}` — página estática sem JS, CSP restrita |
 | **PKD → Sites externos** | Extração de `og:title` e `og:description` para documentos capturados com URL |
 | **GHCR → Docker** | CI/CD publica nova imagem a cada push em `main`; sem deploy automático |

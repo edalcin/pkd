@@ -6,9 +6,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-26
+
 ### Corrigido
 
 - **`/healthz` travava o servidor inteiro** — `QueryRow("SELECT 1").Err()` não devolve a conexão ao pool (só `Scan` devolve) e o pool do SQLite tem uma conexão só (`SetMaxOpenConns(1)`). Depois da primeira checagem de saúde, toda consulta seguinte esperava para sempre. Agora usa `Scan`. Teste: `internal/server/handlers_health_test.go`.
+- **Bloco Notas perdia o filtro de tag/favoritos** — `loadNotes()` usava "sem filtro" como padrão, então qualquer recarga depois de renomear, arquivar, mandar para a lixeira, criar ou converter mostrava todas as Notas com a tag ainda marcada. Agora usa o filtro ativo (como `loadTree`), a barra lateral recarrega as Notas sempre que o filtro muda e respostas atrasadas são descartadas.
+
+### Operação
+
+- Notas ativas do app Notas migradas para Notas (homologação e produção, 2026-09-26); app Notas desligado no EC2.
 
 ### Adicionado
 
