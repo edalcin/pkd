@@ -1,20 +1,25 @@
-import { writable } from 'svelte/store'
+import { writable, get } from 'svelte/store'
 import { apiGet, apiPost } from '../api.js'
 import { loadMemories } from './memories.js'
-import { loadTree } from './documents.js'
+import { loadTree, tagFilter, favoriteFilter } from './documents.js'
 
 /** Flat list of Notas, already sorted by the server (favorites first, then
  *  created_at desc). Excludes archived/trashed Notas. */
 export const notes = writable([])
 
-/** Reload the Notas list from the server, filtered by tag (AND) and favorites
- *  — same query params as GET /api/tree. */
-export async function loadNotes(tags = [], favoritesOnly = false) {
+let loadSeq = 0
+
+/** Reload the Notas list, filtered by tag (AND) and favorites — same query
+ *  params as GET /api/tree. Defaults to the active sidebar filters (like
+ *  loadTree), so reloads after rename/archive/trash keep the filter (Q5). */
+export async function loadNotes(tags = get(tagFilter), favoritesOnly = get(favoriteFilter)) {
+  const seq = ++loadSeq
   const params = new URLSearchParams()
   tags.forEach(t => params.append('tag', t))
   if (favoritesOnly) params.set('favorite', '1')
   const qs = params.toString()
-  notes.set(await apiGet('/api/notes' + (qs ? '?' + qs : '')))
+  const list = await apiGet('/api/notes' + (qs ? '?' + qs : ''))
+  if (seq === loadSeq) notes.set(list) // a slower, older response must not overwrite a newer filter
 }
 
 /** Create a new Nota. Only title is required (Q6). */

@@ -27,12 +27,14 @@
 
   // Keep selectedTags in sync when tagFilter is reset externally (e.g. topbar reset button)
   $effect(() => { selectedTags = [...$tagFilter] })
+  // The Notas list follows the same filters as the tree, whoever changes them
+  // (tag chips, favorites toggle, topbar reset, Admin tag links).
+  $effect(() => { loadNotes($tagFilter, $favoriteFilter) })
 
   onMount(() => {
     loadTree()
     loadTags()
     loadMemories()
-    loadNotes()
     window.addEventListener('hashchange', () => { currentHash = window.location.hash })
   })
 
@@ -48,7 +50,6 @@
       selectedTags = [...selectedTags, name]
     }
     loadTree(selectedTags, $favoriteFilter)
-    loadNotes(selectedTags, $favoriteFilter)
   }
 
   function setViewMode(mode) {
@@ -93,7 +94,6 @@
 
   function toggleFavoriteFilter() {
     loadTree(selectedTags, !$favoriteFilter)
-    loadNotes(selectedTags, !$favoriteFilter)
   }
 
   function toggleYear(y) {
