@@ -704,6 +704,25 @@
     }
   }
 
+  let revokingSessions = $state(false)
+  let revokeSessionsMsg = $state('')
+
+  async function revokeOtherSessions() {
+    if (!confirm('Encerrar as outras sessões? Todos os outros navegadores/dispositivos logados serão desconectados.')) return
+    revokingSessions = true
+    revokeSessionsMsg = ''
+    try {
+      const data = await apiPost('/api/sessions/revoke-others')
+      const n = data?.revoked ?? 0
+      revokeSessionsMsg = n === 1 ? '1 sessão encerrada.' : `${n} sessões encerradas.`
+    } catch {
+      revokeSessionsMsg = 'Falha ao encerrar as outras sessões.'
+    } finally {
+      revokingSessions = false
+      setTimeout(() => { revokeSessionsMsg = '' }, 4000)
+    }
+  }
+
   async function reloadSettings() {
     const data = await apiGet('/api/admin/settings')
     if (data) embedSettings = data
@@ -2020,6 +2039,17 @@
           </div>
         {/if}
       {/if}
+    </div>
+
+    <div class="admin-section">
+      <h3>Sessões</h3>
+      <p class="muted" style="margin-bottom:1rem">
+        Encerra a sessão em todos os outros navegadores/dispositivos logados. Esta sessão continua ativa.
+      </p>
+      <button class="btn btn-danger" onclick={revokeOtherSessions} disabled={revokingSessions}>
+        {revokingSessions ? 'Encerrando…' : 'Encerrar as outras sessões'}
+      </button>
+      {#if revokeSessionsMsg}<span class="versions-setting-msg">{revokeSessionsMsg}</span>{/if}
     </div>
   {/if}
 </div>

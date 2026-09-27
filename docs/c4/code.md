@@ -232,7 +232,7 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A[POST /api/capture\njson ou form-encoded] --> B{Tem 'url'?}
-    B -- não --> E[Criar documento\ncom conteúdo fornecido]
+    B -- não --> E[Criar Nota\ncom conteúdo fornecido]
     B -- sim --> C[HTTP GET url\ntimeout 5s, max 1MB]
     C --> D{Fetch ok?}
     D -- falha silenciosa --> E
@@ -242,9 +242,9 @@ flowchart TD
     G -- não --> I[usa title fornecido ou timestamp]
     H --> E
     I --> E
-    E --> J[documents.Create + Update]
+    E --> J[docs.CreateNote idempotency_key + Update]
     J --> K[tags.SetDocumentTags captura + extras]
-    K --> L[201 Document JSON]
+    K --> L[201 Nota JSON — 200 se idempotency_key já existir]
 ```
 
 ## Schema SQL — tabela tags (coluna color adicionada)
@@ -358,7 +358,7 @@ O servidor Go serve apenas `/` → `index.html` (com `Cache-Control: no-cache` p
 | Método | Caminho | Descrição |
 |---|---|---|
 | GET | `/api/graph` | `{nodes, edges}` para D3.js. Query: `?tag=&all=true` |
-| POST | `/api/capture` | Cria doc a partir de URL/texto; extrai Open Graph |
+| POST | `/api/capture` | Cria Nota a partir de URL/texto (idempotency_key); extrai Open Graph |
 | GET | `/api/tags` | Tags ativas (INNER JOIN — exclui docs na lixeira) |
 | GET | `/api/search` | Busca FTS5. Query: `?q=` |
 | GET | `/api/documents/{id}/attachments` | Lista anexos do documento |

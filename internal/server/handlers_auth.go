@@ -135,3 +135,18 @@ func (s *Server) handleLogout() http.HandlerFunc {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
+
+// handleRevokeOtherSessions serves POST /api/sessions/revoke-others: deletes
+// every session except the caller's current one, from memory and SQLite.
+// The caller stays authenticated. Returns the number of sessions revoked.
+func (s *Server) handleRevokeOtherSessions() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sess := SessionFromContext(r.Context())
+		if sess == nil {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
+		revoked := s.sessions.DeleteAllExcept(sess.ID)
+		writeJSON(w, http.StatusOK, map[string]int{"revoked": revoked})
+	}
+}

@@ -47,16 +47,14 @@ do serviço**).
 
 ## Próximos passos
 
-1. **PRIORIDADE — formas de captura de Nota.** Com o app Notas desligado,
-   estas duas formas de criar notas deixaram de existir. O usuário usa as
-   duas e elas são muito úteis para ele:
-   1. **Extensão Chrome** (código de referência em `notas/extension/`, com
-      `EXTENSION_TOKEN`) → criar Nota no PKD.
-   2. **Compartilhamento do Android.** O PKD já tem PWA `share_target`
-      (`frontend/public/manifest.webmanifest` → `POST /api/capture`), mas ele
-      cria um **Documento** com a tag `captura`, não uma Nota. Decidir com o
-      usuário: `/api/capture` passa a criar Nota, ou um segundo destino.
-   Começar com uma sessão de grilling (uma pergunta por vez).
+1. **Extensão Chrome** (código de referência em `notas/extension/`, com
+   `EXTENSION_TOKEN`) → criar Nota no PKD. Pendente (a parte do Android já foi
+   resolvida no item abaixo).
+   - ~~Compartilhamento do Android~~ **resolvido**: o PWA `share_target`
+     (`frontend/public/manifest.webmanifest` → `POST /api/capture`) agora cria
+     uma **Nota** (mesmo caminho do `store` que `POST /api/notes` usa, com
+     `idempotency_key` opcional), não mais um Documento. Documentos `#captura`
+     já existentes não foram migrados (sem migração retroativa).
 2. **Manual, usuário:** arquivar o repositório `notas`. O container `notas`
    no EC2 está **parado, não removido** (`docker stop notas`, política
    `unless-stopped`, dados em `/home/ec2-user/notas` intactos). Para religar:

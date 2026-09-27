@@ -27,7 +27,7 @@ C4Component
         Component(jobs_mgr, "BackupJobManager", "jobs.go", "Tracking in-memory de jobs assíncronos (backup/restore/migrate/reconcile/cleanup). sync.Mutex + LRU 50. Single-in-flight por backend (ErrJobInFlight → 409). Job.StorageOp (StorageOpSummary: total_found/succeeded/skipped/errors) para migrate/reconcile/cleanup. RestoreSummary para restore.")
         Component(backup_sweep, "BackupTempSweep", "backup_sweep.go", "Goroutine não-bloqueante no startup. Lista _backup-tmp/ via S3Capable.ListWithMetadata, deleta objetos > 24h via DeleteMany.")
         Component(graph_handler, "Graph Handler", "handlers_graph.go", "GET /api/graph. Retorna nodes + edges para D3.js. Suporta filtro por tag e toggle all-docs.")
-        Component(capture_handler, "Capture Handler", "handlers_capture.go", "POST /api/capture. Aceita JSON e form-encoded (PWA share_target). Extrai Open Graph de URLs.")
+        Component(capture_handler, "Capture Handler", "handlers_capture.go", "POST /api/capture. Aceita JSON e form-encoded (PWA share_target). Cria Nota (idempotency_key). Extrai Open Graph de URLs.")
         Component(tree_handler, "Tree Handler", "handlers_tree.go", "GET /api/tree. Sem q: árvore hierárquica (ListTree). Com q: busca híbrida — funde LexicalDocIDs (FTS5+LIKE) e SemanticSearchDocIDs (cosseno) via Reciprocal Rank Fusion (store.FuseRRF, k=60); lista plana ordenada pelo rank fundido, Score = cosseno quando presente na perna semântica.")
         Component(other_handlers, "Other Handlers", "handlers_*.go (8 arquivos)", "Tags, busca FTS5, calendário, share links, auth, health, PWA.")
         Component(assets, "Static Assets", "assets.go + web/dist/", "Serve SPA Svelte embutida via //go:embed. index.html com Cache-Control: no-cache para forçar reload após deploys.")
@@ -188,6 +188,6 @@ C4Component
 | handlers_notes | `server/handlers_notes.go` | `POST /api/notes`, `GET`/`PATCH /api/notes/{id}`, `GET /api/notes`, `POST /api/notes/{id}/convert`; middleware `tokenOrSession` |
 | NoteStore | `store/notes.go` | `CreateNote` (idempotência, `created_at`/`updated_at` explícitos), `GetNote`, `ListNotes` (favoritas primeiro, depois `created_at` desc; filtro de tag/favorito), `NoteDocIDs`, guards de hierarquia (`ErrNoteHierarchy`), `ConvertNoteToDocument`/`ConvertNoteToMemory` (conversão só de ida) |
 | handlers_graph | `server/handlers_graph.go` | GET `/api/graph?tag=&all=` |
-| handlers_capture | `server/handlers_capture.go` | POST `/api/capture` + Open Graph extraction |
+| handlers_capture | `server/handlers_capture.go` | POST `/api/capture` — cria Nota (idempotency_key) + Open Graph extraction |
 | handlers_tree | `server/handlers_tree.go` | GET `/api/tree` — árvore hierárquica (sem `q`) ou busca híbrida RRF (com `q`): funde `SearchStore.LexicalDocIDs` (léxico) e `LinkStore.SemanticSearchDocIDs` (semântico) via `store.FuseRRF` |
 | SearchStore | `store/search.go` | `LexicalDocIDs` (FTS5 + LIKE sempre concatenados, até 100 candidatos) e `FuseRRF` (Reciprocal Rank Fusion, k=60) para a busca híbrida de `/api/tree`; `Search`/`ftsSearch`/`likeSearch` (fallback condicional) para `/api/search` |

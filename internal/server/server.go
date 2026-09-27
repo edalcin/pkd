@@ -237,6 +237,7 @@ func (s *Server) buildRouter() http.Handler {
 
 		// Auth
 		r.Post("/api/logout", s.handleLogout())
+		r.Post("/api/sessions/revoke-others", s.handleRevokeOtherSessions())
 
 		// Documents
 		r.Post("/api/documents", s.handleCreateDocument())

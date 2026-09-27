@@ -149,6 +149,24 @@ func (s *Store) Delete(id string) {
 	}
 }
 
+// DeleteAllExcept removes every session except keepID (used by "Encerrar as
+// outras sessões"). Returns the number of sessions revoked.
+func (s *Store) DeleteAllExcept(keepID string) int {
+	s.mu.Lock()
+	var revoked []string
+	for id := range s.sessions {
+		if id != keepID {
+			revoked = append(revoked, id)
+			delete(s.sessions, id)
+		}
+	}
+	s.mu.Unlock()
+	if s.db != nil && len(revoked) > 0 {
+		_, _ = s.db.Exec("DELETE FROM sessions WHERE id != ?", keepID)
+	}
+	return len(revoked)
+}
+
 // Reset clears all sessions and returns a fresh Store with the same idle
 // timeout. Pass the new DB when called after a database restore so the new
 // store uses the restored database.
