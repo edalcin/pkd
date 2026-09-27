@@ -39,6 +39,7 @@ Padrão double-submit cookie:
 - Em todo `GET`, se o cookie `pkd_csrf` estiver ausente, o servidor define um com 32 bytes aleatórios.
 - Em toda requisição mutante (POST/PUT/DELETE/PATCH), o header `X-CSRF-Token` deve ser igual ao cookie `pkd_csrf`. Divergência → 403.
 - O cookie CSRF **não é** HttpOnly para que o JavaScript possa lê-lo e incluí-lo no header.
+- Exceção: o share_target da PWA (`POST /api/capture` em `application/x-www-form-urlencoded` com `Sec-Fetch-Site: none` ou `same-origin`) dispensa o header, porque o Android envia um form e não pode incluí-lo. Um POST cross-site continua exigindo o header, e o cookie de sessão `SameSite=Strict` não vai em requisições cross-site. A resposta é `303` para `/#/doc/{id}` da Nota criada.
 
 ---
 

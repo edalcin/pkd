@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/net/html"
 
+	"github.com/edalcin/pkd/internal/model"
 	"github.com/edalcin/pkd/internal/security"
 )
 
@@ -22,6 +23,16 @@ import (
 // existing Nota instead of creating a duplicate.
 func (s *Server) handleCapture() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// share_target form posts are a page navigation: send the browser to
+		// the new Nota instead of showing raw JSON.
+		shareTarget := strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded")
+		respond := func(status int, doc *model.Document) {
+			if shareTarget && doc != nil {
+				http.Redirect(w, r, fmt.Sprintf("/#/doc/%d", doc.ID), http.StatusSeeOther)
+				return
+			}
+			writeJSON(w, status, doc)
+		}
 		title, content, rawURL, extraTags, idempotencyKey := parseCaptureBody(r)
 		idempotencyKey = strings.TrimSpace(idempotencyKey)
 		if len(idempotencyKey) > maxIdempotencyKeyLen {
@@ -59,7 +70,7 @@ func (s *Server) handleCapture() http.HandlerFunc {
 			return
 		}
 		if !created {
-			writeJSON(w, http.StatusOK, doc)
+			respond(http.StatusOK, doc)
 			return
 		}
 
@@ -78,12 +89,10 @@ func (s *Server) handleCapture() http.HandlerFunc {
 		}
 
 		// Re-fetch with tags included
-		doc, err = s.docs.GetByID(doc.ID)
-		if err != nil {
-			writeJSON(w, http.StatusCreated, doc)
-			return
+		if fresh, err := s.docs.GetByID(doc.ID); err == nil {
+			doc = fresh
 		}
-		writeJSON(w, http.StatusCreated, doc)
+		respond(http.StatusCreated, doc)
 	}
 }
 

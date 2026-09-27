@@ -32,6 +32,10 @@ func CSRF(next http.Handler) http.Handler {
 			ensureCSRFCookie(w, r)
 			next.ServeHTTP(w, r)
 		default:
+			if isShareTargetPost(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
 			cookie, err := r.Cookie(csrfCookieName)
 			if err != nil {
 				http.Error(w, "missing CSRF cookie", http.StatusForbidden)
@@ -45,6 +49,18 @@ func CSRF(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		}
 	})
+}
+
+// isShareTargetPost reports whether r is the PWA share_target form POST.
+// Android starts it from the share sheet, so it cannot carry X-CSRF-Token.
+// Sec-Fetch-Site "none" marks a browser-initiated request, never a
+// cross-site page; and the SameSite=Strict session cookie is not sent on
+// cross-site requests anyway, so AuthRequired still rejects forged posts.
+func isShareTargetPost(r *http.Request) bool {
+	site := r.Header.Get("Sec-Fetch-Site")
+	return r.URL.Path == "/api/capture" &&
+		strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") &&
+		(site == "none" || site == "same-origin")
 }
 
 func ensureCSRFCookie(w http.ResponseWriter, r *http.Request) {
