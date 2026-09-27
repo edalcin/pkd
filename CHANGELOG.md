@@ -6,6 +6,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+### Adicionado
+
+- **`GET /api/notes` devolve `body_html`, `tags` e `updated_at`** — o app Android (pkdMobile) põe todas as Notas no cache com um só pedido. `body_html` vem vazio em Nota cifrada. Mudança aditiva: a PWA ignora os campos novos.
+
 ## [1.3.0] - 2026-09-26
 
 ### Corrigido

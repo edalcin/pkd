@@ -113,13 +113,17 @@ func (s *DocumentStore) GetNote(id int64) (*model.Document, error) {
 	return doc, nil
 }
 
-// NoteListItem is one line of the Notas block (GET /api/notes).
+// NoteListItem is one line of the Notas block (GET /api/notes). BodyHTML,
+// Tags and UpdatedAt let the Android app cache every Nota from one request.
 type NoteListItem struct {
-	ID         int64  `json:"id"`
-	Title      string `json:"title"`
-	Icon       string `json:"icon"`
-	IsFavorite bool   `json:"is_favorite"`
-	CreatedAt  string `json:"created_at"`
+	ID         int64    `json:"id"`
+	Title      string   `json:"title"`
+	Icon       string   `json:"icon"`
+	IsFavorite bool     `json:"is_favorite"`
+	CreatedAt  string   `json:"created_at"`
+	UpdatedAt  string   `json:"updated_at"`
+	BodyHTML   string   `json:"body_html"` // empty when the Nota is encrypted
+	Tags       []string `json:"tags"`
 }
 
 // ListNotes returns active (non-trashed, non-archived) Notas: favorites
@@ -130,7 +134,11 @@ func (s *DocumentStore) ListNotes(tagFilter []string, favoriteOnly bool) ([]Note
 	if favoriteOnly {
 		favExtra = " AND is_favorite = 1"
 	}
-	query := `SELECT id, title, COALESCE(icon, ''), is_favorite, created_at
+	// ponytail: tags joined with char(31) (unit separator), a byte tag names never hold.
+	query := `SELECT id, title, COALESCE(icon, ''), is_favorite, created_at, updated_at,
+		CASE WHEN encrypted = 1 THEN '' ELSE COALESCE(body_html, '') END,
+		COALESCE((SELECT GROUP_CONCAT(t.name, char(31)) FROM document_tags dt JOIN tags t ON t.id = dt.tag_id
+			WHERE dt.document_id = documents.id), '')
 		FROM documents
 		WHERE is_note = 1 AND trashed_at IS NULL AND archived_at IS NULL` + favExtra
 	var args []any
@@ -155,10 +163,15 @@ func (s *DocumentStore) ListNotes(tagFilter []string, favoriteOnly bool) ([]Note
 	for rows.Next() {
 		var n NoteListItem
 		var isFav int
-		if err := rows.Scan(&n.ID, &n.Title, &n.Icon, &isFav, &n.CreatedAt); err != nil {
+		var tags string
+		if err := rows.Scan(&n.ID, &n.Title, &n.Icon, &isFav, &n.CreatedAt, &n.UpdatedAt, &n.BodyHTML, &tags); err != nil {
 			return nil, err
 		}
 		n.IsFavorite = isFav == 1
+		n.Tags = []string{}
+		if tags != "" {
+			n.Tags = strings.Split(tags, "\x1f")
+		}
 		out = append(out, n)
 	}
 	return out, rows.Err()

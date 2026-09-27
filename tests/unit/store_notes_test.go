@@ -97,7 +97,7 @@ func TestListNotes_OrderTagFilterExclusions(t *testing.T) {
 
 	// Tag filter: only a tagged Nota comes back.
 	taggedID := mk("Com tag proj", 1, false)
-	if err := tags.SetDocumentTags(taggedID, []string{"proj"}); err != nil {
+	if err := tags.SetDocumentTags(taggedID, []string{"proj", "casa"}); err != nil {
 		t.Fatal(err)
 	}
 	tagged, err := docs.ListNotes([]string{"proj"}, false)
@@ -106,6 +106,8 @@ func TestListNotes_OrderTagFilterExclusions(t *testing.T) {
 	}
 	if len(tagged) != 1 || tagged[0].ID != taggedID {
 		t.Errorf("tag filter: got %+v, want only the tagged Nota", tagged)
+	} else if got := strings.Join(tagged[0].Tags, ","); got != "casa,proj" && got != "proj,casa" {
+		t.Errorf("list tags: got %q, want casa+proj", got)
 	}
 
 	// Favorites-only filter.
