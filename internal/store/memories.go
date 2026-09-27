@@ -292,6 +292,7 @@ type MemoryListItem struct {
 	Hour      *int   `json:"hour"`
 	Minute    *int   `json:"minute"`
 	Period    string `json:"period"`
+	BodyHTML  string `json:"body_html"` // empty when encrypted; lets the Android app cache every Memória
 	CreatedAt string `json:"-"`
 }
 
@@ -300,7 +301,8 @@ type MemoryListItem struct {
 func (s *DocumentStore) ListMemories() ([]MemoryListItem, error) {
 	rows, err := s.db.Query(`
 		SELECT id, memory_id, title, COALESCE(icon, ''), assoc_year, assoc_month, assoc_day,
-		       memory_hour, memory_minute, COALESCE(memory_period, ''), created_at
+		       memory_hour, memory_minute, COALESCE(memory_period, ''), created_at,
+		       CASE WHEN encrypted = 1 THEN '' ELSE COALESCE(body_html, '') END
 		FROM documents
 		WHERE memory_id IS NOT NULL AND trashed_at IS NULL AND archived_at IS NULL`)
 	if err != nil {
@@ -312,7 +314,7 @@ func (s *DocumentStore) ListMemories() ([]MemoryListItem, error) {
 		var m MemoryListItem
 		var month, day, hour, minute sql.NullInt64
 		if err := rows.Scan(&m.ID, &m.MemoryID, &m.Title, &m.Icon, &m.Year, &month, &day,
-			&hour, &minute, &m.Period, &m.CreatedAt); err != nil {
+			&hour, &minute, &m.Period, &m.CreatedAt, &m.BodyHTML); err != nil {
 			return nil, err
 		}
 		m.Month, m.Day, m.Hour, m.Minute = nullIntPtr(month), nullIntPtr(day), nullIntPtr(hour), nullIntPtr(minute)
