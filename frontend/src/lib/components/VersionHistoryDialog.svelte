@@ -127,7 +127,9 @@
             <span class="preview-meta">{formatDate(preview.created_at)}</span>
           </div>
           <div class="preview-content tiptap-editor">
-            {@html preview.body_html}
+            <div class="preview-html">
+              {@html preview.body_html}
+            </div>
           </div>
         {/if}
       </div>
@@ -294,8 +296,9 @@
     flex: 1;
     font-size: .9rem;
     line-height: 1.6;
-    pointer-events: none;
   }
+
+  .preview-html { pointer-events: none; }
 
   .hist-empty {
     color: var(--text-muted);
