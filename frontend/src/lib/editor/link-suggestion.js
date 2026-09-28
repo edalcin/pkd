@@ -18,11 +18,7 @@ function debounce(fn, ms) {
   }
 }
 
-const fetchSuggestions = debounce(async (query) => {
-  // The plugin anchors on the first "[" of "[[", so the query arrives wrapped
-  // ("[Foo" while typing, "[Foo]" once closed). Strip both ends.
-  const q = query.replace(/^\[+/, '').replace(/\]+$/, '')
-  if (!q) return []
+const defaultSearch = debounce(async (q) => {
   try {
     const results = await apiGet(`/api/search?q=${encodeURIComponent(q)}&limit=10`)
     return results.slice(0, 10)
@@ -31,19 +27,29 @@ const fetchSuggestions = debounce(async (query) => {
   }
 }, 150)
 
+
 /**
  * Build the Suggestion config for TipTap.
  *
- * @param {function(items: Array, props: object): HTMLElement} renderPopup
- *   Factory that creates the dropdown DOM element.
+ * @param {object} [options]
+ * @param {(query: string) => Promise<Array<{id, title}>>} [options.search]
+ *   Injectable search function; receives the cleaned query (no leading "[" or
+ *   trailing "]"). Default = debounced apiGet('/api/search').
  */
-export function buildLinkSuggestion(onSelect) {
+export function buildLinkSuggestion(options = {}) {
+  const search = options.search || defaultSearch
   return {
     char: '[',
     allowSpaces: true,
     startOfLine: false,
 
-    items: ({ query }) => fetchSuggestions(query),
+    items: ({ query }) => {
+      // The plugin anchors on the first "[" of "[[", so the query arrives wrapped
+      // ("[Foo" while typing, "[Foo]" once closed). Strip both ends.
+      const q = query.replace(/^\[+/, '').replace(/\]+$/, '')
+      if (!q) return []
+      return search(q)
+    },
 
     render: () => {
       let popup = null

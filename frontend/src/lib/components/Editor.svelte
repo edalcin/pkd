@@ -1,14 +1,7 @@
 <script>
   import { onDestroy } from 'svelte'
   import { Editor } from '@tiptap/core'
-  import { StarterKit } from '@tiptap/starter-kit'
-  import { ResizableImage } from '../editor/resizable-image-extension.js'
-  import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table'
-  import { TaskList, TaskItem } from '@tiptap/extension-list'
-  import { Highlight } from '@tiptap/extension-highlight'
-  import { TextAlign } from '@tiptap/extension-text-align'
-  import { DocLink } from '../editor/doclink-extension.js'
-  import { MermaidCodeBlock } from '../editor/mermaid-code-block.js'
+  import { buildExtensions } from '../editor/extensions.js'
   import TurndownService from 'turndown'
   import { saveDoc, loadDoc, linksRefreshSignal, docBodyRefreshedSignal, toggleLock, toggleFavorite, archiveDoc, unarchiveDoc, focusTitleForDocId, createDoc, restoreVersion, protectDoc, unprotectDoc, requestDocCode, unlockDoc, trashDoc } from '../stores/documents.js'
   import { setDocumentTags, loadTags, tags as allTags } from '../stores/tags.js'
@@ -1120,27 +1113,7 @@
     let mounted = false
     editorInstance = new Editor({
       element: node,
-      extensions: [
-        StarterKit.configure({
-          codeBlock: false,
-          // v3 ships Link inside StarterKit — configured here instead of a separate extension
-          link: {
-            openOnClick: true,
-            HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
-          },
-        }),
-        MermaidCodeBlock,
-        ResizableImage.configure({ inline: true, allowBase64: true }),
-        TaskList,
-        TaskItem.configure({ nested: true }),
-        Table.configure({ resizable: false }),
-        TableRow,
-        TableCell,
-        TableHeader,
-        Highlight.configure({ multicolor: true }),
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        DocLink,
-      ],
+      extensions: buildExtensions(),
       content: doc?.body_html || '',
       editorProps: {
         handlePaste: handlePaste,

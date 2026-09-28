@@ -43,6 +43,14 @@ func init() {
 	editorPolicy.AllowAttrs("class").OnElements(
 		"code", "pre", "span", "div", "table", "th", "td",
 	)
+	// Allow the TipTap TextAlign extension's inline style on block text elements.
+	editorPolicy.AllowStyles("text-align").
+		Matching(regexp.MustCompile(`^(left|center|right|justify)$`)).
+		OnElements("p", "h1", "h2", "h3", "h4", "h5", "h6")
+	// Allow positive-integer colspan/rowspan from the TipTap Table extension's merged cells.
+	editorPolicy.AllowAttrs("colspan", "rowspan").
+		Matching(regexp.MustCompile(`^[1-9][0-9]*$`)).
+		OnElements("td", "th")
 	// Data attributes used by CKEditor
 	editorPolicy.AllowDataAttributes()
 

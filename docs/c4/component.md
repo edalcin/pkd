@@ -137,9 +137,16 @@ C4Component
         }
 
         Container_Boundary(editor_exts, "lib/editor/") {
-            Component(doclink_ext, "doclink-extension.js", "TipTap Node", "Nó inline customizado. Atributo data-doc-link='{id}'. Click navega para #/doc/{id}.")
-            Component(link_suggestion, "link-suggestion.js", "TipTap Suggestion", "Trigger: [[ — dropdown de autocomplete via /api/search. Debounce 150ms.")
-            Component(mermaid_ext, "mermaid-code-block.js", "TipTap CodeBlock (extend)", "Detecta fence ```mermaid (ou conteúdo compatível) e renderiza via mermaid.js. Código-fonte oculto por padrão (chip </> + decoration de caret-inside via ProseMirror Plugin); reage a tema claro/escuro.")
+            Component(extensions_js, "extensions.js", "buildExtensions(opts)", "Lista de extensões TipTap compartilhada entre Editor.svelte (PWA) e o bundle móvel editor-mobile/main.js (pkdMobile) — o schema nunca diverge entre os dois.")
+            Component(mount_editor, "mount-editor.js", "mountEditor(container, opts)", "Monta um Editor TipTap num nó DOM puro, sem Svelte; usado só pelo bundle móvel (editor-mobile/main.js).")
+            Component(doclink_ext, "doclink-extension.js", "TipTap Node", "Nó inline customizado. Atributo data-doc-link='{id}'. Click chama options.onOpen(id) — padrão: navega para #/doc/{id}; injetável (o bundle móvel troca por exibir o balão Abrir/Remover sem navegar).")
+            Component(link_suggestion, "link-suggestion.js", "TipTap Suggestion", "Trigger: [[ — dropdown de autocomplete via busca injetável (options.search), padrão apiGet('/api/search'). Debounce 150ms.")
+            Component(mermaid_ext, "mermaid-code-block.js", "TipTap CodeBlock (extend)", "Detecta fence ```mermaid (ou conteúdo compatível) e renderiza via import('mermaid') dinâmico — só carrega o núcleo do Mermaid quando o documento tem um bloco Mermaid. Código-fonte oculto por padrão (chip </> + decoration de caret-inside via ProseMirror Plugin); reage a tema claro/escuro.")
+        }
+
+        Container_Boundary(editor_mobile, "src/editor-mobile/ (build separada: editor.html → npm run build:editor)") {
+            Component(editor_mobile_main, "main.js", "Bridge JS", "window.pkdEditor.{setContent,getHTML,command,setTheme,setEditable} para o host Android; window.AndroidEditor.{onChange,onState,onOpenLink,onOpenDoc,onReady,onLossCheck} como callbacks. Balão Abrir/Editar/Remover para Link e DocLink; inputmode='none' enquanto aberto.")
+            Component(loss_check, "loss-check.js", "checkContentLoss()", "Compara texto puro e histograma de tags do HTML original vs. getHTML() pós setContent; ok:false desliga a edição (proteção contra perda silenciosa, ADR pkdMobile 0002).")
         }
 
         Component(api_js, "lib/api.js", "Fetch wrapper", "apiFetch(), apiGet(), apiPost(), apiPut(), apiDelete(). Injeta X-CSRF-Token em requisições mutantes.")
@@ -155,9 +162,13 @@ C4Component
     Rel(editor, doc_store_fe, "Carrega e salva documento ativo")
     Rel(editor, tag_store_fe, "Chips coloridos + autocomplete de tags")
     Rel(editor, api_js, "GET /api/documents/{id}/children para cards de sub-docs")
+    Rel(editor, extensions_js, "extensions: buildExtensions() — mesma lista que o bundle móvel")
     Rel(editor, doclink_ext, "Extensão TipTap: renders links")
     Rel(editor, link_suggestion, "Extensão TipTap: [[ trigger")
     Rel(editor, mermaid_ext, "Extensão TipTap: renderiza blocos ```mermaid")
+    Rel(editor_mobile_main, mount_editor, "mountEditor(el, {extensions:{...}})")
+    Rel(mount_editor, extensions_js, "buildExtensions(opts) — mesma lista que a PWA")
+    Rel(editor_mobile_main, loss_check, "checkContentLoss(original, getHTML()) após setContent")
     Rel(graph_view, api_js, "GET /api/graph")
     Rel(link_suggestion, api_js, "GET /api/search?q=...")
     Rel(auth_store, api_js, "POST /api/login, /api/logout")

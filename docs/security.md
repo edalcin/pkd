@@ -62,7 +62,7 @@ Headers em toda resposta: `X-Content-Type-Options: nosniff`, `X-Frame-Options: D
 
 Todo HTML do editor passa pelo `bluemonday` antes do armazenamento e antes da renderização pública:
 
-- **EditorPolicy**: permite formatação, imagens (com width inline), tabelas, links (http/https/mailto), blocos de código. Remove event handlers, `<script>`, `<style>`, URIs `javascript:` e `<foreignObject>` SVG.
+- **EditorPolicy**: permite formatação, imagens (com width inline), tabelas (incluindo `colspan`/`rowspan` inteiros positivos, para células mescladas), links (http/https/mailto), blocos de código, e `text-align: left|center|right|justify` inline em `p`/`h1`–`h6` (extensão TipTap TextAlign). Remove event handlers, `<script>`, `<style>`, URIs `javascript:`, `<foreignObject>` SVG e qualquer outro estilo/valor fora dessas listas (ex.: `position`, `background: url(...)`).
 - **PublicSharePolicy**: igual ao EditorPolicy, mas também remove estilos inline e atributos de dados.
 
 Texto plano é derivado do HTML sanitizado para indexação FTS5.

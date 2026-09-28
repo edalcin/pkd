@@ -1,21 +1,21 @@
 import { CodeBlock } from '@tiptap/extension-code-block'
-import mermaid from 'mermaid'
 import { Plugin } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 let renderCounter = 0
 
+// Loaded only on first render of an actual Mermaid block, not at module load —
+// most Notas/Documentos never use Mermaid, so this keeps it out of the initial bundle.
+let mermaidModulePromise = null
+function loadMermaid() {
+  if (!mermaidModulePromise) mermaidModulePromise = import('mermaid').then(m => m.default)
+  return mermaidModulePromise
+}
+
 function getMermaidTheme() {
   return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'default'
 }
 
-function initMermaid(theme) {
-  mermaid.initialize({
-    startOnLoad: false,
-    theme,
-    securityLevel: 'loose',
-  })
-}
 
 // Detect mermaid syntax by content when language attr is absent/empty
 const MERMAID_PATTERN = /^(graph\s+[A-Z]{1,3}|flowchart\s+|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie[\s\n]|gitGraph|mindmap|timeline|quadrantChart|xychart|block-beta|architecture-beta|requirementDiagram|journey|zenuml)/i
@@ -28,7 +28,12 @@ function isMermaid(node) {
 }
 
 async function renderMermaid(source, container, theme) {
-  initMermaid(theme)
+  const mermaid = await loadMermaid()
+  mermaid.initialize({
+    startOnLoad: false,
+    theme,
+    securityLevel: 'loose',
+  })
   const trimmed = source.trim()
   if (!trimmed) {
     container.innerHTML = '<span class="mermaid-empty">Diagrama vazio</span>'

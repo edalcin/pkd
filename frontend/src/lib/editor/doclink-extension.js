@@ -15,6 +15,17 @@ export const DocLink = Node.create({
   inline: true,
   atom: true, // treated as a single unit by the cursor
 
+  addOptions() {
+    return {
+      // Called on click with the docId. Default = PWA navigation via hash.
+      // The mobile WebView editor overrides this to show the link bubble instead.
+      onOpen: (docId) => { window.location.hash = `/doc/${docId}` },
+      // Injected [[ suggestion search, forwarded to buildLinkSuggestion.
+      // undefined = default apiGet-based search (see link-suggestion.js).
+      search: undefined,
+    }
+  },
+
   addAttributes() {
     return {
       docId: {
@@ -48,16 +59,18 @@ export const DocLink = Node.create({
   },
 
   addNodeView() {
+    const { onOpen } = this.options
     return ({ node, editor }) => {
       const dom = document.createElement('span')
       dom.className = node.attrs.broken ? 'doc-link broken' : 'doc-link'
       dom.setAttribute('data-doc-link', node.attrs.docId)
       dom.textContent = node.attrs.docTitle || `#${node.attrs.docId}`
 
-      // Click navigates to the linked document
+      // Click navigates to the linked document (or, in the mobile editor,
+      // shows the link bubble — see options.onOpen).
       dom.addEventListener('click', () => {
         if (!node.attrs.broken) {
-          window.location.hash = `/doc/${node.attrs.docId}`
+          onOpen(node.attrs.docId)
         }
       })
 
@@ -69,7 +82,7 @@ export const DocLink = Node.create({
     return [
       Suggestion({
         editor: this.editor,
-        ...buildLinkSuggestion(),
+        ...buildLinkSuggestion({ search: this.options.search }),
       }),
     ]
   },

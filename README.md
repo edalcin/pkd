@@ -500,6 +500,10 @@ PKD_ATTACHMENTS_PATH=/tmp/pkd-att \
 go run ./cmd/pkd
 ```
 
+### Bundle do editor para o app móvel (pkdMobile)
+
+`npm run build:editor` (dentro de `frontend/`) gera uma build separada de `editor.html` em `frontend/dist-editor/` (`base: './'`, sem o service worker/manifest da PWA), com as mesmas extensões TipTap da PWA (`src/lib/editor/extensions.js`). O `pkdMobile` vendoriza esse bundle via `scripts/update-editor-bundle`; ver [ADR pkdMobile 0002](https://github.com/edalcin/pkdMobile/blob/main/docs/adr/0002-editor-rico-webview-tiptap.md).
+
 ---
 
 ## CI/CD

@@ -1,0 +1,146 @@
+/* Minimal styling for the mobile WebView editor page — no app chrome, no
+   toolbar (native in the app). Tokens copied from ../styles/app.css so the
+   editor content looks the same as the PWA; content rules copied from the
+   PWA's .tiptap-editor .ProseMirror block (Editor.svelte's sibling styles in
+   frontend/src/styles/app.css) so headings/lists/table/mark/doc-link/mermaid
+   render identically in both places. */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+[hidden] { display: none !important; }
+
+:root,
+[data-theme="light"] {
+  --bg:          #f8f8f8;
+  --bg-panel:    #ffffff;
+  --bg-hover:    #f0f0f0;
+  --bg-active:   #e8e4fd;
+  --border:      #e0e0e0;
+  --text:        #1a1a1a;
+  --text-muted:  #6b7280;
+  --text-active: #4f46e5;
+  --accent:      #4f46e5;
+  --radius:      6px;
+  --radius-lg:   10px;
+  --shadow-lg:   0 4px 16px rgba(0,0,0,.12);
+  color-scheme:  light;
+}
+
+[data-theme="dark"] {
+  --bg:          #111111;
+  --bg-panel:    #1c1c1e;
+  --bg-hover:    #2c2c2e;
+  --bg-active:   #2d2b5e;
+  --border:      #3a3a3c;
+  --text:        #f2f2f7;
+  --text-muted:  #8e8e93;
+  --text-active: #818cf8;
+  --accent:      #818cf8;
+  --shadow-lg:   0 4px 16px rgba(0,0,0,.4);
+  color-scheme:  dark;
+}
+
+html, body {
+  height: 100%;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+#editor-root { padding: .75rem 1rem 4rem; }
+
+.ProseMirror { outline: none; min-height: 200px; line-height: 1.7; }
+.ProseMirror > * + * { margin-top: .75em; }
+.ProseMirror h1 { font-size: 1.5em; font-weight: 700; }
+.ProseMirror h2 { font-size: 1.25em; font-weight: 600; }
+.ProseMirror h3 { font-size: 1.1em; font-weight: 600; }
+.ProseMirror ul, .ProseMirror ol { padding-left: 1.25em; }
+.ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.ProseMirror ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: .5em; }
+.ProseMirror ul[data-type="taskList"] li > label { flex: 0 0 auto; margin-top: .3em; user-select: none; }
+.ProseMirror ul[data-type="taskList"] li > div { flex: 1 1 auto; }
+.ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--text-muted); text-decoration: line-through; }
+.ProseMirror ul[data-type="taskList"] input[type="checkbox"] { cursor: pointer; }
+.ProseMirror code { background: var(--bg-hover); padding: .1em .3em; border-radius: 3px; font-size: .875em; }
+.ProseMirror pre { background: var(--bg-hover); padding: .75em; border-radius: var(--radius); overflow-x: auto; }
+.ProseMirror pre code { background: none; padding: 0; }
+.ProseMirror img { max-width: 100%; border-radius: var(--radius); }
+.ProseMirror blockquote { border-left: 3px solid var(--accent); padding-left: 1em; color: var(--text-muted); }
+.ProseMirror a { color: var(--accent); text-decoration: underline; }
+
+.ProseMirror table { border-collapse: collapse; width: 100%; margin: .75em 0; overflow: auto; display: block; }
+.ProseMirror th, .ProseMirror td { border: 1px solid var(--border); padding: .35em .65em; min-width: 60px; vertical-align: top; position: relative; }
+.ProseMirror th { background: var(--bg-hover); font-weight: 600; text-align: left; }
+
+.ProseMirror mark { border-radius: 2px; padding: 0 .15em; color: #111 !important; }
+
+.resizable-image-wrapper { display: inline-block; position: relative; max-width: 100%; line-height: 0; }
+
+/* Mermaid diagram blocks */
+.mermaid-block { position: relative; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin: .75em 0; }
+.mermaid-source { background: var(--bg-hover); margin: 0; padding: .75em; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.mermaid-source code { background: none; padding: 0; font-size: .85em; }
+.mermaid-diagram { padding: 1em; display: flex; justify-content: center; overflow-x: auto; background: var(--bg); }
+.mermaid-diagram svg { max-width: 100%; height: auto; }
+.mermaid-empty, .mermaid-loading { color: var(--text-muted); font-style: italic; font-size: .85em; }
+.mermaid-error { color: #c0392b; font-size: .8em; white-space: pre-wrap; margin: 0; }
+.mermaid-block > .mermaid-source { display: none; }
+.mermaid-block.mermaid-open > .mermaid-source,
+.mermaid-block.mermaid-caret-inside > .mermaid-source { display: block; }
+.mermaid-toggle { position: absolute; top: 4px; right: 4px; z-index: 2; font: inherit; font-size: .7rem; line-height: 1; padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-hover); color: var(--text-muted); cursor: pointer; opacity: .55; }
+
+/* Doc-link inline nodes */
+.doc-link { display: inline-flex; align-items: center; gap: .2rem; padding: .05em .3em; background: var(--bg-active); color: var(--text-active); border-radius: 4px; font-size: .9em; cursor: pointer; text-decoration: none; }
+.doc-link.broken { background: transparent; color: var(--text-muted); text-decoration: line-through; }
+
+/* ---- link bubble (Abrir · Editar · Remover) ---- */
+.bubble {
+  position: fixed;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: .35rem .5rem;
+  gap: .35rem;
+  font-size: .875rem;
+}
+.bubble button { background: none; border: none; color: var(--accent); font: inherit; cursor: pointer; padding: .1rem .3rem; }
+.bubble-sep { color: var(--border); }
+
+/* ---- URL prompt overlay (no window.prompt in Android WebView) ---- */
+.prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .35);
+}
+.prompt-box {
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 1rem;
+  width: min(320px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.prompt-box label { font-size: .8rem; color: var(--text-muted); }
+.prompt-box input {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .5rem;
+}
+.prompt-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .25rem; }
+.prompt-actions button { background: none; border: none; color: var(--accent); font: inherit; cursor: pointer; padding: .3rem .6rem; }

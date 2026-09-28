@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Editor</title>
+<script>
+  // Applied before first paint so there's no light->dark flash. The Android
+  // host passes ?theme= and can also call window.pkdEditor.setTheme() later.
+  document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') === 'dark' ? 'dark' : 'light'
+</script>
+</head>
+<body>
+  <div id="editor-root"></div>
+
+  <div id="link-bubble" class="bubble" hidden>
+    <button id="bubble-open" type="button">Abrir</button>
+    <span class="bubble-sep">&middot;</span>
+    <button id="bubble-edit" type="button">Editar</button>
+    <span class="bubble-sep">&middot;</span>
+    <button id="bubble-remove" type="button">Remover</button>
+  </div>
+
+  <div id="prompt-overlay" class="prompt-overlay" hidden>
+    <div class="prompt-box">
+      <label for="prompt-input">Endereço do link</label>
+      <input id="prompt-input" type="url" placeholder="https://…" autocapitalize="off" autocorrect="off" />
+      <div class="prompt-actions">
+        <button id="prompt-cancel" type="button">Cancelar</button>
+        <button id="prompt-ok" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/editor-mobile/main.js"></script>
+</body>
+</html>
