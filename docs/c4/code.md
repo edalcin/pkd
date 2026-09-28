@@ -243,7 +243,7 @@ flowchart TD
     H --> E
     I --> E
     E --> J[docs.CreateNote idempotency_key + Update]
-    J --> K[tags.SetDocumentTags captura + extras]
+    J --> K[tags.SetDocumentTags: tags do pedido, ou captura se vazio]
     K --> L[201 Nota JSON — 200 se idempotency_key já existir]
 ```
 

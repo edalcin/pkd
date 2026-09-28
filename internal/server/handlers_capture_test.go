@@ -59,6 +59,34 @@ func TestCaptureCreatesNote(t *testing.T) {
 	}
 }
 
+// TestCaptureTagsReplaceDefault proves that request tags replace #captura.
+func TestCaptureTagsReplaceDefault(t *testing.T) {
+	db, err := store.Open("file:server_capture_tags_test?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	s := &Server{docs: store.NewDocumentStore(db), tags: store.NewTagStore(db)}
+	r := chi.NewRouter()
+	r.Post("/api/capture", s.handleCapture())
+
+	body := strings.NewReader(`{"title":"Do celular","content":"<p>x</p>","tags":["android"]}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/capture", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("want 201, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	doc, err := s.docs.GetByID(1)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(doc.Tags) != 1 || doc.Tags[0] != "android" {
+		t.Fatalf("want tags [android], got %v", doc.Tags)
+	}
+}
+
 // TestCaptureIdempotencyKey proves that POSTing /api/capture twice with the
 // same idempotency_key creates only one Nota: the replay returns 200 with
 // the existing Nota instead of a duplicate 201.

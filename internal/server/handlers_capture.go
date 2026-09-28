@@ -18,7 +18,8 @@ import (
 // handleCapture serves POST /api/capture.
 // Accepts both application/json and application/x-www-form-urlencoded (PWA share_target).
 // Creates a Nota (same store path as POST /api/notes) from the captured
-// content and tags it with #captura. An optional idempotency_key follows the
+// content and tags it with the request's tags, or #captura when there are
+// none. An optional idempotency_key follows the
 // same replay semantics as /api/notes: the same key returns 200 with the
 // existing Nota instead of creating a duplicate.
 func (s *Server) handleCapture() http.HandlerFunc {
@@ -81,8 +82,12 @@ func (s *Server) handleCapture() http.HandlerFunc {
 			return
 		}
 
-		// Apply tags: always add #captura plus any extras
-		allTags := append([]string{"captura"}, extraTags...)
+		// Apply tags: the request's tags replace the #captura default
+		// (pkdMobile sends ["android"]; the PWA form sends none).
+		allTags := extraTags
+		if len(allTags) == 0 {
+			allTags = []string{"captura"}
+		}
 		if err := s.tags.SetDocumentTags(doc.ID, allTags); err != nil {
 			// Non-fatal — Nota is still created
 			_ = err
