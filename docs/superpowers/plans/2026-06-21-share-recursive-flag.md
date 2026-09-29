@@ -114,7 +114,7 @@ type ShareWithDoc struct {
 - [ ] **Step 3: Verificar compilação**
 
 ```bash
-cd D:/git/pkd && go build ./...
+cd S:/git/pkd && go build ./...
 ```
 
 Esperado: sem erros.
@@ -122,7 +122,7 @@ Esperado: sem erros.
 - [ ] **Step 4: Commit**
 
 ```bash
-cd D:/git/pkd && git add internal/store/migrate.go internal/model/share.go
+cd S:/git/pkd && git add internal/store/migrate.go internal/model/share.go
 git commit -m "feat(share): add include_children column and model field"
 ```
 
@@ -229,7 +229,7 @@ func (s *ShareStore) LookupByToken(plaintext string) (*model.ShareLink, error) {
 - [ ] **Step 3: Verificar compilação**
 
 ```bash
-cd D:/git/pkd && go build ./...
+cd S:/git/pkd && go build ./...
 ```
 
 Esperado: sem erros de compilação. Pode haver erro de compilação em `handlers_share.go` se ele chama `shares.Create(docID)` — será corrigido na Task 3.
@@ -237,7 +237,7 @@ Esperado: sem erros de compilação. Pode haver erro de compilação em `handler
 - [ ] **Step 4: Commit**
 
 ```bash
-cd D:/git/pkd && git add internal/store/shares.go
+cd S:/git/pkd && git add internal/store/shares.go
 git commit -m "feat(share): update Create/LookupByToken to handle include_children"
 ```
 
@@ -353,7 +353,7 @@ A variável `childData` não é mais declarada antes deste bloco — remover a d
 - [ ] **Step 3: Verificar compilação**
 
 ```bash
-cd D:/git/pkd && go build ./...
+cd S:/git/pkd && go build ./...
 ```
 
 Esperado: sem erros.
@@ -361,7 +361,7 @@ Esperado: sem erros.
 - [ ] **Step 4: Commit**
 
 ```bash
-cd D:/git/pkd && git add internal/server/handlers_share.go
+cd S:/git/pkd && git add internal/server/handlers_share.go
 git commit -m "feat(share): handleCreateShare reads include_children; public page respects flag"
 ```
 
@@ -535,7 +535,7 @@ func TestShareDefaultIsRecursive(t *testing.T) {
 - [ ] **Step 2: Rodar os testes para verificar que passam**
 
 ```bash
-cd D:/git/pkd && go test ./tests/integration/ -run "TestShare" -v
+cd S:/git/pkd && go test ./tests/integration/ -run "TestShare" -v
 ```
 
 Esperado:
@@ -549,7 +549,7 @@ PASS
 - [ ] **Step 3: Commit**
 
 ```bash
-cd D:/git/pkd && git add tests/integration/share_test.go
+cd S:/git/pkd && git add tests/integration/share_test.go
 git commit -m "test(share): integration tests for include_children flag"
 ```
 
@@ -715,7 +715,7 @@ Substituir o conteúdo completo de `frontend/src/lib/components/ShareDialog.svel
 - [ ] **Step 2: Verificar build do frontend**
 
 ```bash
-cd D:/git/pkd/frontend && npm run build
+cd S:/git/pkd/frontend && npm run build
 ```
 
 Esperado: build sem erros.
@@ -723,7 +723,7 @@ Esperado: build sem erros.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd D:/git/pkd && git add frontend/src/lib/components/ShareDialog.svelte
+cd S:/git/pkd && git add frontend/src/lib/components/ShareDialog.svelte
 git commit -m "feat(share): add include_children checkbox and scope badge to ShareDialog"
 ```
 

@@ -81,7 +81,7 @@ type ShareWithDoc struct {
 - [ ] **Step 3: Verificar compilação**
 
 ```bash
-cd D:/git/pkd && go build ./...
+cd S:/git/pkd && go build ./...
 ```
 
 Esperado: sem erros.
@@ -89,7 +89,7 @@ Esperado: sem erros.
 - [ ] **Step 4: Commit**
 
 ```bash
-cd D:/git/pkd && git add internal/store/migrate.go internal/model/share.go
+cd S:/git/pkd && git add internal/store/migrate.go internal/model/share.go
 git commit -m "feat(share): add include_children column and model field"
 ```
 

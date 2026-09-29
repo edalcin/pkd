@@ -99,7 +99,7 @@ func (s *ShareStore) LookupByToken(plaintext string) (*model.ShareLink, error) {
 - [ ] **Step 3: Verificar compilação**
 
 ```bash
-cd D:/git/pkd && go build ./...
+cd S:/git/pkd && go build ./...
 ```
 
 Esperado: sem erros de compilação. Pode haver erro de compilação em `handlers_share.go` se ele chama `shares.Create(docID)` — será corrigido na Task 3.
@@ -107,7 +107,7 @@ Esperado: sem erros de compilação. Pode haver erro de compilação em `handler
 - [ ] **Step 4: Commit**
 
 ```bash
-cd D:/git/pkd && git add internal/store/shares.go
+cd S:/git/pkd && git add internal/store/shares.go
 git commit -m "feat(share): update Create/LookupByToken to handle include_children"
 ```
 

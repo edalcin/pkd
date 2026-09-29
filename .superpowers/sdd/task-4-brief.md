@@ -166,7 +166,7 @@ func TestShareDefaultIsRecursive(t *testing.T) {
 - [ ] **Step 2: Rodar os testes para verificar que passam**
 
 ```bash
-cd D:/git/pkd && go test ./tests/integration/ -run "TestShare" -v
+cd S:/git/pkd && go test ./tests/integration/ -run "TestShare" -v
 ```
 
 Esperado:
@@ -180,7 +180,7 @@ PASS
 - [ ] **Step 3: Commit**
 
 ```bash
-cd D:/git/pkd && git add tests/integration/share_test.go
+cd S:/git/pkd && git add tests/integration/share_test.go
 git commit -m "test(share): integration tests for include_children flag"
 ```
 

@@ -158,7 +158,7 @@ Substituir o conteúdo completo de `frontend/src/lib/components/ShareDialog.svel
 - [ ] **Step 2: Verificar build do frontend**
 
 ```bash
-cd D:/git/pkd/frontend && npm run build
+cd S:/git/pkd/frontend && npm run build
 ```
 
 Esperado: build sem erros.
@@ -166,7 +166,7 @@ Esperado: build sem erros.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd D:/git/pkd && git add frontend/src/lib/components/ShareDialog.svelte
+cd S:/git/pkd && git add frontend/src/lib/components/ShareDialog.svelte
 git commit -m "feat(share): add include_children checkbox and scope badge to ShareDialog"
 ```
 

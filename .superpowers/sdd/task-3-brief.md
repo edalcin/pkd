@@ -108,7 +108,7 @@ A variável `childData` não é mais declarada antes deste bloco — remover a d
 - [ ] **Step 3: Verificar compilação**
 
 ```bash
-cd D:/git/pkd && go build ./...
+cd S:/git/pkd && go build ./...
 ```
 
 Esperado: sem erros.
@@ -116,7 +116,7 @@ Esperado: sem erros.
 - [ ] **Step 4: Commit**
 
 ```bash
-cd D:/git/pkd && git add internal/server/handlers_share.go
+cd S:/git/pkd && git add internal/server/handlers_share.go
 git commit -m "feat(share): handleCreateShare reads include_children; public page respects flag"
 ```
 
