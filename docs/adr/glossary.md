@@ -159,6 +159,14 @@ convertida em Documento ou em **Memória** (neste caso, com **Data da Memória**
 de, no mínimo, o ano).
 _Evitar_: anotação, lembrete.
 
+## Link no corpo (Body Link)
+
+URL escrita no texto do corpo de um **Documento**, **Nota** ou **Memória**,
+mostrada em azul e clicável. Diferente dos **Links externos** (coluna das
+Associações) e do **DocLink** (link interno `[[…]]`). O comportamento é o
+mesmo no PKD e no pkdMobile.
+_Evitar_: link externo (neste sentido), hyperlink.
+
 ## app Notas
 
 Ferramenta separada, de origem das **Notas** migradas para o PKD. Não é parte

@@ -87,6 +87,29 @@ do serviço**).
 6. Depois de algumas semanas de uso, revisar os "Pontos abertos" da MC e da
    Nota, abaixo.
 
+7. **Link no corpo — validar em homologação.** Feito no código (ver
+   "Link no corpo" abaixo). Antes do deploy, faça um backup do `DB_PATH`: a
+   migração muda o `body_html` sem criar versão. No `pkd2`, abra uma Nota
+   migrada que tenha URL e confirme que o link está azul e clicável.
+
+## Link no corpo (grilling 2026-09-30, Q1–Q7)
+
+Termo no glossário. Não redecidir sem motivo novo.
+
+- **Q2:** o servidor cria o link na gravação: `SanitizeEditorHTML` →
+  `security.LinkifyHTML`. Todas as gravações (editor, captura, pkdMobile, API,
+  import) gravam o mesmo HTML.
+- **Q3:** só `http://` e `https://`. O editor usa a mesma regra
+  (`shouldAutoLink` em `frontend/src/lib/editor/extensions.js`). Por isso
+  `www.x` e `x.com` não viram mais link quando você digita.
+- **Q4:** vale para Documento, Nota e Memória.
+- **Q5:** `store.linkifyBodies` roda em toda partida e muda só o `body_html`.
+  O `version`, o `updated_at` e os snapshots não mudam. Os itens cifrados
+  ficam de fora, e uma Nota protegida só recebe link pelo autolink do editor.
+- **Q6:** o gesto segue a plataforma: um clique no PKD abre o link; no
+  pkdMobile, um toque abre o balão "Abrir".
+- **Q7:** o detalhe da Memória no pkdMobile mostra os links.
+
 ---
 
 # Nota — concluída (2026-09-26, `v1.3.0`)

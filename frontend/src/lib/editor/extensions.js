@@ -31,6 +31,9 @@ export function buildExtensions(opts = {}) {
       link: {
         openOnClick: linkOpenOnClick,
         HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
+        // Link no corpo rule, same as the server (internal/security/linkify.go):
+        // only http:// and https:// become links. Change both together.
+        shouldAutoLink: url => /^https?:\/\//i.test(url),
       },
     }),
     MermaidCodeBlock,

@@ -78,9 +78,11 @@ func init() {
 }
 
 // SanitizeEditorHTML sanitizes HTML from the editor before storing it.
-// It preserves rich formatting while stripping XSS vectors.
+// It preserves rich formatting while stripping XSS vectors, and turns bare
+// http(s) URLs into Links no corpo (LinkifyHTML) — every body write goes
+// through here, so all clients store the same links.
 func SanitizeEditorHTML(html string) string {
-	return editorPolicy.Sanitize(html)
+	return LinkifyHTML(editorPolicy.Sanitize(html))
 }
 
 // SanitizePublicHTML sanitizes HTML for the public share view.

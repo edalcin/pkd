@@ -7,6 +7,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/edalcin/pkd/internal/security"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -219,6 +221,11 @@ func Open(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("store.Open icon data migration: %w", err)
 	}
 
+	if err := linkifyBodies(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store.Open body links migration: %w", err)
+	}
+
 	// Warn about duplicate document titles and attempt to create a unique index.
 	// If duplicates exist the index creation will be skipped; application-layer
 	// checks in UpdateAndSync still prevent new duplicates from being introduced.
@@ -279,4 +286,49 @@ func Open(dbPath string) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+// linkifyBodies turns the bare http(s) URLs of stored bodies into Links no
+// corpo (docs/adr/glossary.md), for content written before the server did it
+// on every save. It changes body_html only: no version, updated_at or
+// snapshot, because the text is the same. Encrypted bodies are ciphertext.
+// ponytail: idempotent, runs at every startup and scans bodies with "http";
+// fine for personal-KB sizes, add a done-marker in settings if startup slows.
+func linkifyBodies(db *sql.DB) error {
+	rows, err := db.Query(`SELECT id, body_html FROM documents WHERE encrypted = 0 AND body_html LIKE '%http%'`)
+	if err != nil {
+		return err
+	}
+	type change struct {
+		id   int64
+		html string
+	}
+	var changes []change
+	for rows.Next() {
+		var c change
+		var old string
+		if err := rows.Scan(&c.id, &old); err != nil {
+			rows.Close()
+			return err
+		}
+		if c.html = security.LinkifyHTML(old); c.html != old {
+			changes = append(changes, c)
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(changes) == 0 {
+		return nil
+	}
+	return WithTx(db, func(tx *sql.Tx) error {
+		for _, c := range changes {
+			if _, err := tx.Exec(`UPDATE documents SET body_html = ? WHERE id = ?`, c.html, c.id); err != nil {
+				return err
+			}
+		}
+		log.Printf("body links migration: %d bodies updated", len(changes))
+		return nil
+	})
 }

@@ -10,6 +10,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 - **`GET /api/notes` devolve `body_html`, `tags` e `updated_at`** — o app Android (pkdMobile) põe todas as Notas no cache com um só pedido. `body_html` vem vazio em Nota cifrada. Mudança aditiva: a PWA ignora os campos novos.
 - **`GET /api/memories` devolve `body_html`** — pelo mesmo motivo (cache das Memórias no pkdMobile). Vazio em Memória cifrada.
+- **Link no corpo** (`docs/adr/glossary.md`) — o servidor muda toda URL `http(s)://` do corpo para um link clicável na gravação (`security.LinkifyHTML`, chamado por `SanitizeEditorHTML`). Vale para Documento, Nota e Memória, e para todas as origens (editor, captura, pkdMobile, API, import). Uma migração na partida (`store.linkifyBodies`) corrige os corpos antigos e muda só o `body_html`: o `version`, o `updated_at` e o histórico de versões não mudam, e os corpos cifrados ficam de fora. **Faça backup do `DB_PATH` antes do deploy.**
+
+### Mudado
+
+- **Autolink do editor** — só `http://` e `https://` viram link quando você digita (`shouldAutoLink`), a mesma regra do servidor. `www.x` e `x.com` não viram mais link.
 
 ## [1.3.0] - 2026-09-26
 
