@@ -100,7 +100,7 @@
     if (hash === '/calendar') return { view: 'calendar' }
     if (hash === '/admin') return { view: 'admin' }
     if (hash === '/chat') return { view: 'chat' }
-    if (hash === '/notas' || hash.startsWith('/notas/')) return { view: 'notas', id: hash.split('/')[2] || null }
+    if (hash === '/notas') return { view: 'notas' }
     return { view: 'home' }
   }
 
@@ -403,7 +403,7 @@
         {:else if route.view === 'chat'}
           <Chat />
         {:else if route.view === 'notas'}
-          <NotesBoard openId={route.id} />
+          <NotesBoard />
         {:else}
           <!-- Home / empty state -->
           <div class="empty-state" style="flex:1">

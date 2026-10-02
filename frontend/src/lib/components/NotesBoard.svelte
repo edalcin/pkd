@@ -1,15 +1,13 @@
 <script>
-  // Mural de Notas (Spec #8): every Nota as a card, masonry, in the server's
-  // order (favorites first, then created_at desc). #/notas/{id} opens the Nota
-  // in a modal with the full Editor. The sidebar's tag/favorite filters drive
-  // the list (Sidebar.svelte → loadNotes).
+  // Mural de Notas (Spec #8): every Nota as a card, in a grid read row by row,
+  // in the server's order (favorites first, then created_at desc). A click
+  // opens the Nota in the normal Editor at #/doc/{id}. The sidebar's
+  // tag/favorite filters drive the list (Sidebar.svelte → loadNotes).
   import { notes, loadNotes } from '../stores/notes.js'
   import { tagFilter, favoriteFilter, loadTree } from '../stores/documents.js'
-  import { replaceHash } from '../nav.js'
-  import Editor from './Editor.svelte'
   import NewNoteDialog from './NewNoteDialog.svelte'
 
-  let { openId = null } = $props()
+  loadNotes() // refresh on every visit: the Nota may have changed in the Editor
 
   const BLOCK = 40 // cards per infinite-scroll step (client-side only, #4)
   let shown = $state(BLOCK)
@@ -42,29 +40,25 @@
     return 'agora'
   }
 
-  function openNote(e, id) {
-    if (e.target.closest('a')) return // a Link no corpo opens the link, not the modal
-    window.location.hash = `/notas/${id}` // push: browser "back" closes the modal (#5)
+  function openNote(id) {
+    window.location.hash = `/doc/${id}`
   }
 
-  function closeNote() {
-    replaceHash('/notas') // replace: the modal is a state of the Mural, not a page (#5)
-    loadNotes() // refresh cards after edits in the modal (#7)
-  }
-
-  function onKey(e) {
-    if (!openId || e.key !== 'Escape') return
-    if (document.querySelector('.modal-backdrop')) return // a dialog inside the Editor owns Esc
-    closeNote()
+  // Card preview: plain-text excerpt + first image as thumbnail, so all cards
+  // have about the same height. body_html is sanitized by the server.
+  const parser = new DOMParser()
+  function preview(html) {
+    const d = parser.parseFromString(html, 'text/html')
+    // One space between blocks, so "<p>a</p><p>b</p>" reads "a b", not "ab".
+    const text = Array.from(d.body.children, c => c.textContent.trim()).filter(Boolean).join(' ')
+    return { text, thumb: d.querySelector('img')?.getAttribute('src') || null }
   }
 
   function handleNoteCreated(doc) {
     newNoteOpen = false
-    window.location.hash = `/notas/${doc.id}`
+    window.location.hash = `/doc/${doc.id}`
   }
 </script>
-
-<svelte:window onkeydown={onKey} />
 
 <div class="board" bind:clientWidth={width}>
   <div class="board-head">
@@ -90,16 +84,20 @@
       {/if}
     </div>
   {:else}
-    <div class="masonry" style="column-count: {cols}">
+    <div class="grid" style="grid-template-columns: repeat({cols}, minmax(0, 1fr))">
       {#each visible as n (n.id)}
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div class="card" role="button" tabindex="0"
-             onclick={e => openNote(e, n.id)}
-             onkeydown={e => e.key === 'Enter' && e.target === e.currentTarget && openNote(e, n.id)}>
+             onclick={() => openNote(n.id)}
+             onkeydown={e => e.key === 'Enter' && openNote(n.id)}>
           <strong class="title">{n.is_favorite ? '⭐ ' : ''}{n.title || 'Sem título'}</strong>
-          <!-- body_html is sanitized by the server on every write (SanitizeEditorHTML) -->
           <!-- ponytail: empty body_html = 🔒; NoteListItem has no `encrypted` flag, so an empty Nota shows 🔒 too. Add the flag to GET /api/notes if that confuses. -->
-          <div class="body">{#if n.body_html}{@html n.body_html}{:else}🔒{/if}</div>
+          {#if n.body_html}
+            {@const p = preview(n.body_html)}
+            <div class="body">
+              {#if p.thumb}<img class="thumb" src={p.thumb} alt="" loading="lazy" />{/if}
+              <p class="excerpt">{p.text}</p>
+            </div>
+          {:else}<div class="body">🔒</div>{/if}
           <div class="foot">
             {#if n.tags?.length}
               <span class="tags">{#each n.tags as t}<span class="chip">#{t}</span>{/each}</span>
@@ -113,16 +111,6 @@
   {/if}
 </div>
 
-{#if openId}
-  <div class="note-backdrop" onclick={closeNote} role="presentation">
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="note-modal" onclick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Nota" tabindex="-1">
-      <button class="note-close" onclick={closeNote} title="Fechar" aria-label="Fechar">✕</button>
-      {#key openId}<Editor docId={openId} noteModal={true} />{/key}
-    </div>
-  </div>
-{/if}
-
 {#if newNoteOpen}
   <NewNoteDialog onClose={() => newNoteOpen = false} onCreated={handleNoteCreated} />
 {/if}
@@ -134,20 +122,17 @@
   .new-btn { margin-left: auto; }
   .muted { color: var(--text-muted); }
 
-  .masonry { column-gap: 1rem; }
+  .grid { display: grid; gap: 1rem; }
   .card {
-    display: inline-flex; flex-direction: column; gap: .4rem; width: 100%;
-    break-inside: avoid; margin-bottom: 1rem;
+    display: flex; flex-direction: column; gap: .4rem; height: 11rem;
     background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
-    padding: .9rem 1rem; cursor: pointer; color: var(--text);
+    padding: .9rem 1rem; cursor: pointer; color: var(--text); overflow: hidden;
   }
   .card:hover, .card:focus-visible { border-color: var(--accent); box-shadow: 0 2px 10px rgba(0,0,0,.08); outline: none; }
-  .title { font-size: .98rem; overflow-wrap: anywhere; }
-  .body { font-size: .88rem; line-height: 1.5; overflow-wrap: anywhere; }
-  .body :global(p) { margin: 0 0 .3rem; }
-  .body :global(ul), .body :global(ol) { padding-left: 1.1rem; margin: 0 0 .3rem; }
-  .body :global(img) { max-width: 100%; border-radius: 6px; }
-  .body :global(a) { color: var(--accent); }
+  .title { font-size: .98rem; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; }
+  .body { flex: 1; min-height: 0; overflow: hidden; font-size: .88rem; line-height: 1.5; }
+  .thumb { float: left; width: 64px; height: 64px; object-fit: cover; border-radius: 6px; margin-right: .6rem; }
+  .excerpt { margin: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
   .foot { display: flex; align-items: center; gap: .5rem; justify-content: space-between; margin-top: .2rem; }
   .tags { display: flex; flex-wrap: wrap; gap: .3rem; }
   .chip { font-size: .72rem; padding: .1rem .45rem; border-radius: 999px; background: var(--bg-active); color: var(--text-active); }
@@ -157,17 +142,4 @@
   .empty { text-align: center; padding: 4rem 1rem; display: flex; flex-direction: column; align-items: center; gap: .4rem; }
   .empty-icon { font-size: 2.5rem; }
 
-  .note-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 900; }
-  .note-modal {
-    position: relative; display: flex; width: min(1200px, 94vw); height: 90vh;
-    background: var(--bg); border-radius: 10px; overflow: auto;
-  }
-  .note-close {
-    position: absolute; top: .5rem; right: .75rem; z-index: 5;
-    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px;
-    color: var(--text); cursor: pointer; padding: .15rem .5rem;
-  }
-  @media (max-width: 640px) {
-    .note-modal { width: 100vw; height: 100dvh; border-radius: 0; }
-  }
 </style>

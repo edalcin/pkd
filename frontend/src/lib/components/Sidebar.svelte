@@ -113,7 +113,7 @@
 
   function handleNoteCreated(doc) {
     newNoteOpen = false
-    window.location.hash = `/notas/${doc.id}`
+    window.location.hash = `/doc/${doc.id}`
   }
 </script>
 
