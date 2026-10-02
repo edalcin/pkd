@@ -10,6 +10,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 - **`GET /api/notes` devolve `body_html`, `tags` e `updated_at`** — o app Android (pkdMobile) põe todas as Notas no cache com um só pedido. `body_html` vem vazio em Nota cifrada. Mudança aditiva: a PWA ignora os campos novos.
 - **`GET /api/memories` devolve `body_html`** — pelo mesmo motivo (cache das Memórias no pkdMobile). Vazio em Memória cifrada.
+- **Alertas do GitHub no editor** (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) — a citação que começa com o marcador mostra um título colorido (Note, Tip, …) e a borda na cor do tipo. Só decoração (`lib/editor/callout-extension.js`): o HTML gravado não muda, então os documentos antigos já aparecem corretos, o export `.md` mantém o marcador e o loss-check do pkdMobile não dispara. A página de compartilhamento público continua a mostrar o marcador como texto.
 - **Link no corpo** (`docs/adr/glossary.md`) — o servidor muda toda URL `http(s)://` do corpo para um link clicável na gravação (`security.LinkifyHTML`, chamado por `SanitizeEditorHTML`). Vale para Documento, Nota e Memória, e para todas as origens (editor, captura, pkdMobile, API, import). Uma migração na partida (`store.linkifyBodies`) corrige os corpos antigos e muda só o `body_html`: o `version`, o `updated_at` e o histórico de versões não mudam, e os corpos cifrados ficam de fora. **Faça backup do `DB_PATH` antes do deploy.**
 
 ### Mudado

@@ -338,6 +338,15 @@ input:focus, textarea:focus, select:focus {
 }
 .resizable-image-wrapper:hover .resizable-image-handle { opacity: 1; }
 .tiptap-editor .ProseMirror blockquote { border-left: 3px solid var(--accent); padding-left: 1em; color: var(--text-muted); }
+/* GitHub alerts (> [!NOTE] …) — decorations from lib/editor/callout-extension.js; keep in sync with editor-mobile/editor.css */
+.tiptap-editor .ProseMirror blockquote.callout { border-left-color: var(--callout); color: var(--text); }
+.tiptap-editor .ProseMirror .callout-note { --callout: #0969da; }
+.tiptap-editor .ProseMirror .callout-tip { --callout: #1a7f37; }
+.tiptap-editor .ProseMirror .callout-important { --callout: #8250df; }
+.tiptap-editor .ProseMirror .callout-warning { --callout: #9a6700; }
+.tiptap-editor .ProseMirror .callout-caution { --callout: #cf222e; }
+.tiptap-editor .ProseMirror .callout-title { display: block; font-size: 0; }
+.tiptap-editor .ProseMirror .callout-title::before { content: attr(data-label); font-size: .95rem; font-weight: 600; color: var(--callout); }
 .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
