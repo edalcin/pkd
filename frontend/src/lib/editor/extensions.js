@@ -6,7 +6,6 @@ import { TextAlign } from '@tiptap/extension-text-align'
 import { ResizableImage } from './resizable-image-extension.js'
 import { DocLink } from './doclink-extension.js'
 import { MermaidCodeBlock } from './mermaid-code-block.js'
-import { Callout } from './callout-extension.js'
 
 /**
  * extensions.js — single source of truth for the TipTap schema.
@@ -47,7 +46,6 @@ export function buildExtensions(opts = {}) {
     TableHeader,
     Highlight.configure({ multicolor: true }),
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    Callout,
     DocLink.configure({
       ...(onOpenDocLink ? { onOpen: onOpenDocLink } : {}),
       ...(searchDocLinks ? { search: searchDocLinks } : {}),
