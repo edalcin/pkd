@@ -12,6 +12,7 @@
   import Chat from './lib/components/Chat.svelte'
   import ShareDialog from './lib/components/ShareDialog.svelte'
   import { apiGet } from './lib/api.js'
+  import NotesBoardPrototype from './lib/components/NotesBoardPrototype.svelte' // PROTOTYPE
 
   // ─── Routing ─────────────────────────────────────────────
   let hash = $state(window.location.hash.slice(1) || '/')
@@ -93,6 +94,7 @@
     if (hash === '/calendar') return { view: 'calendar' }
     if (hash === '/admin') return { view: 'admin' }
     if (hash === '/chat') return { view: 'chat' }
+    if (hash.startsWith('/notas-prototype')) return { view: 'notasProto' } // PROTOTYPE
     return { view: 'home' }
   }
 
@@ -393,6 +395,8 @@
           <Admin />
         {:else if route.view === 'chat'}
           <Chat />
+        {:else if route.view === 'notasProto'}
+          <NotesBoardPrototype />
         {:else}
           <!-- Home / empty state -->
           <div class="empty-state" style="flex:1">
