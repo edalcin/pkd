@@ -624,7 +624,10 @@
 
   $effect(() => {
     if (editorReady && editorInstance) {
-      editorInstance.setEditable(!doc?.locked && !(isMobile && !focusMode && !mobileEditMode))
+      // emitUpdate=false: TipTap's default emits 'update', which schedules an
+      // autosave; this effect re-runs on every `doc =` (incl. after each save),
+      // so the default made an endless save loop with stale doc fields.
+      editorInstance.setEditable(!doc?.locked && !(isMobile && !focusMode && !mobileEditMode), false)
       if (doc?.locked) { clearTimeout(autoSaveTimer); autoSaveTimer = null }
     }
   })

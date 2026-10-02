@@ -16,6 +16,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 - **Autolink do editor** — só `http://` e `https://` viram link quando você digita (`shouldAutoLink`), a mesma regra do servidor. `www.x` e `x.com` não viram mais link.
 
+### Corrigido
+
+- **Autosave em loop no editor** — o `$effect` que chama `editorInstance.setEditable(...)` roda de novo a cada `doc =` (também depois de cada gravação), e o TipTap emite `update` por padrão em `setEditable`. O `update` agendava outro autosave, então um documento aberto e editado uma vez gravava a cada 5 s para sempre (em produção: Memória 456 com 176 versões, Nota 553 com 40 versões em 4 min). Depois de converter a Nota aberta em Memória, o loop gravava o estado antigo da Nota e o ícone da Memória voltava para `bx-sticky-note`. Agora `setEditable(..., false)`. Sem teste automático: o frontend não tem test runner; verificado no navegador (1 edição → 1 `PUT`; conversão com a Nota aberta → 0 `PUT`).
+
 ## [1.3.0] - 2026-09-26
 
 ### Corrigido
