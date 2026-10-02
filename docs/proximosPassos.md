@@ -283,8 +283,9 @@ component.
   visão "Arquivados". Continua na busca e no Chat.
 - **Unicidade de título** vale para Notas: títulos repetidos recebem " (2)".
   Se incomodar, isentar Notas (afeta wikilinks por título).
-- **Bloco Notas sem paginação.** Hoje é uma lista inteira (74 itens). Se
-  crescer muito, aplicar rolagem infinita (regra do projeto).
+- **Mural de Notas** (Spec #8, 2026-10-02) substituiu a lista da barra
+  lateral; rolagem infinita só no cliente (blocos de 40). Rever com paginação
+  no servidor se `GET /api/notes` passar de ~1 MB (#4).
 
 ---
 

@@ -4,10 +4,9 @@
   import { tree, loadTree, createDoc, sortTree, treeExpansionSignal, tagFilter, favoriteFilter, textFilter, viewMode } from '../stores/documents.js'
   import { tags, loadTags } from '../stores/tags.js'
   import { memories, loadMemories, groupMemories, memoryTimeLabel } from '../stores/memories.js'
-  import { notes, loadNotes, convertNoteToDocument } from '../stores/notes.js'
+  import { loadNotes } from '../stores/notes.js'
   import NewMemoryDialog from './NewMemoryDialog.svelte'
   import NewNoteDialog from './NewNoteDialog.svelte'
-  import ConvertNoteToMemoryDialog from './ConvertNoteToMemoryDialog.svelte'
 
   let { onNavigate, onClearFilter } = $props()
 
@@ -20,14 +19,12 @@
   let collapsedDays = $state(new Set())
   let newMemoryOpen = $state(false)
   let newNoteOpen = $state(false)
-  let notesCollapsed = $state(localStorage.getItem('pkd-notes-collapsed') === null ? true : localStorage.getItem('pkd-notes-collapsed') === 'true')
-  let convertMemoryNoteId = $state(null)
 
   const mcYears = $derived(groupMemories($memories))
 
   // Keep selectedTags in sync when tagFilter is reset externally (e.g. topbar reset button)
   $effect(() => { selectedTags = [...$tagFilter] })
-  // The Notas list follows the same filters as the tree, whoever changes them
+  // The Mural de Notas follows the same filters as the tree, whoever changes them
   // (tag chips, favorites toggle, topbar reset, Admin tag links).
   $effect(() => { loadNotes($tagFilter, $favoriteFilter) })
 
@@ -87,11 +84,6 @@
     localStorage.setItem('pkd-mc-collapsed', String(mcCollapsed))
   }
 
-  function toggleNotesCollapse() {
-    notesCollapsed = !notesCollapsed
-    localStorage.setItem('pkd-notes-collapsed', String(notesCollapsed))
-  }
-
   function toggleFavoriteFilter() {
     loadTree(selectedTags, !$favoriteFilter)
   }
@@ -121,44 +113,7 @@
 
   function handleNoteCreated(doc) {
     newNoteOpen = false
-    navigate(doc.id)
-  }
-
-  function onNoteDragStart(e, id) {
-    e.dataTransfer.setData('text/plain', String(id))
-    e.dataTransfer.setData('application/x-pkd-note', '1')
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  // Drop a Nota on empty tree space (not on a TreeNode, which handles its
-  // own drop) -> convert it into a root document (Q18).
-  function onTreeNavDragOver(e) {
-    if (!e.dataTransfer.types.includes('application/x-pkd-note')) return
-    e.preventDefault()
-  }
-
-  async function onTreeNavDrop(e) {
-    if (!e.dataTransfer.types.includes('application/x-pkd-note')) return
-    if (e.target !== e.currentTarget) return // a TreeNode already handled it
-    e.preventDefault()
-    const noteId = Number(e.dataTransfer.getData('text/plain'))
-    if (!noteId) return
-    await convertNoteToDocument(noteId, null, null)
-  }
-
-  // Drop a Nota on the MC block -> open the "convert to Memória" dialog
-  // (Q17). Nothing happens until the dialog is confirmed.
-  function onMcDragOver(e) {
-    if (!e.dataTransfer.types.includes('application/x-pkd-note')) return
-    e.preventDefault()
-  }
-
-  function onMcDrop(e) {
-    if (!e.dataTransfer.types.includes('application/x-pkd-note')) return
-    e.preventDefault()
-    const noteId = Number(e.dataTransfer.getData('text/plain'))
-    if (!noteId) return
-    convertMemoryNoteId = noteId
+    window.location.hash = `/notas/${doc.id}`
   }
 </script>
 
@@ -223,7 +178,7 @@
   {/if}
 
   <!-- Document tree (always shown; filtered when query is active) -->
-  <nav aria-label={$textFilter ? 'Resultados do filtro' : 'Árvore de documentos'} class="tree-nav" ondragover={onTreeNavDragOver} ondrop={onTreeNavDrop}>
+  <nav aria-label={$textFilter ? 'Resultados do filtro' : 'Árvore de documentos'} class="tree-nav">
     {#each $tree as node (node.id)}
       <TreeNode {node} activeId={getActiveId()} {navigate} onNavigate={navigate} />
     {/each}
@@ -241,7 +196,7 @@
   <!-- Memória Cronológica (hidden while text filter is active: search already
        mixes Memórias into the normal tree above) -->
   {#if !$textFilter}
-    <div class="mc-section" role="region" aria-label="Memória Cronológica" ondragover={onMcDragOver} ondrop={onMcDrop}>
+    <div class="mc-section" role="region" aria-label="Memória Cronológica">
       <button class="tag-section-header" onclick={toggleMcCollapse} aria-expanded={!mcCollapsed} aria-controls="mc-tree">
         <span class="tag-section-label">Memória Cronológica</span>
         <span class="tag-section-arrow">{mcCollapsed ? '▸' : '▾'}</span>
@@ -320,42 +275,18 @@
     </div>
   {/if}
 
-  <!-- Notas (hidden while text filter is active) -->
+  <!-- Notas: the header opens the Mural de Notas (hidden while text filter is active) -->
   {#if !$textFilter}
     <div class="mc-section">
-      <button class="tag-section-header" onclick={toggleNotesCollapse} aria-expanded={!notesCollapsed} aria-controls="notes-tree">
+      <a class="tag-section-header {currentHash.startsWith('#/notas') ? 'notes-active' : ''}" href="#/notas">
         <span class="tag-section-label">Notas</span>
-        <span class="tag-section-arrow">{notesCollapsed ? '▸' : '▾'}</span>
-      </button>
-      {#if !notesCollapsed}
-        <nav class="mc-tree" id="notes-tree" aria-label="Notas">
-          {#each $notes as n (n.id)}
-            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-            <div
-              class="mc-node mc-memory {n.id === getActiveId() ? 'active' : ''}"
-              style="padding-left:.4rem"
-              draggable="true"
-              ondragstart={e => onNoteDragStart(e, n.id)}
-              onclick={() => navigate(n.id)}
-              role="button"
-              tabindex="0"
-              onkeydown={e => e.key === 'Enter' && navigate(n.id)}
-            >
-              <i class="bx {n.icon || 'bx-sticky-note'} icon"></i>
-              <span class="label">{n.title || 'Sem título'}</span>
-              {#if n.is_favorite}<span class="note-fav">⭐</span>{/if}
-            </div>
-          {/each}
-          {#if $notes.length === 0}
-            <p class="tree-empty">Nenhuma nota ainda.</p>
-          {/if}
-        </nav>
-        <div class="mc-new-row">
-          <button class="new-doc-btn" onclick={() => newNoteOpen = true}>
-            + Nova Nota
-          </button>
-        </div>
-      {/if}
+        <span class="tag-section-arrow">›</span>
+      </a>
+      <div class="mc-new-row">
+        <button class="new-doc-btn" onclick={() => newNoteOpen = true}>
+          + Nova Nota
+        </button>
+      </div>
     </div>
   {/if}
 
@@ -375,13 +306,6 @@
   <NewNoteDialog onClose={() => newNoteOpen = false} onCreated={handleNoteCreated} />
 {/if}
 
-{#if convertMemoryNoteId !== null}
-  <ConvertNoteToMemoryDialog
-    noteId={convertMemoryNoteId}
-    onClose={() => convertMemoryNoteId = null}
-    onConverted={() => convertMemoryNoteId = null}
-  />
-{/if}
 
 <style>
   .view-toggle {
@@ -448,6 +372,8 @@
   }
 
   .tag-section-header:hover { background: var(--bg-hover); }
+  a.tag-section-header { text-decoration: none; }
+  a.tag-section-header.notes-active { color: var(--text-active); background: var(--bg-active); }
 
   .tag-section-label { flex: 1; text-align: left; }
 
@@ -576,8 +502,4 @@
     padding: .3rem .5rem .5rem;
   }
 
-  .note-fav {
-    flex-shrink: 0;
-    font-size: .8rem;
-  }
 </style>

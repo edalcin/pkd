@@ -1,6 +1,5 @@
 <script>
   import { createDoc, trashDoc, moveDoc, reorderDoc, findNextSiblingId, treeExpansionSignal, linksRefreshSignal, toggleFavorite, revealActiveSignal, archiveDoc, unarchiveDoc } from '../stores/documents.js'
-  import { convertNoteToDocument } from '../stores/notes.js'
   import { apiPost } from '../api.js'
 
   let {
@@ -137,21 +136,8 @@
     e.preventDefault()
     const zone = dropZone
     dropZone = null
-    const isNoteDrag = e.dataTransfer.types.includes('application/x-pkd-note')
     const draggedId = Number(e.dataTransfer.getData('text/plain'))
     if (!draggedId || draggedId === node.id) return
-
-    if (isNoteDrag) {
-      if (zone === 'inside') {
-        await convertNoteToDocument(draggedId, node.id, null)
-      } else if (zone === 'before') {
-        await convertNoteToDocument(draggedId, node.parent_id, node.id)
-      } else {
-        const nextId = findNextSiblingId(node.id, node.parent_id)
-        await convertNoteToDocument(draggedId, node.parent_id, nextId)
-      }
-      return
-    }
 
     if (zone === 'inside') {
       await moveDoc(draggedId, node.id)

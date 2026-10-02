@@ -12,6 +12,8 @@
   import Chat from './lib/components/Chat.svelte'
   import ShareDialog from './lib/components/ShareDialog.svelte'
   import { apiGet } from './lib/api.js'
+  import { nav } from './lib/nav.js'
+  import NotesBoard from './lib/components/NotesBoard.svelte'
 
   // ─── Routing ─────────────────────────────────────────────
   let hash = $state(window.location.hash.slice(1) || '/')
@@ -30,6 +32,11 @@
     if (newHash !== '/') localStorage.setItem('pkd-last-route', '#' + newHash)
     if (suppressHistoryPush) {
       suppressHistoryPush = false
+      return
+    }
+    if (nav.replaceNext) { // replaceHash(): overwrite the current entry, don't push
+      nav.replaceNext = false
+      navHistory = navHistory.map((h, i) => i === navPos ? newHash : h)
       return
     }
     if (navHistory[navPos] !== newHash) {
@@ -93,6 +100,7 @@
     if (hash === '/calendar') return { view: 'calendar' }
     if (hash === '/admin') return { view: 'admin' }
     if (hash === '/chat') return { view: 'chat' }
+    if (hash === '/notas' || hash.startsWith('/notas/')) return { view: 'notas', id: hash.split('/')[2] || null }
     return { view: 'home' }
   }
 
@@ -247,7 +255,8 @@
     route.view === 'graph' ? 'Grafo' :
     route.view === 'calendar' ? 'Calendário' :
     route.view === 'admin' ? 'Administração' :
-    route.view === 'chat' ? 'Chat' : ''
+    route.view === 'chat' ? 'Chat' :
+    route.view === 'notas' ? 'Mural de Notas' : ''
   )
 </script>
 
@@ -393,6 +402,8 @@
           <Admin />
         {:else if route.view === 'chat'}
           <Chat />
+        {:else if route.view === 'notas'}
+          <NotesBoard openId={route.id} />
         {:else}
           <!-- Home / empty state -->
           <div class="empty-state" style="flex:1">

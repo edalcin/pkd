@@ -10,6 +10,9 @@
   import IconPicker from './IconPicker.svelte'
   import VersionHistoryDialog from './VersionHistoryDialog.svelte'
   import DuplicateTitleDialog from './DuplicateTitleDialog.svelte'
+  import ConvertNoteToMemoryDialog from './ConvertNoteToMemoryDialog.svelte'
+  import { convertNoteToDocument } from '../stores/notes.js'
+  import { replaceHash } from '../nav.js'
   import MemoryDateFields from './MemoryDateFields.svelte'
   import { get } from 'svelte/store'
   import { autoSaveInterval } from '../stores/settings.js'
@@ -17,7 +20,8 @@
   import DOMPurify from 'dompurify'
   import { DOMParser as PMParser } from '@tiptap/pm/model'
 
-  let { docId, focusMode = false, assocPortal = null } = $props()
+  // noteModal: rendered inside the Mural de Notas modal (NotesBoard.svelte).
+  let { docId, focusMode = false, assocPortal = null, noteModal = false } = $props()
 
   let mobileTab = $state('content')
   let mobileEditMode = $state(false)
@@ -399,6 +403,8 @@
     try {
       const loadedDoc = await loadDoc(targetId)
       if (Number(docId) !== targetId) return  // navigation changed mid-flight, abort
+      // A Nota opens only in the Mural de Notas modal: #/doc/{id} → #/notas/{id} (#5)
+      if (loadedDoc.is_note && !noteModal && !focusMode) { replaceHash(`/notas/${targetId}`); return }
       doc = loadedDoc
       titleValue = doc.title
       docTags = doc.tags || []
@@ -540,13 +546,27 @@
 
   async function handleToggleArchive() {
     const updated = doc.archived ? await unarchiveDoc(doc.id) : await archiveDoc(doc.id)
+    // An archived Nota leaves the Mural de Notas: close its modal (#7).
+    if (doc.is_note && updated.archived) { replaceHash('/notas'); return }
     doc = updated
   }
 
   async function handleDeleteDoc() {
     if (!confirm(`Mover "${doc.title || 'Sem título'}" para a lixeira?`)) return
     await trashDoc(doc.id)
-    window.location.hash = '/'
+    if (doc.is_note) replaceHash('/notas') // close the modal, back to the Mural (#7)
+    else window.location.hash = '/'
+  }
+
+  // Nota → Documento (root, end of tree) / Memória. One-way; the result opens
+  // in the Editor at #/doc/{id}, replacing the modal's history entry (#7).
+  let convertMemoryOpen = $state(false)
+
+  async function handleConvertToDocument() {
+    if (!confirm(`Converter "${doc.title || 'Sem título'}" em Documento? A conversão não volta.`)) return
+    const id = doc.id
+    await convertNoteToDocument(id, null, null)
+    replaceHash(`/doc/${id}`)
   }
 
   async function handleToggleProtect() {
@@ -1187,6 +1207,20 @@
             title="Criar sub-documento"
             aria-label="Criar sub-documento"
           ><i class="bx bxs-file-plus"></i></button>
+        {/if}
+        {#if doc.is_note}
+          <button
+            class="subdoc-btn"
+            onclick={() => convertMemoryOpen = true}
+            title="Converter em Memória"
+            aria-label="Converter em Memória"
+          ><i class="bx bx-calendar-event"></i></button>
+          <button
+            class="subdoc-btn"
+            onclick={handleConvertToDocument}
+            title="Converter em Documento"
+            aria-label="Converter em Documento"
+          ><i class="bx bx-file"></i></button>
         {/if}
         <button
           class="copy-link-btn"
@@ -1886,6 +1920,14 @@
 
       </div>
     </div>
+  {/if}
+
+  {#if convertMemoryOpen && doc?.is_note}
+    <ConvertNoteToMemoryDialog
+      noteId={doc.id}
+      onClose={() => convertMemoryOpen = false}
+      onConverted={() => replaceHash(`/doc/${doc.id}`)}
+    />
   {/if}
 
   <!-- Version history dialog -->
