@@ -154,10 +154,17 @@ Texto curto, de formatação simples, para guardar uma informação rápida (um
 endereço, um contato, uma lista). É um **Documento** com tipo próprio, não uma
 entidade separada: tem busca, embedding, Chat, Graph View, tags, anexos e
 links iguais aos de qualquer Documento. Não tem pai nem filhos e não aparece
-na árvore normal; aparece somente no bloco **Notas**. Uma Nota pode ser
+na árvore normal; aparece somente no **Mural de Notas**. Uma Nota pode ser
 convertida em Documento ou em **Memória** (neste caso, com **Data da Memória**
 de, no mínimo, o ano).
 _Evitar_: anotação, lembrete.
+
+## Mural de Notas (Notes Board)
+
+Tela da coluna central que mostra todas as **Notas** como cards, em ordem
+cronológica. O cabeçalho "NOTAS" da sidebar leva a ela. É o único lugar onde
+as Notas são listadas.
+_Evitar_: Notas (para a tela), painel, grade, lista de notas.
 
 ## Link no corpo (Body Link)
 
