@@ -1,10 +1,10 @@
 import { writable, get } from 'svelte/store'
 import { apiGet, apiPost } from '../api.js'
 import { loadMemories } from './memories.js'
-import { loadTree, tagFilter, favoriteFilter } from './documents.js'
+import { loadTree, tagFilter, favoriteFilter, viewMode } from './documents.js'
 
 /** Flat list of Notas, already sorted by the server (favorites first, then
- *  created_at desc). Excludes archived/trashed Notas. */
+ *  created_at desc). Honors the sidebar viewMode (active/archived/all). */
 export const notes = writable([])
 
 let loadSeq = 0
@@ -12,9 +12,10 @@ let loadSeq = 0
 /** Reload the Notas list, filtered by tag (AND) and favorites — same query
  *  params as GET /api/tree. Defaults to the active sidebar filters (like
  *  loadTree), so reloads after rename/archive/trash keep the filter (Q5). */
-export async function loadNotes(tags = get(tagFilter), favoritesOnly = get(favoriteFilter)) {
+export async function loadNotes(tags = get(tagFilter), favoritesOnly = get(favoriteFilter), view = get(viewMode)) {
   const seq = ++loadSeq
   const params = new URLSearchParams()
+  if (view && view !== 'active') params.set('view', view)
   tags.forEach(t => params.append('tag', t))
   if (favoritesOnly) params.set('favorite', '1')
   const qs = params.toString()

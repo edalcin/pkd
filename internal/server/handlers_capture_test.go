@@ -124,7 +124,7 @@ func TestCaptureIdempotencyKey(t *testing.T) {
 		t.Fatalf("replayed capture: want 200, got %d (%s)", second.Code, second.Body.String())
 	}
 
-	notes, err := s.docs.ListNotes(nil, false)
+	notes, err := s.docs.ListNotes("", nil, false)
 	if err != nil {
 		t.Fatalf("ListNotes: %v", err)
 	}

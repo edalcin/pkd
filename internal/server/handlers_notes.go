@@ -218,7 +218,7 @@ func (s *Server) handleListNotes() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tagFilter := r.URL.Query()["tag"]
 		favoriteOnly := r.URL.Query().Get("favorite") == "1"
-		list, err := s.docs.ListNotes(tagFilter, favoriteOnly)
+		list, err := s.docs.ListNotes(r.URL.Query().Get("view"), tagFilter, favoriteOnly)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return

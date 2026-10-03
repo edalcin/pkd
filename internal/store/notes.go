@@ -126,13 +126,21 @@ type NoteListItem struct {
 	Tags       []string `json:"tags"`
 }
 
-// ListNotes returns active (non-trashed, non-archived) Notas: favorites
-// first, then created_at descending (Q4), optionally filtered by tag (AND
-// semantics) and/or favorites-only (Q5), same as the normal tree filters.
-func (s *DocumentStore) ListNotes(tagFilter []string, favoriteOnly bool) ([]NoteListItem, error) {
+// ListNotes returns non-trashed Notas for view ("active" default |
+// "archived" | "all", same as ListTree): favorites first, then created_at
+// descending (Q4), optionally filtered by tag (AND semantics) and/or
+// favorites-only (Q5), same as the normal tree filters.
+func (s *DocumentStore) ListNotes(view string, tagFilter []string, favoriteOnly bool) ([]NoteListItem, error) {
 	favExtra := ""
+	switch view {
+	case "archived":
+		favExtra = " AND archived_at IS NOT NULL"
+	case "all":
+	default:
+		favExtra = " AND archived_at IS NULL"
+	}
 	if favoriteOnly {
-		favExtra = " AND is_favorite = 1"
+		favExtra += " AND is_favorite = 1"
 	}
 	// ponytail: tags joined with char(31) (unit separator), a byte tag names never hold.
 	query := `SELECT id, title, COALESCE(icon, ''), is_favorite, created_at, updated_at,
@@ -140,7 +148,7 @@ func (s *DocumentStore) ListNotes(tagFilter []string, favoriteOnly bool) ([]Note
 		COALESCE((SELECT GROUP_CONCAT(t.name, char(31)) FROM document_tags dt JOIN tags t ON t.id = dt.tag_id
 			WHERE dt.document_id = documents.id), '')
 		FROM documents
-		WHERE is_note = 1 AND trashed_at IS NULL AND archived_at IS NULL` + favExtra
+		WHERE is_note = 1 AND trashed_at IS NULL` + favExtra
 	var args []any
 	if len(tagFilter) > 0 {
 		ph := strings.TrimSuffix(strings.Repeat("?,", len(tagFilter)), ",")

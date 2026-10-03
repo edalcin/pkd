@@ -26,7 +26,7 @@
   $effect(() => { selectedTags = [...$tagFilter] })
   // The Mural de Notas follows the same filters as the tree, whoever changes them
   // (tag chips, favorites toggle, topbar reset, Admin tag links).
-  $effect(() => { loadNotes($tagFilter, $favoriteFilter) })
+  $effect(() => { loadNotes($tagFilter, $favoriteFilter, $viewMode) })
 
   onMount(() => {
     loadTree()

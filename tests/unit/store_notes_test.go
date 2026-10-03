@@ -79,7 +79,7 @@ func TestListNotes_OrderTagFilterExclusions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := docs.ListNotes(nil, false)
+	list, err := docs.ListNotes("", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,12 +95,28 @@ func TestListNotes_OrderTagFilterExclusions(t *testing.T) {
 		t.Errorf("first item must be the favorite: %+v", list[0])
 	}
 
+	// View filter: "archived" only the archived Nota; "all" adds it back. Trash never.
+	arch, err := docs.ListNotes("archived", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(arch) != 1 || arch[0].ID != archivedID {
+		t.Errorf("archived view: %+v", arch)
+	}
+	all, err := docs.ListNotes("all", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 4 {
+		t.Errorf("all view: want 4 (no trash), got %d", len(all))
+	}
+
 	// Tag filter: only a tagged Nota comes back.
 	taggedID := mk("Com tag proj", 1, false)
 	if err := tags.SetDocumentTags(taggedID, []string{"proj", "casa"}); err != nil {
 		t.Fatal(err)
 	}
-	tagged, err := docs.ListNotes([]string{"proj"}, false)
+	tagged, err := docs.ListNotes("", []string{"proj"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +127,7 @@ func TestListNotes_OrderTagFilterExclusions(t *testing.T) {
 	}
 
 	// Favorites-only filter.
-	favOnly, err := docs.ListNotes(nil, true)
+	favOnly, err := docs.ListNotes("", nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +197,7 @@ func TestConvertNoteToDocument(t *testing.T) {
 		t.Errorf("icon not reset to the Documento default: %q", converted.Icon)
 	}
 
-	list, err := docs.ListNotes(nil, false)
+	list, err := docs.ListNotes("", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
