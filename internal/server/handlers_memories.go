@@ -15,7 +15,7 @@ import (
 )
 
 // memoryRequest is the body of POST and PATCH /api/memories. Pointers tell
-// PATCH which fields were sent. Content is HTML, sanitized like /api/import.
+// PATCH which fields were sent. Content is HTML, sanitized like /api/documents.
 type memoryRequest struct {
 	Title          *string            `json:"title"`
 	Content        *string            `json:"content"`

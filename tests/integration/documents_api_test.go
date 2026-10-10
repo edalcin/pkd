@@ -12,13 +12,13 @@ import (
 // tiny1x1PNGBase64 is a valid, minimal 1x1 transparent PNG.
 const tiny1x1PNGBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
 
-func importRequest(t *testing.T, body map[string]interface{}) *http.Response {
+func documentBearerRequest(t *testing.T, body map[string]interface{}) *http.Response {
 	t.Helper()
 	b, err := json.Marshal(body)
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
 	}
-	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/import", bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/documents", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -31,11 +31,11 @@ func importRequest(t *testing.T, body map[string]interface{}) *http.Response {
 	return resp
 }
 
-// TestImportWithImageAttachment verifies ADR-003: an imported note with an
-// image attachment creates a document whose body embeds an <img> tag
+// TestCreateDocumentWithImageAttachment verifies ADR-003: a Documento created
+// via Bearer with an image attachment has a body that embeds an <img> tag
 // pointing at a real, newly created PKD attachment (not a data: URI).
-func TestImportWithImageAttachment(t *testing.T) {
-	resp := importRequest(t, map[string]interface{}{
+func TestCreateDocumentWithImageAttachment(t *testing.T) {
+	resp := documentBearerRequest(t, map[string]interface{}{
 		"title":   "Nota com Imagem",
 		"content": "<p>Texto da nota</p>",
 		"tags":    []string{"trabalho"},
@@ -45,7 +45,7 @@ func TestImportWithImageAttachment(t *testing.T) {
 	})
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("import: want 201, got %d", resp.StatusCode)
+		t.Fatalf("create: want 201, got %d", resp.StatusCode)
 	}
 
 	var doc map[string]interface{}
@@ -61,7 +61,7 @@ func TestImportWithImageAttachment(t *testing.T) {
 		t.Errorf("body_html should not contain a data: URI (sanitizer strips it silently), got: %s", bodyHTML)
 	}
 	if !strings.Contains(bodyHTML, "Texto da nota") {
-		t.Errorf("body_html should still contain the original note text, got: %s", bodyHTML)
+		t.Errorf("body_html should still contain the original text, got: %s", bodyHTML)
 	}
 
 	// The attachment must be independently fetchable (real stored file, not inline data).
@@ -79,14 +79,14 @@ func TestImportWithImageAttachment(t *testing.T) {
 	}
 }
 
-// TestImportWithOversizedAttachment_RollsBackDocument verifies ADR-003 D3:
+// TestCreateDocumentWithOversizedAttachment_RollsBackDocument verifies ADR-003 D3:
 // when an attachment fails to import, the whole document is rolled back —
-// no partially-imported document is left behind.
-func TestImportWithOversizedAttachment_RollsBackDocument(t *testing.T) {
+// no partially-created document is left behind.
+func TestCreateDocumentWithOversizedAttachment_RollsBackDocument(t *testing.T) {
 	// MaxImageMB is 10 in the test config; base64-encode ~11MB of raw bytes.
 	oversized := base64.StdEncoding.EncodeToString(make([]byte, 11*1024*1024))
 
-	resp := importRequest(t, map[string]interface{}{
+	resp := documentBearerRequest(t, map[string]interface{}{
 		"title":   "Nota Que Deve Ser Revertida",
 		"content": "<p>não deve sobreviver</p>",
 		"attachments": []map[string]interface{}{
@@ -95,7 +95,7 @@ func TestImportWithOversizedAttachment_RollsBackDocument(t *testing.T) {
 	})
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusRequestEntityTooLarge {
-		t.Fatalf("import: want 413, got %d", resp.StatusCode)
+		t.Fatalf("create: want 413, got %d", resp.StatusCode)
 	}
 
 	client := loginClient(t)
@@ -105,5 +105,49 @@ func TestImportWithOversizedAttachment_RollsBackDocument(t *testing.T) {
 	body.ReadFrom(treeResp.Body)
 	if strings.Contains(body.String(), "Nota Que Deve Ser Revertida") {
 		t.Error("rolled-back document should not appear in the tree — rollback did not delete it")
+	}
+}
+
+// TestCreateDocumentBearer_IdempotentAndSearchable: the same idempotency_key
+// never creates a duplicate, no tag is forced, and the new Documento is in
+// the lexical search at once (the old /api/import needed a restart).
+func TestCreateDocumentBearer_IdempotentAndSearchable(t *testing.T) {
+	body := map[string]interface{}{
+		"title":           "Receita do Hermes",
+		"content":         "<p>palavraunicaxyz</p>",
+		"tags":            []string{"cozinha"},
+		"idempotency_key": "doc-key-1",
+	}
+	first := documentBearerRequest(t, body)
+	defer first.Body.Close()
+	if first.StatusCode != http.StatusCreated {
+		t.Fatalf("first create: want 201, got %d", first.StatusCode)
+	}
+	var doc map[string]interface{}
+	json.NewDecoder(first.Body).Decode(&doc)
+
+	second := documentBearerRequest(t, body)
+	defer second.Body.Close()
+	if second.StatusCode != http.StatusOK {
+		t.Fatalf("repeat create: want 200, got %d", second.StatusCode)
+	}
+	var again map[string]interface{}
+	json.NewDecoder(second.Body).Decode(&again)
+	if again["id"] != doc["id"] {
+		t.Errorf("repeat create returned id %v, want %v", again["id"], doc["id"])
+	}
+
+	tags, _ := doc["tags"].([]interface{})
+	if len(tags) != 1 || tags[0] != "cozinha" {
+		t.Errorf("tags = %v, want only [cozinha]", doc["tags"])
+	}
+
+	client := loginClient(t)
+	resp := apiGet(t, client, "/api/search?q=palavraunicaxyz")
+	defer resp.Body.Close()
+	found := new(bytes.Buffer)
+	found.ReadFrom(resp.Body)
+	if !strings.Contains(found.String(), "Receita do Hermes") {
+		t.Errorf("new Documento not in search right after create: %s", found.String())
 	}
 }

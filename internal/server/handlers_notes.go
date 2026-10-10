@@ -13,7 +13,7 @@ import (
 )
 
 // noteRequest is the body of POST and PATCH /api/notes. Pointers tell PATCH
-// which fields were sent. Content is HTML, sanitized like /api/import.
+// which fields were sent. Content is HTML, sanitized like /api/documents.
 type noteRequest struct {
 	Title          *string            `json:"title"`
 	Content        *string            `json:"content"`

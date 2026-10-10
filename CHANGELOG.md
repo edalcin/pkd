@@ -12,13 +12,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - **`GET /api/memories` devolve `body_html`** — pelo mesmo motivo (cache das Memórias no pkdMobile). Vazio em Memória cifrada.
 - **Mural de Notas** (`#/notas`, Spec #8) — a lista de Notas sai da sidebar; o cabeçalho "NOTAS" abre na coluna central uma grade de cards em ordem por linha (título, até 4 linhas de texto e o thumbnail da primeira imagem, todos com a mesma altura; tags, data relativa; 1→4 colunas em 640/960/1280px) com rolagem infinita no cliente (blocos de 40; `GET /api/notes` não muda). Um clique abre a Nota na visão normal de Documento (`#/doc/{id}`), com as associações na coluna da direita e um botão "← Mural de Notas" no lugar do breadcrumb. O Editor ganha "Converter em Memória" e "Converter em Documento" (só em Notas; o Documento vai para a raiz); deletar e arquivar uma Nota voltam ao Mural. Os drags de conversão (Nota → bloco MC, Nota → árvore) saem com a lista.
 - **Link no corpo** (`docs/adr/glossary.md`) — o servidor muda toda URL `http(s)://` do corpo para um link clicável na gravação (`security.LinkifyHTML`, chamado por `SanitizeEditorHTML`). Vale para Documento, Nota e Memória, e para todas as origens (editor, captura, pkdMobile, API, import). Uma migração na partida (`store.linkifyBodies`) corrige os corpos antigos e muda só o `body_html`: o `version`, o `updated_at` e o histórico de versões não mudam, e os corpos cifrados ficam de fora. **Faça backup do `DB_PATH` antes do deploy.**
+- **`POST /api/documents` aceita o Bearer `PKD_IMPORT_TOKEN`** (agentes, ex.: Hermes) — mesmo padrão de `/api/notes` e `/api/memories` (`tokenOrSession`). O corpo ganha `content` (HTML sanitizado), `tags`, `attachments` (base64) e `idempotency_key` (coluna nova `documents.doc_key`, índice único parcial; a mesma chave devolve o Documento existente com 200). O Documento entra no FTS e no embedder na criação. Sem `parent_id`, fica na raiz. Só a criação aceita Bearer.
+- **Skill única do Hermes** — `docs/promptHermes.md` (substitui `docs/promptMcHermes.md`) cobre Nota, Memória e Documento, com regras para escolher o tipo.
 
 ### Mudado
 
 - **Autolink do editor** — só `http://` e `https://` viram link quando você digita (`shouldAutoLink`), a mesma regra do servidor. `www.x` e `x.com` não viram mais link.
 
+### Removido
+
+- **`POST /api/import`** e `ImportTokenAuth` — rota legada do app Notas (desligado). Forçava a tag `notas` e não indexava o Documento na criação (só entrava na busca depois de um restart). Use `POST /api/documents` com Bearer.
+
 ### Corrigido
 
+- **`POST /api/documents` com `parent_id` inexistente** devolvia 500; agora 400 `parent not found`.
 - **Autosave em loop no editor** — o `$effect` que chama `editorInstance.setEditable(...)` roda de novo a cada `doc =` (também depois de cada gravação), e o TipTap emite `update` por padrão em `setEditable`. O `update` agendava outro autosave, então um documento aberto e editado uma vez gravava a cada 5 s para sempre (em produção: Memória 456 com 176 versões, Nota 553 com 40 versões em 4 min). Depois de converter a Nota aberta em Memória, o loop gravava o estado antigo da Nota e o ícone da Memória voltava para `bx-sticky-note`. Agora `setEditable(..., false)`. Sem teste automático: o frontend não tem test runner; verificado no navegador (1 edição → 1 `PUT`; conversão com a Nota aberta → 0 `PUT`).
 
 ## [1.3.0] - 2026-09-26

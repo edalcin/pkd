@@ -204,11 +204,9 @@ func (s *Server) buildRouter() http.Handler {
 	r.With(PublicShareCSP).Get("/public/{token}", s.handlePublicShare())
 	r.With(PublicShareCSP).Get("/public/{token}/attachments/{id}", s.handlePublicAttachment())
 
-	// Token-authenticated import endpoint for external apps (e.g. notas).
-	// Disabled when PKD_IMPORT_TOKEN is not set.
-	if s.cfg.ImportToken != "" {
-		r.With(ImportTokenAuth(s.cfg.ImportToken)).Post("/api/import", s.handleImport())
-	}
+	// Documento: agents (bearer PKD_IMPORT_TOKEN) or the UI session. Create
+	// only: every other Documento route is session-only.
+	r.With(s.tokenOrSession).Post("/api/documents", s.handleCreateDocument())
 
 	// Memória Cronológica: agents (bearer PKD_IMPORT_TOKEN) or the UI session.
 	// No DELETE and no search here: deleting is a user action in the UI.
@@ -240,7 +238,6 @@ func (s *Server) buildRouter() http.Handler {
 		r.Post("/api/sessions/revoke-others", s.handleRevokeOtherSessions())
 
 		// Documents
-		r.Post("/api/documents", s.handleCreateDocument())
 		r.Get("/api/documents/{id}", s.handleGetDocument())
 		r.Put("/api/documents/{id}", s.handleUpdateDocument())
 		r.Delete("/api/documents/{id}", s.handleDeleteDocument())

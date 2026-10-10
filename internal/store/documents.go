@@ -94,8 +94,34 @@ func syncParentIcon(tx *sql.Tx, parentID *int64) error {
 // If title is already taken (case-insensitive, non-trashed), it is automatically
 // disambiguated to "Title (2)", "Title (3)", etc.
 func (s *DocumentStore) Create(parentID *int64, title string) (*model.Document, error) {
-	var doc model.Document
-	err := WithTx(s.db, func(tx *sql.Tx) error {
+	doc, _, err := s.CreateKeyed(parentID, title, "")
+	return doc, err
+}
+
+// CreateKeyed is Create with client idempotency: a non-empty key already
+// used by an active Documento returns that Documento with created=false.
+func (s *DocumentStore) CreateKeyed(parentID *int64, title, key string) (doc *model.Document, created bool, err error) {
+	var id int64
+	err = WithTx(s.db, func(tx *sql.Tx) error {
+		if key != "" {
+			err := tx.QueryRow(`SELECT id FROM documents WHERE doc_key = ? AND trashed_at IS NULL`, key).Scan(&id)
+			if err == nil {
+				return nil
+			}
+			if !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+		}
+		if parentID != nil {
+			var one int
+			err := tx.QueryRow(`SELECT 1 FROM documents WHERE id = ? AND trashed_at IS NULL`, *parentID).Scan(&one)
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			if err != nil {
+				return err
+			}
+		}
 		if err := rejectMemoryParent(tx, parentID); err != nil {
 			return err
 		}
@@ -128,23 +154,21 @@ func (s *DocumentStore) Create(parentID *int64, title string) (*model.Document, 
 		}
 
 		res, err := tx.Exec(`
-			INSERT INTO documents (parent_id, title, icon, position, created_at, updated_at)
-			VALUES (?, ?, ?, ?, `+nowISO+`, `+nowISO+`)`,
-			parentArg, actualTitle, iconLeaf, pos)
+			INSERT INTO documents (parent_id, title, icon, position, created_at, updated_at, doc_key)
+			VALUES (?, ?, ?, ?, `+nowISO+`, `+nowISO+`, NULLIF(?, ''))`,
+			parentArg, actualTitle, iconLeaf, pos, key)
 		if err != nil {
 			return fmt.Errorf("insert: %w", err)
 		}
-		id, _ := res.LastInsertId()
-		doc.ID = id
-		if err := scanDocFromTx(tx, id, &doc); err != nil {
-			return err
-		}
+		id, _ = res.LastInsertId()
+		created = true
 		return syncParentIcon(tx, parentID)
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return &doc, nil
+	doc, err = s.GetByID(id)
+	return doc, created, err
 }
 
 // GetByID returns a document by ID. Returns ErrNotFound if missing or trashed.

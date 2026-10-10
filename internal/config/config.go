@@ -38,8 +38,9 @@ type Config struct {
 	// incoming request's Host header, which may be incorrect behind a proxy.
 	BaseURL string
 
-	// ImportToken is the pre-shared secret for the /api/import endpoint used by
-	// external apps (e.g. notas). If empty, the endpoint is disabled.
+	// ImportToken is the pre-shared Bearer secret for agents (Hermes) on
+	// POST /api/documents and /api/notes, /api/memories. If empty, those
+	// routes accept only the UI session.
 	ImportToken string
 
 	// GeminiAPIKey is the API key for the Gemini embedding API (GEMINI_API_KEY env var).

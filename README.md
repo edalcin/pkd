@@ -104,15 +104,17 @@ Quando um documento possui filhos diretos na hierarquia, eles são exibidos como
 | ↩️ **Histórico de navegação** | Botões ← / → na barra superior (desktop) e atalhos Alt+← / Alt+→ navegam pelo histórico de documentos visitados na sessão |
 | 🔄 **Sessão persistente** | Login lembrado por até 30 dias de inatividade; último documento aberto restaurado automaticamente ao retornar à ferramenta |
 
-### Importação de documentos (`/api/import`)
+### API para agentes (Hermes)
 
-O PKD expõe um endpoint de importação para agentes criarem **Documentos** (hoje usado pelo Hermes, skill `pkd-documentos`):
+O Hermes cria os três tipos de conteúdo com Bearer `PKD_IMPORT_TOKEN`, sem sessão de login. Uma Skill única cobre os três: prompt em [`docs/promptHermes.md`](docs/promptHermes.md).
 
-- **Endpoint**: `POST /api/import` — autenticado via Bearer token (sem necessidade de sessão de login)
-- **O que faz**: cria um documento com título, conteúdo HTML, tags e anexos (base64, [ADR-003](docs/adr/003-import-de-anexos-do-notas.md)); aplica automaticamente a tag `notas`, herdada do antigo app [Notas](https://github.com/edalcin/notas)
-- **Ativação**: defina `PKD_IMPORT_TOKEN` no container (ver [Variáveis de ambiente](#variáveis-de-ambiente)); o endpoint é desativado quando a variável está ausente
+| Tipo | Rotas com Bearer |
+|---|---|
+| Documento | `POST /api/documents` — `{title, content (HTML), tags?, attachments? (base64, [ADR-003](docs/adr/003-import-de-anexos-do-notas.md)), parent_id?, idempotency_key?}` → 201 (200 se a `idempotency_key` já existe). Sem `parent_id`, o Documento fica na raiz. Sem tag automática. Só criação |
+| Nota | `POST`, `GET`, `PATCH /api/notes` (ver [Nota](#nota)) |
+| Memória | `POST`, `GET`, `PATCH /api/memories` (ver [Memória Cronológica](#memória-cronológica-mc)) |
 
-> O app Notas foi substituído pela [Nota](#nota) nativa: as notas ativas foram migradas em 2026-09-26 e o app foi desligado.
+Sem `PKD_IMPORT_TOKEN`, essas rotas aceitam só a sessão de login. O antigo `POST /api/import` (app Notas) foi removido.
 
 ### Memória Cronológica (MC)
 
@@ -127,7 +129,7 @@ Memórias registram eventos no tempo (um almoço, uma entrega, um evento de saú
   - `POST /api/memories` — `{title, content (HTML), tags?, attachments?, date:{year, month?, day?, hour?, minute?, period?}, idempotency_key?}` → 201. A mesma `idempotency_key` devolve a Memória existente (200), sem duplicar
   - `GET /api/memories/{MEM-id}` e `PATCH /api/memories/{MEM-id}` (`title`, `content`, `tags`, `date` — `date` substitui a data inteira)
   - Sem `DELETE` e sem busca: apagar é ação do usuário na interface
-- **Prompt para a Skill do Hermes**: [`docs/promptMcHermes.md`](docs/promptMcHermes.md)
+- **Prompt para a Skill do Hermes**: [`docs/promptHermes.md`](docs/promptHermes.md)
 
 ### Nota
 
@@ -187,7 +189,7 @@ services:
       PKD_PASSWORD: ${PKD_PASSWORD:?PKD_PASSWORD is required}
       PKD_DB_PATH: /data/db/pkd.sqlite
       PKD_ATTACHMENTS_PATH: /data/attachments
-      # Opcional: ativa as APIs para agentes (/api/import, /api/memories, /api/notes)
+      # Opcional: ativa as APIs para agentes (/api/documents, /api/memories, /api/notes)
       PKD_IMPORT_TOKEN: ${PKD_IMPORT_TOKEN}
     volumes:
       - ./data/db:/data/db
@@ -220,7 +222,7 @@ PKD_IMPORT_TOKEN=token-secreto-compartilhado-com-agentes  # opcional
 | `PKD_MAX_ATTACHMENT_MB` | não | `100` | Tamanho máximo de arquivo anexado (MB) |
 | `PKD_TRUST_PROXY_HEADERS` | não | `0` | Defina como `1` apenas atrás de proxy reverso confiável |
 | `PKD_BASE_URL` | não | *(host da request)* | URL pública base para links de compartilhamento (ex: `https://pkd.exemplo.com/`) |
-| `PKD_IMPORT_TOKEN` | não | *(desativado)* | Token secreto (Bearer) para `POST /api/import` e para as APIs de Memórias (`/api/memories`) e Notas (`/api/notes`). Se vazio, `/api/import` não existe e `/api/memories`/`/api/notes` aceitam só sessão de login. Gere com `openssl rand -hex 32` |
+| `PKD_IMPORT_TOKEN` | não | *(desativado)* | Token secreto (Bearer) para as APIs de agentes: `POST /api/documents`, Memórias (`/api/memories`) e Notas (`/api/notes`). Se vazio, essas rotas aceitam só sessão de login. Gere com `openssl rand -hex 32` |
 | `PKD_S3_BUCKET` | não | *(vazio)* | Nome do bucket S3; junto com `PKD_S3_REGION` habilita S3 como backend disponível |
 | `PKD_S3_REGION` | não | *(vazio)* | Região AWS do bucket (ex: `us-east-1`) |
 | `PKD_S3_PREFIX` | não | *(vazio)* | Prefixo de caminho dentro do bucket (ex: `pkd/attachments/`) |
@@ -533,7 +535,7 @@ Nenhuma credencial é armazenada no repositório — o workflow usa o `GITHUB_TO
 graph TD
     User(["👤 Usuário"]) -->|"HTTPS / Browser"| App
     Mobile(["📱 Mobile OS"]) -->|"PWA Share Target"| App
-    Hermes(["🤖 Hermes"]) -->|"Bearer token\n/api/import, /api/memories, /api/notes"| App
+    Hermes(["🤖 Hermes"]) -->|"Bearer token\n/api/documents, /api/memories, /api/notes"| App
 
     subgraph Container ["🐳 Docker Container"]
         App["⚙️ Go HTTP Server\n(chi router · handlers · middleware)"]
@@ -609,7 +611,7 @@ graph TD
 - API `POST /api/memories` (idempotente por `idempotency_key`), `GET`/`PATCH /api/memories/{MEM-id}`; Bearer `PKD_IMPORT_TOKEN` ou sessão
 - "+ Nova Memória" na interface; Data da Memória e ID copiável no editor
 - Migração aditiva (colunas e índices novos em `documents`, sem backfill)
-- Prompt para a Skill do Hermes em [`docs/promptMcHermes.md`](docs/promptMcHermes.md)
+- Prompt para a Skill do Hermes em [`docs/promptHermes.md`](docs/promptHermes.md)
 
 ---
 

@@ -59,20 +59,23 @@ do serviço**).
    no EC2 está **parado, não removido** (`docker stop notas`, política
    `unless-stopped`, dados em `/home/ec2-user/notas` intactos). Para religar:
    `docker start notas`.
-3. **`/api/import` (documentos do Hermes): tag de origem e indexação.**
-   - `handlers_import.go` força a tag `notas` em todo documento importado
-     (`append([]string{"notas"}, body.Tags...)`). Com o app Notas desligado,
-     o único cliente é o Hermes (skill `pkd-documentos`). Opções: trocar o
-     padrão para `hermes`, ou aceitar `"source_tag"` do chamador. Por ora o
-     usuário aceita `notas` + `hermes`.
-   - O handler não indexa o FTS nem notifica o embedder na criação: o
-     documento só entra na busca léxica depois de um restart. Correção:
-     chamar a mesma reindexação de `handlers_notes.go` (`reindexNote`).
+3. **Skill única do Hermes — deploy e configuração (2026-10-10).** Feito no
+   código: `POST /api/documents` aceita Bearer (`tokenOrSession`), com
+   `content`, `tags`, `attachments`, `parent_id` e `idempotency_key`
+   (`documents.doc_key`), e indexa FTS e embedder na criação. `/api/import`
+   foi removido. Prompt em [`promptHermes.md`](promptHermes.md). Decisões
+   (grilling 2026-10-10): rota `POST /api/documents` (não `/api/import` nem
+   `/api/v1`); sem `parent_id` → raiz; sem tag automática; só HTML; Documento
+   via token só cria; uma Skill `pkd` para os três tipos. Falta, do usuário:
+   1. Deploy no `pkd2`, depois promover para produção.
+   2. No Hermes, apagar as Skills de Memórias e `pkd-documentos` e criar a
+      Skill `pkd` com o bloco de `promptHermes.md`.
+   3. Testar "crie uma nota / memória / documento no PKD".
 4. **Hermes corrigir Memórias sozinho (sem urgência).** O Hermes disse que
    precisa de um endpoint de edição, mas `PATCH /api/memories/{memory_id}` já
    existe (`server.go`, Bearer ou sessão; seção 4 do prompt). Por enquanto o
    usuário corrige direto no PKD. Investigar, nesta ordem:
-   1. A Skill no Hermes tem a versão atual de `docs/promptMcHermes.md`
+   1. A Skill no Hermes tem a versão atual de `docs/promptHermes.md`
       (com a seção 4, "Corrija uma Memória")?
    2. O Hermes guarda o `memory_id` das Memórias que cria?
    3. Se o problema for achar o ID de uma Memória que o Hermes não criou ou
@@ -359,7 +362,7 @@ Não redecidir sem motivo novo.
 **Docs** — `README.md` (funcionalidade, seção MC, modelo de dados,
 arquitetura, changelog, `PKD_IMPORT_TOKEN`), glossário, ADR-007,
 `docs/security.md` (Bearer/`tokenOrSession`), C4 context e component,
-[`docs/promptMcHermes.md`](promptMcHermes.md) (prompt da Skill do Hermes).
+`docs/promptMcHermes.md` (hoje [`promptHermes.md`](promptHermes.md)).
 
 **Verificação**
 - `tests/unit/store_memories_test.go` — validação, formato do ID, idempotência,
@@ -381,8 +384,8 @@ arquitetura, changelog, `PKD_IMPORT_TOKEN`), glossário, ADR-007,
 3. Ordem da árvore (Q6, mais recente primeiro) confirmada pelo usuário em uso
    real — manter.
 
-Pendências da MC que continuam abertas (Hermes corrigir Memórias,
-`/api/import`) estão em "Próximos passos", no topo deste arquivo.
+Pendência da MC que continua aberta (Hermes corrigir Memórias) está em
+"Próximos passos", no topo deste arquivo.
 
 ## Pontos abertos (decidir com uso real)
 
@@ -395,10 +398,6 @@ Pendências da MC que continuam abertas (Hermes corrigir Memórias,
 - **Filtros de tag e favoritos** não se aplicam à árvore da MC.
 - **Aglomerado no Graph View** (Q13): se Memórias parecidas poluírem o grafo,
   adicionar filtro mostrar/esconder Memórias.
-- **Pré-existente:** `POST /api/import` não indexa o FTS nem notifica o
-  embedder na criação; o documento só entra na busca léxica após um restart.
-  Afeta os documentos que o Hermes cria (`pkd-documentos`). As APIs de
-  Memórias e Notas não têm esse defeito (ver item 3 de "Próximos passos").
 
 ## Pendências herdadas (Chat RAG)
 

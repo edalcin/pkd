@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -14,10 +15,18 @@ import (
 	"github.com/edalcin/pkd/internal/store"
 )
 
+// handleCreateDocument serves POST /api/documents for the UI session and for
+// agents (bearer PKD_IMPORT_TOKEN). The UI sends only parent_id and title;
+// agents may also send HTML content, tags, base64 attachments and an
+// idempotency_key (the same key returns the existing Documento with 200).
 func (s *Server) handleCreateDocument() http.HandlerFunc {
 	type request struct {
-		ParentID *int64 `json:"parent_id"`
-		Title    string `json:"title"`
+		ParentID       *int64             `json:"parent_id"`
+		Title          string             `json:"title"`
+		Content        string             `json:"content"`
+		Tags           []string           `json:"tags"`
+		Attachments    []importAttachment `json:"attachments"`
+		IdempotencyKey string             `json:"idempotency_key"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req request
@@ -25,19 +34,66 @@ func (s *Server) handleCreateDocument() http.HandlerFunc {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
+		req.Title = strings.TrimSpace(req.Title)
 		if req.Title == "" {
 			req.Title = "Untitled"
 		}
-		doc, err := s.docs.Create(req.ParentID, req.Title)
+		key := strings.TrimSpace(req.IdempotencyKey)
+		if len(key) > maxIdempotencyKeyLen {
+			http.Error(w, "idempotency_key too long", http.StatusBadRequest)
+			return
+		}
+		doc, created, err := s.docs.CreateKeyed(req.ParentID, req.Title, key)
 		if errors.Is(err, store.ErrMemoryHierarchy) || errors.Is(err, store.ErrNoteHierarchy) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "parent not found", http.StatusBadRequest)
 			return
 		}
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		_ = s.search.IndexDoc(doc.ID, doc.Title, "", nil)
+		if !created {
+			writeJSON(w, http.StatusOK, doc)
+			return
+		}
+
+		content := req.Content
+		if len(req.Attachments) > 0 {
+			block, status, importErr := s.importAttachments(r, doc.ID, req.Attachments)
+			if importErr != nil {
+				s.rollbackImportedDocument(doc.ID)
+				http.Error(w, importErr.Error(), status)
+				return
+			}
+			content += block
+		}
+		plain := ""
+		if content != "" {
+			safe := security.SanitizeEditorHTML(content)
+			plain = security.ExtractPlainText(safe)
+			updated, err := s.docs.Update(doc.ID, doc.Version, doc.Title, safe, plain, doc.Icon)
+			if err != nil {
+				s.rollbackImportedDocument(doc.ID)
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			doc = updated
+		}
+		if len(req.Tags) > 0 {
+			if err := s.tags.SetDocumentTags(doc.ID, req.Tags); err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			if doc, err = s.docs.GetByID(doc.ID); err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+		}
+		_ = s.search.IndexDoc(doc.ID, doc.Title, plain, req.Tags)
 		s.embedder.notify()
 		writeJSON(w, http.StatusCreated, doc)
 	}
