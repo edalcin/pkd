@@ -247,7 +247,7 @@ func TestConvertNoteToMemory(t *testing.T) {
 		t.Errorf("assoc_year not set: %+v", converted.AssocYear)
 	}
 
-	list, err := docs.ListMemories()
+	list, err := docs.ListMemories("")
 	if err != nil {
 		t.Fatal(err)
 	}

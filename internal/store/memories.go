@@ -296,15 +296,22 @@ type MemoryListItem struct {
 	CreatedAt string `json:"-"`
 }
 
-// ListMemories returns active (non-trashed, non-archived) Memórias in MC
-// tree order (see memoryLess).
-func (s *DocumentStore) ListMemories() ([]MemoryListItem, error) {
+// ListMemories returns non-trashed Memórias for view ("active" default |
+// "archived" | "all", same as ListNotes) in MC tree order (see memoryLess).
+func (s *DocumentStore) ListMemories(view string) ([]MemoryListItem, error) {
+	archived := " AND archived_at IS NULL"
+	switch view {
+	case "archived":
+		archived = " AND archived_at IS NOT NULL"
+	case "all":
+		archived = ""
+	}
 	rows, err := s.db.Query(`
 		SELECT id, memory_id, title, COALESCE(icon, ''), assoc_year, assoc_month, assoc_day,
 		       memory_hour, memory_minute, COALESCE(memory_period, ''), created_at,
 		       CASE WHEN encrypted = 1 THEN '' ELSE COALESCE(body_html, '') END
 		FROM documents
-		WHERE memory_id IS NOT NULL AND trashed_at IS NULL AND archived_at IS NULL`)
+		WHERE memory_id IS NOT NULL AND trashed_at IS NULL` + archived)
 	if err != nil {
 		return nil, err
 	}

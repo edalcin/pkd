@@ -98,6 +98,7 @@
     if (hash.startsWith('/doc/')) return { view: 'doc', id: hash.split('/')[2] }
     if (hash === '/graph') return { view: 'graph' }
     if (hash === '/calendar') return { view: 'calendar' }
+    if (hash === '/memorias/calendario') return { view: 'memcalendar' }
     if (hash === '/admin') return { view: 'admin' }
     if (hash === '/chat') return { view: 'chat' }
     if (hash === '/notas') return { view: 'notas' }
@@ -254,6 +255,7 @@
     route.view === 'doc' ? ($activeDoc?.title || 'Documento') :
     route.view === 'graph' ? 'Grafo' :
     route.view === 'calendar' ? 'Calendário' :
+    route.view === 'memcalendar' ? 'Calendário de Memórias' :
     route.view === 'admin' ? 'Administração' :
     route.view === 'chat' ? 'Chat' :
     route.view === 'notas' ? 'Mural de Notas' : ''
@@ -293,6 +295,7 @@
             {/if}
             <a href="#/graph" class="icon-btn" title="Grafo">🕸️</a>
             <a href="#/calendar" class="icon-btn" title="Calendário">📅</a>
+            <a href="#/memorias/calendario" class="icon-btn" title="Calendário de Memórias">🗓️</a>
             <a href="#/admin" class="icon-btn" title="Administração">⚙️</a>
             <button class="icon-btn" onclick={toggleTheme} title="Alternar tema" aria-label="Alternar tema">{theme === 'light' ? '🌙' : '☀️'}</button>
             <button class="icon-btn" onclick={logout} title="Sair" aria-label="Sair">⏻</button>
@@ -348,6 +351,7 @@
         {/if}
         <a href="#/graph" class="icon-btn" title="Grafo">🕸️</a>
         <a href="#/calendar" class="icon-btn" title="Calendário">📅</a>
+        <a href="#/memorias/calendario" class="icon-btn" title="Calendário de Memórias">🗓️</a>
         <a href="#/admin" class="icon-btn" title="Administração">⚙️</a>
 
         {#if route.view === 'doc' && route.id}
@@ -398,6 +402,8 @@
           <GraphView />
         {:else if route.view === 'calendar'}
           <Calendar />
+        {:else if route.view === 'memcalendar'}
+          <Calendar memories />
         {:else if route.view === 'admin'}
           <Admin />
         {:else if route.view === 'chat'}

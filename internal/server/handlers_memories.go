@@ -47,11 +47,11 @@ func (s *Server) tokenOrSession(next http.Handler) http.Handler {
 	})
 }
 
-// handleListMemories serves GET /api/memories (session only): the MC tree,
-// already in display order.
+// handleListMemories serves GET /api/memories[?view=archived|all] (session
+// only): the MC tree, already in display order.
 func (s *Server) handleListMemories() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		list, err := s.docs.ListMemories()
+		list, err := s.docs.ListMemories(r.URL.Query().Get("view"))
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return

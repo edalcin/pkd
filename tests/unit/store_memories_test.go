@@ -139,7 +139,7 @@ func TestListMemories_Order(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	list, err := s.ListMemories()
+	list, err := s.ListMemories("")
 	if err != nil {
 		t.Fatal(err)
 	}

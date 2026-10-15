@@ -1,28 +1,63 @@
 <script>
   import { onMount } from 'svelte'
   import { apiGet } from '../api.js'
+  import { viewMode } from '../stores/documents.js'
+  import { memoryTimeLabel } from '../stores/memories.js'
+
+  // memories: Calendário de Memórias — places each Memória on its Data da
+  // Memória (not created_at) and honors the sidebar Ativos/Arquivados/Todos.
+  let { memories = false } = $props()
 
   let today = new Date()
   let year = $state(today.getFullYear())
   let month = $state(today.getMonth() + 1)
-  let calData = $state([]) // [{day, documents: [{id, title, icon}]}]
+  let calData = $state([]) // [{day, documents: [{id, title, icon, time?}]}]
+  let undated = $state([]) // memories mode: Memórias of this month with no day
   let selectedDay = $state(null)
   let loading = $state(true)
+  let allMemories = null // memories mode: full list, fetched once per view
 
   const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
   const MONTHS = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
-  onMount(() => loadMonth())
+  onMount(() => {
+    if (!memories) { loadMonth(); return }
+    // ponytail: whole Memória list in one GET, sliced per month client-side; a per-month endpoint if the MC grows to thousands.
+    return viewMode.subscribe(v => {
+      allMemories = null
+      apiGet('/api/memories' + (v && v !== 'active' ? `?view=${v}` : ''))
+        .then(list => { allMemories = list; loadMonth() })
+    })
+  })
 
   async function loadMonth() {
-    loading = true
     selectedDay = null
+    if (memories) {
+      if (!allMemories) return
+      // Server order is the MC tree order: chronological inside a day.
+      const inMonth = allMemories.filter(m => m.year === year && m.month === month)
+      undated = inMonth.filter(m => m.day == null).map(toItem)
+      const days = new Map()
+      for (const m of inMonth) {
+        if (m.day == null) continue
+        if (!days.has(m.day)) days.set(m.day, { day: m.day, documents: [] })
+        days.get(m.day).documents.push(toItem(m))
+      }
+      calData = [...days.values()]
+      loading = false
+      return
+    }
+    loading = true
     try {
       calData = await apiGet(`/api/calendar/${year}/${month}`)
     } finally {
       loading = false
     }
+  }
+
+  function toItem(m) {
+    return { id: m.id, title: m.title || 'Sem título', icon: m.icon || 'bx-calendar-event', time: memoryTimeLabel(m) }
   }
 
   function prevMonth() {
@@ -100,14 +135,27 @@
       <div class="day-docs">
         <h3>{selectedDay} de {MONTHS[month]}</h3>
         {#if docs.length === 0}
-          <p class="muted">Nenhum documento criado neste dia.</p>
+          <p class="muted">{memories ? 'Nenhuma Memória neste dia.' : 'Nenhum documento criado neste dia.'}</p>
         {:else}
           {#each docs as doc}
             <a class="day-doc-link" href="#{`/doc/${doc.id}`}">
-              <i class="bx {doc.icon || 'bx-file-blank'}"></i> {doc.title}
+              <i class="bx {doc.icon || 'bx-file-blank'}"></i>
+              {#if doc.time}<span class="time">{doc.time}</span>{/if}
+              {doc.title}
             </a>
           {/each}
         {/if}
+      </div>
+    {/if}
+
+    {#if memories && undated.length > 0}
+      <div class="day-docs">
+        <h3>Neste mês, sem dia</h3>
+        {#each undated as doc}
+          <a class="day-doc-link" href="#{`/doc/${doc.id}`}">
+            <i class="bx {doc.icon}"></i> {doc.title}
+          </a>
+        {/each}
       </div>
     {/if}
   {/if}
@@ -184,4 +232,5 @@
   .day-doc-link:hover { color: var(--accent); }
 
   .muted { color: var(--text-muted); font-size: .875rem; }
+  .time { color: var(--text-muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
 </style>
