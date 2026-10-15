@@ -38,6 +38,7 @@
   },
   "overrides": {
     "markdown-it": "^14.2.0",
-    "linkify-it": "^5.0.1"
+    "linkify-it": "^5.0.1",
+    "katex": "^0.18.2"
   }
 }
