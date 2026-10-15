@@ -75,6 +75,6 @@ func ensureCSRFCookie(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: false, // must be readable by JS to put it in the header
 		Secure:   false, // set to true in prod via reverse proxy TLS
 		SameSite: http.SameSiteStrictMode,
-		Expires:  time.Now().Add(24 * time.Hour),
+		Expires:  time.Now().Add(sessionCookieMaxAge * time.Second), // same as the session: a shorter CSRF cookie leaves a valid session with no token
 	})
 }

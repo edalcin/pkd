@@ -29,6 +29,8 @@ export async function apiFetch(url, options = {}) {
   const headers = new Headers(options.headers)
 
   if (MUTATING.has(method)) {
+    // A long-open PWA can outlive the CSRF cookie; any GET re-seeds it.
+    if (!getCookie('pkd_csrf')) await fetch('/healthz', { cache: 'no-store' })
     const csrf = getCookie('pkd_csrf')
     if (csrf) headers.set('X-CSRF-Token', csrf)
   }
