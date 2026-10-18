@@ -50,10 +50,10 @@ Estes ficam como validação operacional pré-promoção `:stable`.
 
 **Purpose**: dependências e esqueleto de pacotes/arquivos.
 
-- [x] T001 Adicionar `github.com/aws/aws-sdk-go-v2/feature/s3/manager` em `D:\git\pkd\go.mod` via `go get github.com/aws/aws-sdk-go-v2/feature/s3/manager@latest` (compatível com `service/s3 v1.101.0`); rodar `go mod tidy` — *dep adicionada; `tidy` removeu pois ainda sem imports; será re-adicionada automaticamente quando código importar (T023)*
-- [x] T002 [P] Criar pacote `D:\git\pkd\internal\backup\` com arquivos vazios: `manifest.go`, `writer.go`, `reader.go`, `sweep.go` (apenas `package backup`)
-- [x] T003 [P] Criar arquivo `D:\git\pkd\internal\server\jobs.go` (apenas `package server`)
-- [x] T004 [P] Criar diretório `D:\git\pkd\specs\005-s3-attachments-backup\contracts\` se ausente (já criado em /speckit.plan) — verificar presença de `api.yaml`
+- [x] T001 Adicionar `github.com/aws/aws-sdk-go-v2/feature/s3/manager` em `S:\git\pkd\go.mod` via `go get github.com/aws/aws-sdk-go-v2/feature/s3/manager@latest` (compatível com `service/s3 v1.101.0`); rodar `go mod tidy` — *dep adicionada; `tidy` removeu pois ainda sem imports; será re-adicionada automaticamente quando código importar (T023)*
+- [x] T002 [P] Criar pacote `S:\git\pkd\internal\backup\` com arquivos vazios: `manifest.go`, `writer.go`, `reader.go`, `sweep.go` (apenas `package backup`)
+- [x] T003 [P] Criar arquivo `S:\git\pkd\internal\server\jobs.go` (apenas `package server`)
+- [x] T004 [P] Criar diretório `S:\git\pkd\specs\005-s3-attachments-backup\contracts\` se ausente (já criado em /speckit.plan) — verificar presença de `api.yaml`
 
 ---
 
@@ -63,18 +63,18 @@ Estes ficam como validação operacional pré-promoção `:stable`.
 
 **⚠️ CRITICAL**: Nenhuma task US1/US2/US3 pode iniciar antes deste checkpoint.
 
-- [x] T005 Adicionar migração `CREATE INDEX IF NOT EXISTS idx_attachments_content_sha256 ON attachments(content_sha256)` em `D:\git\pkd\internal\store\migrate.go` (apêndice à lista de migrações existentes, segue padrão atual)
-- [x] T006 [P] Implementar `AttachmentForBackup` struct + `EnumerateForBackup(ctx) ([]AttachmentForBackup, error)` em `D:\git\pkd\internal\store\attachments.go` (SELECT batch sobre tabela `attachments`)
-- [x] T007 [P] Implementar `AttachmentRef` struct + `LookupBySHA256(ctx, sha) ([]AttachmentRef, error)` em `D:\git\pkd\internal\store\attachments.go` (query usa novo índice T005)
-- [x] T008 [P] Implementar `BackfillSHA256(ctx, attachmentID int64, sha string) error` em `D:\git\pkd\internal\store\attachments.go` (UPDATE simples)
-- [x] T009 [P] Adicionar validador defensivo em `CreateFile` de `D:\git\pkd\internal\store\attachments.go` rejeitando `stored_filename` com prefixo `_backup-tmp/` (retorna erro claro; defesa em profundidade contra colisão com prefixo reservado)
-- [x] T010 [P] Definir interface `S3Capable` (`PresignGet`, `UploadFromReader`, `ListWithMetadata`, `DeleteMany`) + struct `ObjectMeta` em `D:\git\pkd\internal\storage\storage.go` — *`GetRange` adiado (só restore)*
-- [x] T011 Implementar métodos `S3Capable` no struct `S3Backend` em `D:\git\pkd\internal\storage\s3.go` (UploadFromReader via `manager.Uploader`; PresignGet via `s3.NewPresignClient`; ListWithMetadata via paginator; DeleteMany batch 1000)
-- [ ] T012 [P] Definir interface mínima `S3API` em `D:\git\pkd\internal\storage\s3.go` — *deferido; testes unit do writer usam fakeSource em vez de mock S3*
-- [x] T013 [P] Implementar `Manifest`, `EnvDescriptor`, `ManifestEntry` + JSON encode/decode + validação em `D:\git\pkd\internal\backup\manifest.go`
-- [x] T014 Implementar `Job` e `BackupJobManager` (Start, Get, Finish, LRU manual cap=50, `ErrJobInFlight`) em `D:\git\pkd\internal\server\jobs.go`
-- [x] T015 Wire `BackupJobManager` no struct `Server` em `D:\git\pkd\internal\server\server.go`
-- [x] T016 Adicionar helper `currentBackendKind() string` em `D:\git\pkd\internal\server\server.go`
+- [x] T005 Adicionar migração `CREATE INDEX IF NOT EXISTS idx_attachments_content_sha256 ON attachments(content_sha256)` em `S:\git\pkd\internal\store\migrate.go` (apêndice à lista de migrações existentes, segue padrão atual)
+- [x] T006 [P] Implementar `AttachmentForBackup` struct + `EnumerateForBackup(ctx) ([]AttachmentForBackup, error)` em `S:\git\pkd\internal\store\attachments.go` (SELECT batch sobre tabela `attachments`)
+- [x] T007 [P] Implementar `AttachmentRef` struct + `LookupBySHA256(ctx, sha) ([]AttachmentRef, error)` em `S:\git\pkd\internal\store\attachments.go` (query usa novo índice T005)
+- [x] T008 [P] Implementar `BackfillSHA256(ctx, attachmentID int64, sha string) error` em `S:\git\pkd\internal\store\attachments.go` (UPDATE simples)
+- [x] T009 [P] Adicionar validador defensivo em `CreateFile` de `S:\git\pkd\internal\store\attachments.go` rejeitando `stored_filename` com prefixo `_backup-tmp/` (retorna erro claro; defesa em profundidade contra colisão com prefixo reservado)
+- [x] T010 [P] Definir interface `S3Capable` (`PresignGet`, `UploadFromReader`, `ListWithMetadata`, `DeleteMany`) + struct `ObjectMeta` em `S:\git\pkd\internal\storage\storage.go` — *`GetRange` adiado (só restore)*
+- [x] T011 Implementar métodos `S3Capable` no struct `S3Backend` em `S:\git\pkd\internal\storage\s3.go` (UploadFromReader via `manager.Uploader`; PresignGet via `s3.NewPresignClient`; ListWithMetadata via paginator; DeleteMany batch 1000)
+- [ ] T012 [P] Definir interface mínima `S3API` em `S:\git\pkd\internal\storage\s3.go` — *deferido; testes unit do writer usam fakeSource em vez de mock S3*
+- [x] T013 [P] Implementar `Manifest`, `EnvDescriptor`, `ManifestEntry` + JSON encode/decode + validação em `S:\git\pkd\internal\backup\manifest.go`
+- [x] T014 Implementar `Job` e `BackupJobManager` (Start, Get, Finish, LRU manual cap=50, `ErrJobInFlight`) em `S:\git\pkd\internal\server\jobs.go`
+- [x] T015 Wire `BackupJobManager` no struct `Server` em `S:\git\pkd\internal\server\server.go`
+- [x] T016 Adicionar helper `currentBackendKind() string` em `S:\git\pkd\internal\server\server.go`
 
 **Checkpoint**: Foundation pronto. Tasks US1/US2/US3 podem iniciar (em paralelo se equipe permitir; US1 e US2 são P1).
 
@@ -90,25 +90,25 @@ Estes ficam como validação operacional pré-promoção `:stable`.
 
 > Escrever testes FIRST. Devem FALHAR antes da implementação.
 
-- [x] T017 [P] [US1] Unit test encode/decode + validação de Manifest em `D:\git\pkd\tests\unit\manifest_test.go` (4 testes: round-trip, version reject, SHA reject, empty stored_filenames reject)
-- [x] T018 [P] [US1] Unit test `BackupJobManager` em `D:\git\pkd\tests\unit\jobs_test.go` (4 testes: single in-flight, Finish→history, Get unknown, SetDownloadURL)
+- [x] T017 [P] [US1] Unit test encode/decode + validação de Manifest em `S:\git\pkd\tests\unit\manifest_test.go` (4 testes: round-trip, version reject, SHA reject, empty stored_filenames reject)
+- [x] T018 [P] [US1] Unit test `BackupJobManager` em `S:\git\pkd\tests\unit\jobs_test.go` (4 testes: single in-flight, Finish→history, Get unknown, SetDownloadURL)
 - [ ] T019 [P] [US1] Integration test backup local backend — *novo handler retorna 501 para local (escopo MVP); não aplicável*
-- [x] T020 [P] [US1] Unit test StreamingBackup end-to-end em `D:\git\pkd\tests\unit\backup_writer_test.go` com `fakeSource` em memória (cobre: round-trip ZIP, dedup por SHA256, backfill SHA256 quando ausente, manifest na última entrada, integrity check inline) — *escolhido unit + fakeSource em vez de integration test com mock S3, ver T012*
+- [x] T020 [P] [US1] Unit test StreamingBackup end-to-end em `S:\git\pkd\tests\unit\backup_writer_test.go` com `fakeSource` em memória (cobre: round-trip ZIP, dedup por SHA256, backfill SHA256 quando ausente, manifest na última entrada, integrity check inline) — *escolhido unit + fakeSource em vez de integration test com mock S3, ver T012*
 - [x] T021 [P] [US1] Backfill SHA256 coberto por T020 (cenário com `ContentSHA256: ""` força backfill verificado via `recordingPersister`)
 - [ ] T022 [P] [US1] Contract test — *deferido; suite contract existente continua verde, novos endpoints validados manualmente via quickstart*
 
 ### Implementation for User Story 1
 
-- [x] T023 [US1] Implementar `StreamingBackup(ctx, sink io.Writer, opts WriteOptions) (Result, error)` em `D:\git\pkd\internal\backup\writer.go`:
+- [x] T023 [US1] Implementar `StreamingBackup(ctx, sink io.Writer, opts WriteOptions) (Result, error)` em `S:\git\pkd\internal\backup\writer.go`:
   - Enumera anexos via `attStore.EnumerateForBackup`
   - Agrupa por SHA256; para linhas sem SHA, primeira passada baixa+computa+backfill (descarta conteúdo)
   - Segunda passada: cria `zip.NewWriter(sink)`; para cada SHA único faz `srcBackend.Get(stored_filename)` (ou `GetRange` se S3Capable e tamanho conhecido) → `zip.CreateHeader(name=sha256)` → `io.Copy` com `io.TeeReader` para verificação inline (defensive double-check)
   - Última entrada: `manifest.json` serializado de `Manifest{Version:1, Entries: agrupadas}`
   - Retorna `Result{Total, Processed, SizeBytes}` (Job atualiza via callback)
   - Suporta callback `OnProgress(processed int64)` para atualização de Job.Processed
-- [x] T024 [US1] Implementar `SweepStaleTempObjects` em `D:\git\pkd\internal\backup\sweep.go`
-- [x] T025 [US1] Wire sweep no startup em `D:\git\pkd\internal\server\backup_sweep.go` (goroutine non-blocking; chamado de `New()`)
-- [x] T026 [US1] Implementar `handleAdminStorageBackupStart` em `D:\git\pkd\internal\server\handlers_admin_storage_jobs.go`:
+- [x] T024 [US1] Implementar `SweepStaleTempObjects` em `S:\git\pkd\internal\backup\sweep.go`
+- [x] T025 [US1] Wire sweep no startup em `S:\git\pkd\internal\server\backup_sweep.go` (goroutine non-blocking; chamado de `New()`)
+- [x] T026 [US1] Implementar `handleAdminStorageBackupStart` em `S:\git\pkd\internal\server\handlers_admin_storage_jobs.go`:
   - Autoriza admin
   - `kind := s.currentBackendKind()`
   - `job, err := s.jobs.Start("backup", kind, adminID)`; se `ErrJobInFlight` → 409
@@ -119,13 +119,13 @@ Estes ficam como validação operacional pré-promoção `:stable`.
     - Em qualquer erro: best-effort `cap.Delete(tempKey)`; `s.jobs.finishLocked(job, "failed", err.Error())`
     - Em sucesso: `s.jobs.finishLocked(job, "succeeded", "")`
   - Responde 202 + JSON `{ "job_id": job.ID }`
-- [x] T027 [US1] Implementar `handleAdminStorageGetJob` em `D:\git\pkd\internal\server\handlers_admin_storage_jobs.go`
-- [x] T028 [US1] Implementar `handleAdminStorageRegenerateDownloadURL` em `D:\git\pkd\internal\server\handlers_admin_storage_jobs.go`:
+- [x] T027 [US1] Implementar `handleAdminStorageGetJob` em `S:\git\pkd\internal\server\handlers_admin_storage_jobs.go`
+- [x] T028 [US1] Implementar `handleAdminStorageRegenerateDownloadURL` em `S:\git\pkd\internal\server\handlers_admin_storage_jobs.go`:
   - Recupera job; valida `kind == "backup"` e `backendKind == "s3"` (senão 409); valida `state == "succeeded"` (senão 404)
   - Recalcula tempKey `_backup-tmp/<job.ID>.zip`; verifica `cap.GetRange(tempKey, 0, 1)` para confirmar que objeto ainda existe — se erro NotFound → 404 "temp object expired or removed"
   - `cap.PresignGet(tempKey, 15min)` → atualiza job; retorna `{ download_url, url_expires_at }`
-- [x] T029 [US1] Registrar rotas em `D:\git\pkd\internal\server\server.go`
-- [x] T030 [US1] Estender UI admin em `D:\git\pkd\frontend\src\lib\components\Admin.svelte` Storage tab:
+- [x] T029 [US1] Registrar rotas em `S:\git\pkd\internal\server\server.go`
+- [x] T030 [US1] Estender UI admin em `S:\git\pkd\frontend\src\lib\components\Admin.svelte` Storage tab:
   - Novo bloco "Backup assíncrono (S3)" visível quando `storageStatus.kind === 's3'`
   - Botão "Iniciar backup" → POST `/api/admin/storage/backup-start` → guarda `jobId` em estado local
   - Função `pollJob(id)`: GET `/api/admin/storage/jobs/{id}` a cada 2s enquanto `state === 'running'`; exibir progresso (`processed`/`total`); ao chegar `succeeded` exibir botão "Baixar ZIP" linkando para `download_url` e contagem regressiva até `url_expires_at`
@@ -145,7 +145,7 @@ Estes ficam como validação operacional pré-promoção `:stable`.
 
 ### Tests for User Story 2 ⚠️
 
-- [x] T032 [P] [US2] Unit tests `StreamingRestore` em `D:\git\pkd\tests\unit\backup_reader_test.go` (round-trip, fan-out, orphan, hash mismatch, on_conflict=keep, missing manifest, corrupt zip, invalid on_conflict — 8 testes):
+- [x] T032 [P] [US2] Unit tests `StreamingRestore` em `S:\git\pkd\tests\unit\backup_reader_test.go` (round-trip, fan-out, orphan, hash mismatch, on_conflict=keep, missing manifest, corrupt zip, invalid on_conflict — 8 testes):
   - ZIP válido + manifesto + entradas que batem em mock `LookupBySHA256` → escreve no mock backend
   - ZIP com entrada cujo SHA não bate em DB → `SkippedEntries` populado, nada escrito
   - ZIP com integridade quebrada (conteúdo alterado, hash não bate com nome da entrada) → entrada reportada como erro por arquivo, sem abortar
@@ -214,14 +214,14 @@ Estes ficam como validação operacional pré-promoção `:stable`.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [x] T047 [P] Seção "Backup e restauração de anexos (S3)" adicionada em `D:\git\pkd\docs\operations.md` (fluxo de uso + IAM mínimo + sweep + concorrência)
-- [x] T048 [P] `D:\git\pkd\UNRAID.md` atualizado com nota sobre restauração cross-backend desde produção S3
-- [x] T049 Comentários "legacy" adicionados em `handleAdminStorageBackupAttachments` e `handleAdminStorageRestoreAttachments` em `D:\git\pkd\internal\server\handlers_admin_storage.go`
+- [x] T047 [P] Seção "Backup e restauração de anexos (S3)" adicionada em `S:\git\pkd\docs\operations.md` (fluxo de uso + IAM mínimo + sweep + concorrência)
+- [x] T048 [P] `S:\git\pkd\UNRAID.md` atualizado com nota sobre restauração cross-backend desde produção S3
+- [x] T049 Comentários "legacy" adicionados em `handleAdminStorageBackupAttachments` e `handleAdminStorageRestoreAttachments` em `S:\git\pkd\internal\server\handlers_admin_storage.go`
 - [ ] T050 [P] Run quickstart.md completo com minio — *manual, fora do escopo deste turno; checklist no quickstart.md*
 - [ ] T051 [P] Stress test 1GB — *operacional, deferido para validação em prod*
 - [ ] T052 [P] Failure injection — *operacional, deferido*
-- [x] T053 `D:\git\pkd\CLAUDE.md` Recent Changes já reflete entrega (atualizado em /speckit.plan)
-- [x] T054 [P] `D:\git\pkd\CHANGELOG.md` criado com seção [Unreleased] descrevendo US1+US2+US3 em PT-BR
+- [x] T053 `S:\git\pkd\CLAUDE.md` Recent Changes já reflete entrega (atualizado em /speckit.plan)
+- [x] T054 [P] `S:\git\pkd\CHANGELOG.md` criado com seção [Unreleased] descrevendo US1+US2+US3 em PT-BR
 
 ---
 

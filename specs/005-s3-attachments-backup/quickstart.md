@@ -4,7 +4,7 @@
 
 ## Pré-requisitos
 
-- Repo PKD em `D:\git\pkd` (Windows) ou equivalente
+- Repo PKD em `S:\git\pkd` (Windows) ou equivalente
 - Go 1.25, Node 20+ (para frontend), `pwsh` no PATH
 - Para testar S3 localmente: `docker run -p 9000:9000 -p 9001:9001 minio/minio server /data --console-address ":9001"`
 - Bucket de teste criado: `mc alias set local http://localhost:9000 minioadmin minioadmin && mc mb local/pkd-test`
