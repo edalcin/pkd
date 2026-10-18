@@ -754,7 +754,7 @@ func (s *DocumentStore) ListTree(view string, tagFilter []string, favoriteOnly b
 	}
 
 	const cols = `id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, encrypted, archived_at,
-		       created_at, updated_at, assoc_year, assoc_month, assoc_day`
+		       created_at, updated_at, assoc_year, assoc_month, assoc_day, memory_hour, memory_minute, COALESCE(memory_period, '')`
 
 	var rows *sql.Rows
 	var err error
@@ -962,7 +962,7 @@ func (s *DocumentStore) Ancestors(id int64) ([]*model.Ancestor, error) {
 func (s *DocumentStore) ListChildren(parentID int64) ([]*model.Document, error) {
 	rows, err := s.db.Query(`
 		SELECT id, parent_id, title, body_html, body_text, icon, position, version, is_favorite, locked, encrypted, archived_at,
-		       created_at, updated_at, assoc_year, assoc_month, assoc_day
+		       created_at, updated_at, assoc_year, assoc_month, assoc_day, memory_hour, memory_minute, COALESCE(memory_period, '')
 		FROM documents
 		WHERE parent_id = ? AND trashed_at IS NULL
 		ORDER BY position ASC, id ASC`, parentID)
@@ -990,7 +990,7 @@ func (s *DocumentStore) listByTags(view string, tags []string, favoriteOnly bool
 	}
 	query := `
 		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.encrypted, d.archived_at,
-		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
+		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day, d.memory_hour, d.memory_minute, COALESCE(d.memory_period, '')
 		FROM documents d
 		WHERE d.trashed_at IS NULL AND d.memory_id IS NULL AND d.is_note = 0` + extra + `
 		  AND d.id IN (
@@ -1307,7 +1307,7 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 		var parentID sql.NullInt64
 		var bodyHTML, bodyText, icon, archivedAtStr sql.NullString
 		var createdStr, updatedStr string
-		var assocYear, assocMonth, assocDay sql.NullInt64
+		var assocYear, assocMonth, assocDay, memHour, memMinute sql.NullInt64
 		if err := rows.Scan(
 			&doc.ID, &parentID, &doc.Title,
 			&bodyHTML, &bodyText, &icon,
@@ -1315,6 +1315,7 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 			&doc.IsFavorite, &doc.Locked, &doc.Encrypted, &archivedAtStr,
 			&createdStr, &updatedStr,
 			&assocYear, &assocMonth, &assocDay,
+			&memHour, &memMinute, &doc.MemoryPeriod,
 		); err != nil {
 			return nil, err
 		}
@@ -1343,6 +1344,7 @@ func scanDocRows(rows *sql.Rows) ([]*model.Document, error) {
 			v := int(assocDay.Int64)
 			doc.AssocDay = &v
 		}
+		doc.MemoryHour, doc.MemoryMinute = nullIntPtr(memHour), nullIntPtr(memMinute)
 		docs = append(docs, &doc)
 	}
 	return docs, rows.Err()
@@ -1392,7 +1394,7 @@ func (s *DocumentStore) ListByIDsFiltered(ids []int64, view string, tagFilter []
 	}
 	rows, err := s.db.Query(`
 		SELECT d.id, d.parent_id, d.title, d.body_html, d.body_text, d.icon, d.position, d.version, d.is_favorite, d.locked, d.encrypted, d.archived_at,
-		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day
+		       d.created_at, d.updated_at, d.assoc_year, d.assoc_month, d.assoc_day, d.memory_hour, d.memory_minute, COALESCE(d.memory_period, '')
 		FROM documents d
 		WHERE `+cond, args...)
 	if err != nil {

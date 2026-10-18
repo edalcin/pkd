@@ -67,7 +67,7 @@ func setGeminiAuth(req *http.Request, apiKey string) {
 
 // ChatDoc is one grounding document: the whole body goes into the prompt, no
 // chunking. See ADR-006 D2. Date is the Data da Memória / data associada,
-// already formatted ("23/09/2025", "09/2025", "2025"); empty when unset.
+// already formatted ("23/09/2025 14h", "09/2025", "2025"); empty when unset.
 type ChatDoc struct {
 	ID    int64
 	Title string

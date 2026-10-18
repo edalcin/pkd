@@ -60,7 +60,7 @@ Responda EXCLUSIVAMENTE com base nos documentos fornecidos abaixo. Regras:
 - Se os documentos não contiverem a informação pedida, diga claramente que não encontrou aquilo nos documentos. Nunca complete com conhecimento próprio.
 - Ao afirmar algo, mencione o título do documento que sustenta a afirmação.
 - Não invente títulos de documentos: use apenas os fornecidos.
-- A linha "Data:" de um documento é a data em que o evento relatado aconteceu (ou a data associada ao documento). Ela faz parte do documento: use-a para responder perguntas sobre quando algo aconteceu, mesmo que o texto não repita a data.
+- A linha "Data:" de um documento é a data em que o evento relatado aconteceu (ou a data associada ao documento), com hora ou período do dia quando conhecidos. Ela faz parte do documento: use-a para responder perguntas sobre quando ou a que horas algo aconteceu, mesmo que o texto não repita a data.
 - Responda no mesmo idioma da pergunta.`
 
 // chatSource is one consulted document, as reported by the server. Ver
@@ -232,10 +232,17 @@ func (s *Server) retrieveChatContext(r *http.Request, msgs []chatMessage) (docs 
 	return docs, sources, nil, nil
 }
 
+// chatPeriodLabel spells the Período keys (store.memoryPeriods) for prose.
+var chatPeriodLabel = map[string]string{
+	"madrugada": "madrugada (00–06h)", "manha": "manhã (06–12h)",
+	"almoco": "almoço (12–15h)", "tarde": "tarde (12–18h)",
+	"lanche": "lanche (16–18h)", "jantar": "jantar (18–21h)",
+	"noite": "noite (18–24h)",
+}
+
 // chatDate renders the document date (Data da Memória for a Memória) at its
-// known precision: "23/09/2025", "09/2025" or "2025". Empty when unset.
-// ponytail: day precision only; hour/Período are not loaded by
-// ListByIDsFiltered — add them if users ask "a que horas".
+// known precision: "2025", "09/2025", "23/09/2025", "23/09/2025 14h",
+// "23/09/2025 14h30" or "23/09/2025, almoço (12–15h)". Empty when unset.
 func chatDate(d *model.Document) string {
 	switch {
 	case d.AssocYear == nil:
@@ -244,9 +251,19 @@ func chatDate(d *model.Document) string {
 		return fmt.Sprintf("%04d", *d.AssocYear)
 	case d.AssocDay == nil:
 		return fmt.Sprintf("%02d/%04d", *d.AssocMonth, *d.AssocYear)
-	default:
-		return fmt.Sprintf("%02d/%02d/%04d", *d.AssocDay, *d.AssocMonth, *d.AssocYear)
 	}
+	s := fmt.Sprintf("%02d/%02d/%04d", *d.AssocDay, *d.AssocMonth, *d.AssocYear)
+	switch {
+	case d.MemoryHour != nil && d.MemoryMinute != nil:
+		s += fmt.Sprintf(" %02dh%02d", *d.MemoryHour, *d.MemoryMinute)
+	case d.MemoryHour != nil:
+		s += fmt.Sprintf(" %02dh", *d.MemoryHour)
+	case d.MemoryPeriod != "":
+		if l, ok := chatPeriodLabel[d.MemoryPeriod]; ok {
+			s += ", " + l
+		}
+	}
+	return s
 }
 
 // retrievalQuery concatenates the trailing user messages so a follow-up like
