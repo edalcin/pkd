@@ -45,7 +45,7 @@ func TestStreamChat_ParsesSSE(t *testing.T) {
 	var got strings.Builder
 	err := store.StreamChat(context.Background(), "secret-key", store.ChatModelFlash,
 		"regras de sistema",
-		[]store.ChatDoc{{ID: 1, Title: "Fotossíntese", Body: "corpo do documento"}},
+		[]store.ChatDoc{{ID: 1, Title: "Fotossíntese", Date: "23/09/2025", Body: "corpo do documento"}},
 		[]store.ChatMessage{{Role: "user", Text: "o que sei disso?"}},
 		4096,
 		func(s string) error { got.WriteString(s); return nil })
@@ -63,6 +63,11 @@ func TestStreamChat_ParsesSSE(t *testing.T) {
 	}
 	if !strings.Contains(gotBody, "corpo do documento") {
 		t.Error("grounding document body missing from the request")
+	}
+	// The date is the essence of the Memória Cronológica: without it the model
+	// answers "quando?" with "não encontrei" (regression, 2026-10-18).
+	if !strings.Contains(gotBody, "Data: 23/09/2025") {
+		t.Error("document date missing from the request")
 	}
 	if !strings.Contains(gotBody, "systemInstruction") {
 		t.Error("systemInstruction missing from the request")

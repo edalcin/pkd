@@ -2,10 +2,12 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
 
+	"github.com/edalcin/pkd/internal/model"
 	"github.com/edalcin/pkd/internal/store"
 )
 
@@ -58,6 +60,7 @@ Responda EXCLUSIVAMENTE com base nos documentos fornecidos abaixo. Regras:
 - Se os documentos não contiverem a informação pedida, diga claramente que não encontrou aquilo nos documentos. Nunca complete com conhecimento próprio.
 - Ao afirmar algo, mencione o título do documento que sustenta a afirmação.
 - Não invente títulos de documentos: use apenas os fornecidos.
+- A linha "Data:" de um documento é a data em que o evento relatado aconteceu (ou a data associada ao documento). Ela faz parte do documento: use-a para responder perguntas sobre quando algo aconteceu, mesmo que o texto não repita a data.
 - Responda no mesmo idioma da pergunta.`
 
 // chatSource is one consulted document, as reported by the server. Ver
@@ -195,8 +198,7 @@ func (s *Server) retrieveChatContext(r *http.Request, msgs []chatMessage) (docs 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	byID := make(map[int64]string, len(found))
-	titles := make(map[int64]string, len(found))
+	byID := make(map[int64]*model.Document, len(found))
 	for _, d := range found {
 		// Encrypted bodies are ciphertext — they embed to noise and would be
 		// noise in a prompt too. EmbedStaleDocs already excludes them; the
@@ -204,8 +206,7 @@ func (s *Server) retrieveChatContext(r *http.Request, msgs []chatMessage) (docs 
 		if d.Encrypted {
 			continue
 		}
-		byID[d.ID] = d.BodyText
-		titles[d.ID] = d.Title
+		byID[d.ID] = d
 	}
 
 	docs = make([]store.ChatDoc, 0, chatMaxDocs)
@@ -215,19 +216,37 @@ func (s *Server) retrieveChatContext(r *http.Request, msgs []chatMessage) (docs 
 		if len(docs) >= chatMaxDocs {
 			break
 		}
-		body, ok := byID[id]
+		d, ok := byID[id]
 		if !ok {
 			continue
 		}
-		cost := (len(body) + len(titles[id])) / chatCharsPerToken
+		date := chatDate(d)
+		cost := (len(d.BodyText) + len(d.Title) + len(date)) / chatCharsPerToken
 		if cost > budget {
 			continue // omitted, never truncated (D3)
 		}
 		budget -= cost
-		docs = append(docs, store.ChatDoc{ID: id, Title: titles[id], Body: body})
-		sources = append(sources, chatSource{ID: id, Title: titles[id]})
+		docs = append(docs, store.ChatDoc{ID: id, Title: d.Title, Date: date, Body: d.BodyText})
+		sources = append(sources, chatSource{ID: id, Title: d.Title})
 	}
 	return docs, sources, nil, nil
+}
+
+// chatDate renders the document date (Data da Memória for a Memória) at its
+// known precision: "23/09/2025", "09/2025" or "2025". Empty when unset.
+// ponytail: day precision only; hour/Período are not loaded by
+// ListByIDsFiltered — add them if users ask "a que horas".
+func chatDate(d *model.Document) string {
+	switch {
+	case d.AssocYear == nil:
+		return ""
+	case d.AssocMonth == nil:
+		return fmt.Sprintf("%04d", *d.AssocYear)
+	case d.AssocDay == nil:
+		return fmt.Sprintf("%02d/%04d", *d.AssocMonth, *d.AssocYear)
+	default:
+		return fmt.Sprintf("%02d/%02d/%04d", *d.AssocDay, *d.AssocMonth, *d.AssocYear)
+	}
 }
 
 // retrievalQuery concatenates the trailing user messages so a follow-up like

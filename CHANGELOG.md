@@ -28,6 +28,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 - **`POST /api/documents` com `parent_id` inexistente** devolvia 500; agora 400 `parent not found`.
 - **Autosave em loop no editor** — o `$effect` que chama `editorInstance.setEditable(...)` roda de novo a cada `doc =` (também depois de cada gravação), e o TipTap emite `update` por padrão em `setEditable`. O `update` agendava outro autosave, então um documento aberto e editado uma vez gravava a cada 5 s para sempre (em produção: Memória 456 com 176 versões, Nota 553 com 40 versões em 4 min). Depois de converter a Nota aberta em Memória, o loop gravava o estado antigo da Nota e o ícone da Memória voltava para `bx-sticky-note`. Agora `setEditable(..., false)`. Sem teste automático: o frontend não tem test runner; verificado no navegador (1 edição → 1 `PUT`; conversão com a Nota aberta → 0 `PUT`).
+- **Chat não sabia as datas** — à pergunta "Quando foram estes eventos?" o chat dizia que os documentos não informavam a data, mas os documentos tinham a Data da Memória / data associada preenchida. `retrieveChatContext` mandava ao modelo só título e corpo; as colunas `assoc_year/month/day` eram lidas e descartadas. Agora cada documento do prompt leva uma linha `Data: DD/MM/AAAA` (ou `MM/AAAA`, `AAAA`, conforme a precisão), e o `chatSystemPrompt` explica que essa linha é a data do evento. Hora e Período da Memória ainda não entram.
 
 ## [1.3.0] - 2026-09-26
 
