@@ -268,7 +268,10 @@ no conteúdo do PKD. O caminho de uma pergunta:
    resposta de conhecimento geral sob uma lista de fontes que não a sustenta.
 3. **Contexto** — até 8 documentos, com o **corpo completo** (não trechos), sob
    um teto de tokens. Documento que não cabe é omitido, nunca truncado.
-   Documentos protegidos por senha e na lixeira ficam fora.
+   Documentos protegidos por senha e na lixeira ficam fora. Cada documento leva
+   uma linha `Data:` com a Data da Memória ou a data associada (com hora ou
+   Período da Memória, quando existem), para o Chat responder "quando?" e
+   "a que horas?".
 4. **Resposta** — streaming SSE via `POST /api/chat`, com prompt de sistema
    estrito ("responda apenas com base nos documentos"). Fechar a aba cancela a
    geração.

@@ -405,3 +405,8 @@ Pendência da MC que continua aberta (Hermes corrigir Memórias) está em
 - `chatRelevanceFloor = 0.50` é um chute; ajustar com uso real (ADR-006 D4).
 - Teste automatizado do piso de relevância exigiria injetar servidor Gemini
   falso no `LinkStore`. Decidir se vale.
+- **Data no prompt (2026-10-18)**: o Chat não recebia a data dos documentos e
+  respondia "não encontrei" a "quando foi?". Agora cada documento leva a linha
+  `Data:` (dia, hora ou Período). Validar com uso real se o modelo usa a data
+  em perguntas por intervalo ("o que fiz em setembro?") — a recuperação ainda
+  não filtra por data.

@@ -59,6 +59,13 @@ re-embed completo do corpus (~$0,45).
 Consequência: a atribuição é em nível de documento ("segundo *Fotossíntese*"),
 nunca de parágrafo.
 
+Cada documento entra no prompt como título, uma linha `Data:` (quando existe) e
+o corpo. A linha traz a Data da Memória ou a data associada na precisão
+conhecida (`2025`, `09/2025`, `03/09/2025`, `03/09/2025 14h05`,
+`03/09/2025, almoço (12–15h)`), e o prompt de sistema diz que ela é a data do
+evento. Sem ela o modelo respondia "não encontrei" a "quando foi?", porque a
+data vive em colunas, não no `body_text` (correção de 2026-10-18).
+
 **Alternativa descartada:** tabela `document_chunks` com um vetor por trecho.
 É a solução correta em precisão e custa uma reescrita de `semantic.go`, uma
 migração, staleness por chunk e a convivência de dois níveis de vetor no
