@@ -9,6 +9,7 @@
     <img alt="SQLite" src="https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white" />
     <img alt="Docker" src="https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white" />
     <img alt="MIT" src="https://img.shields.io/badge/licença-MIT-green" />
+    <img alt="XERJ Corpus Hub contributor" src="https://hub.xerj.org/contributors/edalcin/badge.svg" />
   </p>
 </div>
 
