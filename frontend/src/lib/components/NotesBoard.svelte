@@ -4,7 +4,7 @@
   // opens the Nota in the normal Editor at #/doc/{id}. The sidebar's
   // tag/favorite filters drive the list (Sidebar.svelte → loadNotes).
   import { notes, loadNotes } from '../stores/notes.js'
-  import { tagFilter, favoriteFilter, loadTree } from '../stores/documents.js'
+  import { tagFilter, favoriteFilter, loadTree, trashDoc } from '../stores/documents.js'
   import NewNoteDialog from './NewNoteDialog.svelte'
 
   loadNotes() // refresh on every visit: the Nota may have changed in the Editor
@@ -42,6 +42,13 @@
 
   function openNote(id) {
     window.location.hash = `/doc/${id}`
+  }
+
+  // Trash icon on the card: moves the Nota to the trash at once, no confirm (restorable from the trash).
+  async function trashNote(e, id) {
+    e.stopPropagation()
+    await trashDoc(id)
+    notes.update(list => list.filter(n => n.id !== id))
   }
 
   // Card preview: plain-text excerpt + first image as thumbnail, so all cards
@@ -89,6 +96,8 @@
         <div class="card" role="button" tabindex="0"
              onclick={() => openNote(n.id)}
              onkeydown={e => e.key === 'Enter' && openNote(n.id)}>
+          <button class="trash" title="Mover para a lixeira" aria-label="Mover para a lixeira"
+                  onclick={e => trashNote(e, n.id)} onkeydown={e => e.stopPropagation()}><i class="bx bx-trash"></i></button>
           <strong class="title">{n.is_favorite ? '⭐ ' : ''}{n.title || 'Sem título'}</strong>
           <!-- ponytail: empty body_html = 🔒; NoteListItem has no `encrypted` flag, so an empty Nota shows 🔒 too. Add the flag to GET /api/notes if that confuses. -->
           {#if n.body_html}
@@ -126,10 +135,12 @@
   .card {
     display: flex; flex-direction: column; gap: .4rem; height: 11rem;
     background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
-    padding: .9rem 1rem; cursor: pointer; color: var(--text); overflow: hidden;
+    padding: .9rem 1rem; cursor: pointer; color: var(--text); overflow: hidden; position: relative;
   }
   .card:hover, .card:focus-visible { border-color: var(--accent); box-shadow: 0 2px 10px rgba(0,0,0,.08); outline: none; }
-  .title { font-size: .98rem; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; }
+  .title { font-size: .98rem; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; padding-right: 1.4rem; }
+  .trash { position: absolute; top: .55rem; right: .55rem; background: none; border: none; padding: .15rem; cursor: pointer; color: var(--text-muted); font-size: 1.05rem; line-height: 1; border-radius: 4px; }
+  .trash:hover, .trash:focus-visible { color: var(--danger, #e5484d); background: var(--bg-active); }
   .body { flex: 1; min-height: 0; overflow: hidden; font-size: .88rem; line-height: 1.5; }
   .thumb { float: left; width: 64px; height: 64px; object-fit: cover; border-radius: 6px; margin-right: .6rem; }
   .excerpt { margin: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
