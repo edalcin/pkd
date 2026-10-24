@@ -4,7 +4,7 @@
   // opens the Nota in the normal Editor at #/doc/{id}. The sidebar's
   // tag/favorite filters drive the list (Sidebar.svelte → loadNotes).
   import { notes, loadNotes } from '../stores/notes.js'
-  import { tagFilter, favoriteFilter, loadTree, trashDoc } from '../stores/documents.js'
+  import { tagFilter, favoriteFilter, viewMode, loadTree, trashDoc, archiveDoc } from '../stores/documents.js'
   import NewNoteDialog from './NewNoteDialog.svelte'
 
   loadNotes() // refresh on every visit: the Nota may have changed in the Editor
@@ -48,6 +48,13 @@
   async function trashNote(e, id) {
     e.stopPropagation()
     await trashDoc(id)
+    notes.update(list => list.filter(n => n.id !== id))
+  }
+
+  // Archive icon on the card: archives the Nota at once, no confirm.
+  async function archiveNote(e, id) {
+    e.stopPropagation()
+    await archiveDoc(id)
     notes.update(list => list.filter(n => n.id !== id))
   }
 
@@ -96,7 +103,12 @@
         <div class="card" role="button" tabindex="0"
              onclick={() => openNote(n.id)}
              onkeydown={e => e.key === 'Enter' && openNote(n.id)}>
-          <button class="trash" title="Mover para a lixeira" aria-label="Mover para a lixeira"
+          <!-- ponytail: archive icon only in the "Ativos" view; NoteListItem has no `archived` flag. Add it to GET /api/notes for unarchive in the other views. -->
+          {#if $viewMode === 'active'}
+            <button class="act archive" title="Arquivar" aria-label="Arquivar"
+                    onclick={e => archiveNote(e, n.id)} onkeydown={e => e.stopPropagation()}><i class="bx bx-archive"></i></button>
+          {/if}
+          <button class="act trash" title="Mover para a lixeira" aria-label="Mover para a lixeira"
                   onclick={e => trashNote(e, n.id)} onkeydown={e => e.stopPropagation()}><i class="bx bx-trash"></i></button>
           <strong class="title">{n.is_favorite ? '⭐ ' : ''}{n.title || 'Sem título'}</strong>
           <!-- ponytail: empty body_html = 🔒; NoteListItem has no `encrypted` flag, so an empty Nota shows 🔒 too. Add the flag to GET /api/notes if that confuses. -->
@@ -138,9 +150,11 @@
     padding: .9rem 1rem; cursor: pointer; color: var(--text); overflow: hidden; position: relative;
   }
   .card:hover, .card:focus-visible { border-color: var(--accent); box-shadow: 0 2px 10px rgba(0,0,0,.08); outline: none; }
-  .title { font-size: .98rem; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; padding-right: 1.4rem; }
-  .trash { position: absolute; top: .55rem; right: .55rem; background: none; border: none; padding: .15rem; cursor: pointer; color: var(--text-muted); font-size: 1.05rem; line-height: 1; border-radius: 4px; }
-  .trash:hover, .trash:focus-visible { color: var(--danger, #e5484d); background: var(--bg-active); }
+  .title { font-size: .98rem; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; padding-right: 2.8rem; }
+  .act { position: absolute; top: .55rem; right: .55rem; background: none; border: none; padding: .15rem; cursor: pointer; color: var(--text-muted); font-size: 1.05rem; line-height: 1; border-radius: 4px; }
+  .act:hover, .act:focus-visible { color: var(--accent); background: var(--bg-active); }
+  .archive { right: 2rem; }
+  .trash:hover, .trash:focus-visible { color: var(--danger, #e5484d); }
   .body { flex: 1; min-height: 0; overflow: hidden; font-size: .88rem; line-height: 1.5; }
   .thumb { float: left; width: 64px; height: 64px; object-fit: cover; border-radius: 6px; margin-right: .6rem; }
   .excerpt { margin: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
