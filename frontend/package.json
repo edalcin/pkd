@@ -13,7 +13,7 @@
     "@sveltejs/vite-plugin-svelte": "^5.1.1",
     "sharp": "^0.35.3",
     "svelte": "^5.55.7",
-    "vite": "^6.4.3"
+    "vite": "^6.4.5"
   },
   "dependencies": {
     "@tiptap/core": "^3.30.4",
