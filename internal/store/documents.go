@@ -19,6 +19,11 @@ var ErrVersionConflict = errors.New("version conflict")
 // not accessible (e.g. trashed when active is required).
 var ErrNotFound = errors.New("not found")
 
+// ErrKeyTrashed is returned when an idempotency key belongs to an item that
+// was created and then moved to the lixeira. The create already happened, so a
+// replay must not make a second item (the key column is UNIQUE).
+var ErrKeyTrashed = errors.New("idempotency key belongs to a trashed item")
+
 // ErrCircularMove is returned when a Move would create a cycle in the tree.
 var ErrCircularMove = errors.New("circular move: cannot move a node under its own descendant")
 
@@ -104,7 +109,11 @@ func (s *DocumentStore) CreateKeyed(parentID *int64, title, key string) (doc *mo
 	var id int64
 	err = WithTx(s.db, func(tx *sql.Tx) error {
 		if key != "" {
-			err := tx.QueryRow(`SELECT id FROM documents WHERE doc_key = ? AND trashed_at IS NULL`, key).Scan(&id)
+			var trashed bool
+			err := tx.QueryRow(`SELECT id, trashed_at IS NOT NULL FROM documents WHERE doc_key = ?`, key).Scan(&id, &trashed)
+			if err == nil && trashed {
+				return ErrKeyTrashed
+			}
 			if err == nil {
 				return nil
 			}

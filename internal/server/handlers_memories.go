@@ -92,6 +92,10 @@ func (s *Server) handleCreateMemory() http.HandlerFunc {
 		}
 
 		doc, created, err := s.docs.CreateMemory(title, *req.Date, key)
+		if errors.Is(err, store.ErrKeyTrashed) {
+			http.Error(w, err.Error(), http.StatusGone)
+			return
+		}
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return

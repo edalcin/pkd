@@ -207,7 +207,11 @@ func (s *DocumentStore) CreateMemory(title string, d MemoryDate, key string) (do
 	var id int64
 	err = WithTx(s.db, func(tx *sql.Tx) error {
 		if key != "" {
-			err := tx.QueryRow(`SELECT id FROM documents WHERE memory_key = ? AND trashed_at IS NULL`, key).Scan(&id)
+			var trashed bool
+			err := tx.QueryRow(`SELECT id, trashed_at IS NOT NULL FROM documents WHERE memory_key = ?`, key).Scan(&id, &trashed)
+			if err == nil && trashed {
+				return ErrKeyTrashed
+			}
 			if err == nil {
 				return nil
 			}

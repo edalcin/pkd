@@ -85,6 +85,10 @@ func (s *Server) handleCreateNote() http.HandlerFunc {
 		}
 
 		doc, created, err := s.docs.CreateNote(title, key, favorite, createdAt, updatedAt)
+		if errors.Is(err, store.ErrKeyTrashed) {
+			http.Error(w, err.Error(), http.StatusGone)
+			return
+		}
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return

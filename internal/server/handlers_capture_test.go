@@ -89,7 +89,9 @@ func TestCaptureTagsReplaceDefault(t *testing.T) {
 
 // TestCaptureIdempotencyKey proves that POSTing /api/capture twice with the
 // same idempotency_key creates only one Nota: the replay returns 200 with
-// the existing Nota instead of a duplicate 201.
+// the existing Nota instead of a duplicate 201. After the Nota goes to the
+// lixeira, a replay answers 410 (not 500 from the UNIQUE note_key, which left
+// the pkdMobile queue stuck forever) and creates nothing.
 func TestCaptureIdempotencyKey(t *testing.T) {
 	db, err := store.Open("file:server_capture_idem_test?mode=memory&cache=shared")
 	if err != nil {
@@ -130,5 +132,15 @@ func TestCaptureIdempotencyKey(t *testing.T) {
 	}
 	if len(notes) != 1 {
 		t.Fatalf("want exactly 1 Nota after idempotent replay, got %d", len(notes))
+	}
+
+	if err := s.docs.SoftDelete(notes[0].ID); err != nil {
+		t.Fatalf("SoftDelete: %v", err)
+	}
+	if third := post(); third.Code != http.StatusGone {
+		t.Fatalf("replay after trash: want 410, got %d (%s)", third.Code, third.Body.String())
+	}
+	if notes, _ := s.docs.ListNotes("", nil, false); len(notes) != 0 {
+		t.Fatalf("replay after trash must not create a Nota, got %d", len(notes))
 	}
 }

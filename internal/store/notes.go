@@ -54,7 +54,11 @@ func (s *DocumentStore) CreateNote(title, key string, favorite bool, createdAt, 
 	var id int64
 	err = WithTx(s.db, func(tx *sql.Tx) error {
 		if key != "" {
-			err := tx.QueryRow(`SELECT id FROM documents WHERE note_key = ? AND trashed_at IS NULL`, key).Scan(&id)
+			var trashed bool
+			err := tx.QueryRow(`SELECT id, trashed_at IS NOT NULL FROM documents WHERE note_key = ?`, key).Scan(&id, &trashed)
+			if err == nil && trashed {
+				return ErrKeyTrashed
+			}
 			if err == nil {
 				return nil
 			}

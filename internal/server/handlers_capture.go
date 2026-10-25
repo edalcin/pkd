@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/edalcin/pkd/internal/model"
 	"github.com/edalcin/pkd/internal/security"
+	"github.com/edalcin/pkd/internal/store"
 )
 
 // handleCapture serves POST /api/capture.
@@ -66,6 +68,10 @@ func (s *Server) handleCapture() http.HandlerFunc {
 
 		// Create the Nota (idempotencyKey replay returns the existing one)
 		doc, created, err := s.docs.CreateNote(title, idempotencyKey, false, nil, nil)
+		if errors.Is(err, store.ErrKeyTrashed) {
+			http.Error(w, err.Error(), http.StatusGone)
+			return
+		}
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
